@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "Enterprise Community & Social Platform Monorepo",
+  "packageManager": "pnpm@10.15.0",
   "scripts": {
     "build": "pnpm --recursive run build",
     "test": "pnpm --recursive run test",

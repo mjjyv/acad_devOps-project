@@ -4,6 +4,7 @@ export interface ISessionStore {
   saveSession(session: UserSession): Promise<void>;
   getSession(userId: string, deviceFingerprint: string): Promise<UserSession | null>;
   getSessionById(sessionId: string): Promise<UserSession | null>;
+  getSessionByTokenHash?(tokenHash: string): Promise<UserSession | null>;
   updateTokens(
     sessionId: string,
     currentHash: string,
@@ -26,6 +27,7 @@ export class InMemorySessionStore implements ISessionStore {
   private sessionsById = new Map<string, UserSession>();
   private userDeviceIndex = new Map<string, string>(); // "userId:deviceFp" -> sessionId
   private familyIndex = new Map<string, Set<string>>(); // familyId -> Set<sessionId>
+  private tokenHashIndex = new Map<string, string>(); // tokenHash -> sessionId
 
   private getCompositeKey(userId: string, deviceFp: string): string {
     return `${userId}:${deviceFp}`;
@@ -34,6 +36,10 @@ export class InMemorySessionStore implements ISessionStore {
   public async saveSession(session: UserSession): Promise<void> {
     this.sessionsById.set(session.sessionId, { ...session });
     this.userDeviceIndex.set(this.getCompositeKey(session.userId, session.deviceFingerprint), session.sessionId);
+    this.tokenHashIndex.set(session.currentTokenHash, session.sessionId);
+    if (session.previousTokenHash) {
+      this.tokenHashIndex.set(session.previousTokenHash, session.sessionId);
+    }
 
     let familySet = this.familyIndex.get(session.familyId);
     if (!familySet) {
@@ -55,6 +61,12 @@ export class InMemorySessionStore implements ISessionStore {
     return { ...session };
   }
 
+  public async getSessionByTokenHash(tokenHash: string): Promise<UserSession | null> {
+    const sessionId = this.tokenHashIndex.get(tokenHash);
+    if (!sessionId) return null;
+    return this.getSessionById(sessionId);
+  }
+
   public async updateTokens(
     sessionId: string,
     currentHash: string,
@@ -70,6 +82,11 @@ export class InMemorySessionStore implements ISessionStore {
     session.previousTokenHash = previousHash;
     session.gracePeriodExpiresAt = gracePeriodExpiresAt;
     session.updatedAt = new Date();
+
+    this.tokenHashIndex.set(currentHash, sessionId);
+    if (previousHash) {
+      this.tokenHashIndex.set(previousHash, sessionId);
+    }
   }
 
   public async revokeSession(sessionId: string): Promise<void> {
@@ -122,5 +139,6 @@ export class InMemorySessionStore implements ISessionStore {
     this.sessionsById.clear();
     this.userDeviceIndex.clear();
     this.familyIndex.clear();
+    this.tokenHashIndex.clear();
   }
 }

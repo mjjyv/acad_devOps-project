@@ -1,0 +1,94 @@
+docker compose -f deploy/docker/docker-compose.dev.yml ps
+NAME                  IMAGE                COMMAND                  SERVICE       CREATED         STATUS                            PORTS
+acad-core-api-dev     node:24-alpine       "docker-entrypoint.s…"   core-api      5 minutes ago   Restarting (127) 38 seconds ago   
+acad-postgres-dev     postgres:16-alpine   "docker-entrypoint.s…"   infra-db      5 minutes ago   Up 5 minutes (healthy)            0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
+acad-redis-dev        redis:7-alpine       "docker-entrypoint.s…"   infra-cache   5 minutes ago   Up 5 minutes (healthy)            0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp
+acad-web-client-dev   node:24-alpine       "docker-entrypoint.s…"   web-client    5 minutes ago   Restarting (127) 38 seconds ago   
+
+
+
+docker build -f deploy/docker/Dockerfile.api.prod -t acad-api:prod .
+[+] Building 14.2s (30/30) FINISHED                                                                                                                                 docker:default
+ => [internal] load build definition from Dockerfile.api.prod                                                                                                                 0.0s
+ => => transferring dockerfile: 2.07kB                                                                                                                                        0.0s
+ => [internal] load metadata for docker.io/library/node:24-alpine                                                                                                             0.0s
+ => [internal] load .dockerignore                                                                                                                                             0.0s
+ => => transferring context: 195B                                                                                                                                             0.0s
+ => [internal] load build context                                                                                                                                             0.1s
+ => => transferring context: 185.10kB                                                                                                                                         0.0s
+ => [builder  1/16] FROM docker.io/library/node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1                                             0.1s
+ => => resolve docker.io/library/node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1                                                       0.0s
+ => [builder  2/16] RUN corepack enable && corepack prepare pnpm@10.15.0 --activate                                                                                           4.4s
+ => [runner  2/10] WORKDIR /app                                                                                                                                               0.1s
+ => [runner  3/10] RUN addgroup --system --gid 1001 nodejs &&     adduser --system --uid 1001 appuser                                                                         0.2s
+ => [builder  3/16] WORKDIR /app                                                                                                                                              0.1s 
+ => [builder  4/16] COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./                                                                                                   0.1s
+ => [builder  5/16] COPY packages/contracts/package.json ./packages/contracts/                                                                                                0.0s
+ => [builder  6/16] COPY packages/ui-tokens/package.json ./packages/ui-tokens/                                                                                                0.0s
+ => [builder  7/16] COPY packages/auth-client/package.json ./packages/auth-client/                                                                                            0.0s
+ => [builder  8/16] COPY packages/tree-virtualizer/package.json ./packages/tree-virtualizer/                                                                                  0.0s
+ => [builder  9/16] COPY services/auth/package.json ./services/auth/                                                                                                          0.0s
+ => [builder 10/16] COPY services/community/package.json ./services/community/                                                                                                0.0s
+ => [builder 11/16] COPY apps/api/package.json ./apps/api/                                                                                                                    0.0s
+ => [builder 12/16] RUN pnpm install --frozen-lockfile                                                                                                                        3.6s
+ => [builder 13/16] COPY packages/ ./packages/                                                                                                                                0.1s 
+ => [builder 14/16] COPY services/ ./services/                                                                                                                                0.1s 
+ => [builder 15/16] COPY apps/api/ ./apps/api/                                                                                                                                0.0s
+ => [builder 16/16] RUN pnpm --filter @acad/api run build                                                                                                                     1.9s
+ => [runner  4/10] COPY --from=builder /app/package.json ./                                                                                                                   0.0s
+ => [runner  5/10] COPY --from=builder /app/pnpm-workspace.yaml ./                                                                                                            0.0s
+ => [runner  6/10] COPY --from=builder /app/node_modules ./node_modules                                                                                                       0.2s
+ => [runner  7/10] COPY --from=builder /app/packages ./packages                                                                                                               0.1s
+ => [runner  8/10] COPY --from=builder /app/services ./services                                                                                                               0.0s
+ => [runner  9/10] COPY --from=builder /app/apps/api/dist ./apps/api/dist                                                                                                     0.0s
+ => [runner 10/10] COPY --from=builder /app/apps/api/package.json ./apps/api/package.json                                                                                     0.0s
+ => exporting to image                                                                                                                                                        2.7s
+ => => exporting layers                                                                                                                                                       2.1s
+ => => exporting manifest sha256:91afead062708e7af5378f11ac0a0a24d9ef0bbd8439401baccb2cee283fc502                                                                             0.0s
+ => => exporting config sha256:7e742be11addbde2c5a27ffbfbc3ad42b73a5609960e55fd3e6f10e11e507863                                                                               0.0s
+ => => exporting attestation manifest sha256:74334bf82361cc7a555c24080f5def878b5de5b59edf03e0334677e6304acae0                                                                 0.0s
+ => => exporting manifest list sha256:988dda9f57c6741ae11467d24f10c199846a13395135ce1e50a6a6e91d114a3f                                                                        0.0s
+ => => naming to docker.io/library/acad-api:prod                                                                                                                              0.0s
+ => => unpacking to docker.io/library/acad-api:prod                                                                                                                           0.5s
+
+docker build -f deploy/docker/Dockerfile.web.prod -t acad-web:prod .
+[+] Building 53.9s (22/24)                                                                                                                                          docker:default
+ => [internal] load build definition from Dockerfile.web.prod                                                                                                                 0.0s
+ => => transferring dockerfile: 1.98kB                                                                                                                                        0.0s
+ => [internal] load metadata for docker.io/library/node:24-alpine                                                                                                             0.0s
+ => [internal] load .dockerignore                                                                                                                                             0.0s
+ => => transferring context: 195B                                                                                                                                             0.0s
+ => [internal] load build context                                                                                                                                             0.0s
+ => => transferring context: 88.47kB                                                                                                                                          0.0s
+ => [deps  1/10] FROM docker.io/library/node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1                                                0.0s
+ => => resolve docker.io/library/node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1                                                       0.0s
+ => CACHED [deps  2/10] RUN corepack enable && corepack prepare pnpm@10.15.0 --activate                                                                                       0.0s
+ => CACHED [deps  3/10] WORKDIR /app                                                                                                                                          0.0s
+ => CACHED [runner 2/6] WORKDIR /app                                                                                                                                          0.0s
+ => [runner 3/6] RUN addgroup --system --gid 1001 nodejs &&     adduser --system --uid 1001 nextjs                                                                            0.2s
+ => CACHED [deps  4/10] COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./                                                                                               0.0s
+ => CACHED [deps  5/10] COPY packages/contracts/package.json ./packages/contracts/                                                                                            0.0s
+ => CACHED [deps  6/10] COPY packages/ui-tokens/package.json ./packages/ui-tokens/                                                                                            0.0s
+ => CACHED [deps  7/10] COPY packages/auth-client/package.json ./packages/auth-client/                                                                                        0.0s
+ => CACHED [deps  8/10] COPY packages/tree-virtualizer/package.json ./packages/tree-virtualizer/                                                                              0.0s
+ => [deps  9/10] COPY apps/web/package.json ./apps/web/                                                                                                                       0.0s
+ => [deps 10/10] RUN pnpm install --frozen-lockfile                                                                                                                          18.6s
+ => [builder 4/8] COPY --from=deps /app/node_modules ./node_modules                                                                                                           2.3s 
+ => [builder 5/8] COPY --from=deps /app/packages ./packages                                                                                                                   0.1s 
+ => [builder 6/8] COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules                                                                                         0.0s 
+ => [builder 7/8] COPY . .                                                                                                                                                    0.0s 
+ => [builder 8/8] RUN pnpm --filter @acad/web run build                                                                                                                      31.2s
+ => ERROR [runner 4/6] COPY --from=builder /app/apps/web/public ./apps/web/public                                                                                             0.0s
+------
+ > [runner 4/6] COPY --from=builder /app/apps/web/public ./apps/web/public:
+------
+Dockerfile.web.prod:48
+--------------------
+  46 |     
+  47 |     # Tận dụng tính năng standalone xuất ra từ next build
+  48 | >>> COPY --from=builder /app/apps/web/public ./apps/web/public
+  49 |     COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
+  50 |     COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
+--------------------
+ERROR: failed to build: failed to solve: failed to compute cache key: failed to calculate checksum of ref pt8a1rl4echg42sw4vhvb6hso::od0ndllbdqldv15n8tt0yxk3a: "/app/apps/web/public": not found
+

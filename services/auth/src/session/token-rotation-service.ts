@@ -1,6 +1,6 @@
 import { TokenManager, TokenPair } from '../crypto/token.js';
 import { ISessionStore } from './store.js';
-import { TokenRotationResult } from './types.js';
+import { TokenRotationResult, UserSession } from './types.js';
 import { JWTClaims } from '@acad/contracts';
 
 export type UserClaimsProvider = (userId: string) => Promise<Omit<JWTClaims, 'iss' | 'iat' | 'exp'>>;
@@ -19,10 +19,17 @@ export class TokenRotationService {
    */
   public async rotateTokens(
     rawRefreshToken: string,
-    userId: string,
-    deviceFingerprint: string,
+    userId?: string,
+    deviceFingerprint?: string,
   ): Promise<TokenRotationResult> {
-    const session = await this.sessionStore.getSession(userId, deviceFingerprint);
+    const submittedHash = TokenManager.hashToken(rawRefreshToken);
+    let session: UserSession | null = null;
+
+    if (userId && deviceFingerprint) {
+      session = await this.sessionStore.getSession(userId, deviceFingerprint);
+    } else if (this.sessionStore.getSessionByTokenHash) {
+      session = await this.sessionStore.getSessionByTokenHash(submittedHash);
+    }
 
     if (!session) {
       return {
@@ -46,8 +53,6 @@ export class TokenRotationService {
       };
     }
 
-    const submittedHash = TokenManager.hashToken(rawRefreshToken);
-
     // =========================================================================
     // NHÁNH 1: KHỚP TOKEN HIỆN HÀNH (CURRENT TOKEN MATCH)
     // Người dùng gửi đúng token mới nhất -> Tiến hành xoay vòng bình thường
@@ -56,7 +61,7 @@ export class TokenRotationService {
       const newRefreshToken = TokenManager.generateRefreshToken();
       const newRefreshTokenHash = TokenManager.hashToken(newRefreshToken);
 
-      const claims = await this.claimsProvider(userId);
+      const claims = await this.claimsProvider(session.userId);
       const newAccessToken = TokenManager.signAccessToken(claims);
 
       const gracePeriodExpiresAt = new Date(now.getTime() + TokenRotationService.GRACE_PERIOD_MS);
@@ -91,7 +96,7 @@ export class TokenRotationService {
       session.gracePeriodExpiresAt &&
       now <= session.gracePeriodExpiresAt
     ) {
-      const claims = await this.claimsProvider(userId);
+      const claims = await this.claimsProvider(session.userId);
       const currentAccessToken = TokenManager.signAccessToken(claims);
 
       // Cấp lại Access Token mới mà KHÔNG tiếp tục xoay vòng Refresh Token

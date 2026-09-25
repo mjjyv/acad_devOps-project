@@ -30,7 +30,7 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-RUN pnpm --filter @acad/web run build
+RUN pnpm --filter @acad/web run build && mkdir -p apps/web/public
 
 # Stage 3: Minimal Production Runner
 FROM node:24-alpine AS runner
@@ -45,7 +45,7 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
 # Tận dụng tính năng standalone xuất ra từ next build
-COPY --from=builder /app/apps/web/public ./apps/web/public
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
 

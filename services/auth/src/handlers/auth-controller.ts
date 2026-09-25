@@ -206,8 +206,8 @@ export class AuthController {
    */
   public async refresh(
     refreshToken: string,
-    userId: string,
-    deviceFingerprint: string,
+    userId?: string,
+    deviceFingerprint?: string,
   ): Promise<{ response: { accessToken: string; expiresIn: number }; cookies: string[] }> {
     const result = await this.rotationService.rotateTokens(refreshToken, userId, deviceFingerprint);
 
