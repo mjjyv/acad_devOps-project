@@ -1,5 +1,5 @@
 import { IncomingMessage, ServerResponse } from 'node:http';
-import { AuthModule, TokenManager, UserRecord } from '@acad/auth-service';
+import { AuthModule, TokenManager, UserRecord, UserSession } from '@acad/auth-service';
 import { COOKIE_CONFIG } from '@acad/contracts';
 
 export function parseCookies(cookieHeader?: string): Record<string, string> {
@@ -241,7 +241,7 @@ export function createAuthRouter(authModule: AuthModule) {
         sendJson(
           res,
           200,
-          sessions.map((s) => ({
+          sessions.map((s: UserSession) => ({
             sessionId: s.sessionId,
             deviceFingerprint: s.deviceFingerprint,
             ipAddress: s.ipAddress,

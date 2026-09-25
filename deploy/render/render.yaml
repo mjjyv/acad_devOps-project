@@ -12,7 +12,7 @@ services:
     runtime: node
     plan: free
     region: singapore # hoặc oregon / frankfurt
-    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @acad/web run build
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @acad/web... run build
     startCommand: node apps/web/.next/standalone/apps/web/server.js
     envVars:
       - key: NODE_ENV

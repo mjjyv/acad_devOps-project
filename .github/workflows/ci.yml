@@ -75,6 +75,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build shared libraries and services
+        run: pnpm run build:libs
+
       - name: Validate TypeScript schemas across all packages
         run: pnpm run typecheck
 
@@ -108,6 +111,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build shared libraries and services
+        run: pnpm run build:libs
 
       - name: Run all 33+ test suites
         run: pnpm test

@@ -1,94 +1,195 @@
-docker compose -f deploy/docker/docker-compose.dev.yml ps
-NAME                  IMAGE                COMMAND                  SERVICE       CREATED         STATUS                            PORTS
-acad-core-api-dev     node:24-alpine       "docker-entrypoint.s…"   core-api      5 minutes ago   Restarting (127) 38 seconds ago   
-acad-postgres-dev     postgres:16-alpine   "docker-entrypoint.s…"   infra-db      5 minutes ago   Up 5 minutes (healthy)            0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
-acad-redis-dev        redis:7-alpine       "docker-entrypoint.s…"   infra-cache   5 minutes ago   Up 5 minutes (healthy)            0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp
-acad-web-client-dev   node:24-alpine       "docker-entrypoint.s…"   web-client    5 minutes ago   Restarting (127) 38 seconds ago   
+ackages/tree-virtualizer test:  Test Files  1 passed (1)
+packages/tree-virtualizer test:       Tests  3 passed (3)
+packages/tree-virtualizer test:    Start at  06:51:17
+packages/tree-virtualizer test:    Duration  1.01s (transform 308ms, setup 0ms, collect 60ms, tests 15ms, environment 0ms, prepare 345ms)
+services/community test:  ✓ tests/ltree-path.test.ts (5 tests) 11ms
+services/community test:  ✓ tests/lua-vote.test.ts (4 tests) 18ms
+services/community test:  Test Files  3 passed (3)
+services/community test:       Tests  11 passed (11)
+services/community test:    Start at  06:51:17
+services/community test:    Duration  1.05s (transform 456ms, setup 0ms, collect 308ms, tests 36ms, environment 1ms, prepare 1.03s)
+packages/tree-virtualizer test: Done
+services/community test: Done
+services/auth test$ vitest run
+services/auth test:  RUN  v3.2.7 /home/runner/work/acad_devOps-project/acad_devOps-project/services/auth
+services/auth test:  ✓ tests/rbac-abac.test.ts (7 tests) 6ms
+services/auth test:  ✓ tests/client-interceptor.test.ts (2 tests) 59ms
+services/auth test:  ✓ tests/token-rotation.test.ts (4 tests) 244ms
+services/auth test:  ✓ tests/crypto.test.ts (6 tests) 330ms
+services/auth test:  Test Files  4 passed (4)
+services/auth test:       Tests  19 passed (19)
+services/auth test:    Start at  06:51:19
+services/auth test:    Duration  815ms (transform 285ms, setup 0ms, collect 496ms, tests 639ms, environment 1ms, prepare 346ms)
+services/auth test: Done
+apps/api test$ vitest run
+apps/api test:  RUN  v3.2.7 /home/runner/work/acad_devOps-project/acad_devOps-project/apps/api
+apps/api test: ⎯⎯⎯⎯⎯⎯ Failed Suites 2 ⎯⎯⎯⎯⎯⎯⎯
+apps/api test:  FAIL  tests/auth-endpoints.test.ts [ tests/auth-endpoints.test.ts ]
+apps/api test: Error: Failed to resolve entry for package "@acad/auth-service". The package may have incorrect main/module/exports specified in its package.json.
+apps/api test:   Plugin: vite:import-analysis
+apps/api test:   File: /home/runner/work/acad_devOps-project/acad_devOps-project/apps/api/tests/auth-endpoints.test.ts:4:33
+apps/api test:   1  |  import { afterAll, beforeAll, describe, expect, it } from "vitest";
+apps/api test:   2  |  import { createApiServer } from "../src/server.js";
+apps/api test:   3  |  import { createAuthModule } from "@acad/auth-service";
+apps/api test:      |                                    ^
+apps/api test:   4  |  import { COOKIE_CONFIG } from "@acad/contracts";
+apps/api test:   5  |  describe("Auth Endpoints HTTP Integration Tests", () => {
+apps/api test:  ❯ packageEntryFailure ../../node_modules/.pnpm/vite@7.3.6_@types+node@22.20.4/node_modules/vite/dist/node/chunks/config.js:32896:32
+apps/api test:  ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@7.3.6_@types+node@22.20.4/node_modules/vite/dist/node/chunks/config.js:32893:2
+apps/api test:  ❯ tryNodeResolve ../../node_modules/.pnpm/vite@7.3.6_@types+node@22.20.4/node_modules/vite/dist/node/chunks/config.js:32796:70
+apps/api test:  ❯ ResolveIdContext.handler ../../node_modules/.pnpm/vite@7.3.6_@types+node@22.20.4/node_modules/vite/dist/node/chunks/config.js:32635:16
+apps/api test:  ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@7.3.6_@types+node@22.20.4/node_modules/vite/dist/node/chunks/config.js:28797:56
+apps/api test:  ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@7.3.6_@types+node@22.20.4/node_modules/vite/dist/node/chunks/config.js:29009:13
+apps/api test:  ❯ normalizeUrl ../../node_modules/.pnpm/vite@7.3.6_@types+node@22.20.4/node_modules/vite/dist/node/chunks/config.js:27191:22
+apps/api test:  ❯ ../../node_modules/.pnpm/vite@7.3.6_@types+node@22.20.4/node_modules/vite/dist/node/chunks/config.js:27257:32
+apps/api test: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+apps/api test:  FAIL  tests/healthz.test.ts [ tests/healthz.test.ts ]
+apps/api test: Error: Failed to resolve entry for package "@acad/auth-service". The package may have incorrect main/module/exports specified in its package.json.
+apps/api test:   Plugin: vite:import-analysis
+apps/api test:   File: /home/runner/work/acad_devOps-project/acad_devOps-project/apps/api/src/server.ts:2:45
+apps/api test:   1  |  import { createServer } from "node:http";
+apps/api test:   2  |  import { createAuthModule } from "@acad/auth-service";
+apps/api test:      |                                    ^
+apps/api test:   3  |  import { createAuthRouter } from "./routes/auth-router.js";
+apps/api test:   4  |  export function createApiServer(options = {}) {
+apps/api test:  ❯ packageEntryFailure ../../node_modules/.pnpm/vite@7.3.6_@types+node@22.20.4/node_modules/vite/dist/node/chunks/config.js:32896:32
+apps/api test:  ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@7.3.6_@types+node@22.20.4/node_modules/vite/dist/node/chunks/config.js:32893:2
+apps/api test:  ❯ tryNodeResolve ../../node_modules/.pnpm/vite@7.3.6_@types+node@22.20.4/node_modules/vite/dist/node/chunks/config.js:32796:70
+apps/api test:  ❯ ResolveIdContext.handler ../../node_modules/.pnpm/vite@7.3.6_@types+node@22.20.4/node_modules/vite/dist/node/chunks/config.js:32635:16
+apps/api test:  ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@7.3.6_@types+node@22.20.4/node_modules/vite/dist/node/chunks/config.js:28797:56
+apps/api test:  ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@7.3.6_@types+node@22.20.4/node_modules/vite/dist/node/chunks/config.js:29009:13
+apps/api test:  ❯ normalizeUrl ../../node_modules/.pnpm/vite@7.3.6_@types+node@22.20.4/node_modules/vite/dist/node/chunks/config.js:27191:22
+apps/api test:  ❯ ../../node_modules/.pnpm/vite@7.3.6_@types+node@22.20.4/node_modules/vite/dist/node/chunks/config.js:27257:32
+apps/api test: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+apps/api test:  Test Files  2 failed (2)
+apps/api test:       Tests  no tests
+apps/api test:    Start at  06:51:20
+apps/api test:    Duration  343ms (transform 50ms, setup 0ms, collect 0ms, tests 0ms, environment 1ms, prepare 167ms)
+apps/api test: Failed
+/home/runner/work/acad_devOps-project/acad_devOps-project/apps/api:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @acad/api@1.0.0 test: `vitest run`
+Exit status 1
+ ELIFECYCLE  Test failed. See above for more details.
+Error: Process completed with exit code 1.
 
 
+s/community typecheck$ tsc --noEmit
+packages/auth-client typecheck: Done
+services/community typecheck: Done
+packages/tree-virtualizer typecheck: Done
+apps/web typecheck$ tsc --noEmit
+services/auth typecheck$ tsc --noEmit
+apps/web typecheck: Done
+services/auth typecheck: Done
+apps/api typecheck$ tsc --noEmit
+Error: apps/api typecheck: src/routes/auth-router.ts(2,54): error TS2307: Cannot find module '@acad/auth-service' or its corresponding type declarations.
+Error: apps/api typecheck: src/routes/auth-router.ts(244,25): error TS7006: Parameter 's' implicitly has an 'any' type.
+Error: apps/api typecheck: src/server.ts(2,46): error TS2307: Cannot find module '@acad/auth-service' or its corresponding type declarations.
+apps/api typecheck: Failed
+/home/runner/work/acad_devOps-project/acad_devOps-project/apps/api:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @acad/api@1.0.0 typecheck: `tsc --noEmit`
+Exit status 2
+ ELIFECYCLE  Command failed with exit code 2.
+Error: Process completed with exit code 2.
 
-docker build -f deploy/docker/Dockerfile.api.prod -t acad-api:prod .
-[+] Building 14.2s (30/30) FINISHED                                                                                                                                 docker:default
- => [internal] load build definition from Dockerfile.api.prod                                                                                                                 0.0s
- => => transferring dockerfile: 2.07kB                                                                                                                                        0.0s
- => [internal] load metadata for docker.io/library/node:24-alpine                                                                                                             0.0s
- => [internal] load .dockerignore                                                                                                                                             0.0s
- => => transferring context: 195B                                                                                                                                             0.0s
- => [internal] load build context                                                                                                                                             0.1s
- => => transferring context: 185.10kB                                                                                                                                         0.0s
- => [builder  1/16] FROM docker.io/library/node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1                                             0.1s
- => => resolve docker.io/library/node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1                                                       0.0s
- => [builder  2/16] RUN corepack enable && corepack prepare pnpm@10.15.0 --activate                                                                                           4.4s
- => [runner  2/10] WORKDIR /app                                                                                                                                               0.1s
- => [runner  3/10] RUN addgroup --system --gid 1001 nodejs &&     adduser --system --uid 1001 appuser                                                                         0.2s
- => [builder  3/16] WORKDIR /app                                                                                                                                              0.1s 
- => [builder  4/16] COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./                                                                                                   0.1s
- => [builder  5/16] COPY packages/contracts/package.json ./packages/contracts/                                                                                                0.0s
- => [builder  6/16] COPY packages/ui-tokens/package.json ./packages/ui-tokens/                                                                                                0.0s
- => [builder  7/16] COPY packages/auth-client/package.json ./packages/auth-client/                                                                                            0.0s
- => [builder  8/16] COPY packages/tree-virtualizer/package.json ./packages/tree-virtualizer/                                                                                  0.0s
- => [builder  9/16] COPY services/auth/package.json ./services/auth/                                                                                                          0.0s
- => [builder 10/16] COPY services/community/package.json ./services/community/                                                                                                0.0s
- => [builder 11/16] COPY apps/api/package.json ./apps/api/                                                                                                                    0.0s
- => [builder 12/16] RUN pnpm install --frozen-lockfile                                                                                                                        3.6s
- => [builder 13/16] COPY packages/ ./packages/                                                                                                                                0.1s 
- => [builder 14/16] COPY services/ ./services/                                                                                                                                0.1s 
- => [builder 15/16] COPY apps/api/ ./apps/api/                                                                                                                                0.0s
- => [builder 16/16] RUN pnpm --filter @acad/api run build                                                                                                                     1.9s
- => [runner  4/10] COPY --from=builder /app/package.json ./                                                                                                                   0.0s
- => [runner  5/10] COPY --from=builder /app/pnpm-workspace.yaml ./                                                                                                            0.0s
- => [runner  6/10] COPY --from=builder /app/node_modules ./node_modules                                                                                                       0.2s
- => [runner  7/10] COPY --from=builder /app/packages ./packages                                                                                                               0.1s
- => [runner  8/10] COPY --from=builder /app/services ./services                                                                                                               0.0s
- => [runner  9/10] COPY --from=builder /app/apps/api/dist ./apps/api/dist                                                                                                     0.0s
- => [runner 10/10] COPY --from=builder /app/apps/api/package.json ./apps/api/package.json                                                                                     0.0s
- => exporting to image                                                                                                                                                        2.7s
- => => exporting layers                                                                                                                                                       2.1s
- => => exporting manifest sha256:91afead062708e7af5378f11ac0a0a24d9ef0bbd8439401baccb2cee283fc502                                                                             0.0s
- => => exporting config sha256:7e742be11addbde2c5a27ffbfbc3ad42b73a5609960e55fd3e6f10e11e507863                                                                               0.0s
- => => exporting attestation manifest sha256:74334bf82361cc7a555c24080f5def878b5de5b59edf03e0334677e6304acae0                                                                 0.0s
- => => exporting manifest list sha256:988dda9f57c6741ae11467d24f10c199846a13395135ce1e50a6a6e91d114a3f                                                                        0.0s
- => => naming to docker.io/library/acad-api:prod                                                                                                                              0.0s
- => => unpacking to docker.io/library/acad-api:prod                                                                                                                           0.5s
 
-docker build -f deploy/docker/Dockerfile.web.prod -t acad-web:prod .
-[+] Building 53.9s (22/24)                                                                                                                                          docker:default
- => [internal] load build definition from Dockerfile.web.prod                                                                                                                 0.0s
- => => transferring dockerfile: 1.98kB                                                                                                                                        0.0s
- => [internal] load metadata for docker.io/library/node:24-alpine                                                                                                             0.0s
- => [internal] load .dockerignore                                                                                                                                             0.0s
- => => transferring context: 195B                                                                                                                                             0.0s
- => [internal] load build context                                                                                                                                             0.0s
- => => transferring context: 88.47kB                                                                                                                                          0.0s
- => [deps  1/10] FROM docker.io/library/node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1                                                0.0s
- => => resolve docker.io/library/node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1                                                       0.0s
- => CACHED [deps  2/10] RUN corepack enable && corepack prepare pnpm@10.15.0 --activate                                                                                       0.0s
- => CACHED [deps  3/10] WORKDIR /app                                                                                                                                          0.0s
- => CACHED [runner 2/6] WORKDIR /app                                                                                                                                          0.0s
- => [runner 3/6] RUN addgroup --system --gid 1001 nodejs &&     adduser --system --uid 1001 nextjs                                                                            0.2s
- => CACHED [deps  4/10] COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./                                                                                               0.0s
- => CACHED [deps  5/10] COPY packages/contracts/package.json ./packages/contracts/                                                                                            0.0s
- => CACHED [deps  6/10] COPY packages/ui-tokens/package.json ./packages/ui-tokens/                                                                                            0.0s
- => CACHED [deps  7/10] COPY packages/auth-client/package.json ./packages/auth-client/                                                                                        0.0s
- => CACHED [deps  8/10] COPY packages/tree-virtualizer/package.json ./packages/tree-virtualizer/                                                                              0.0s
- => [deps  9/10] COPY apps/web/package.json ./apps/web/                                                                                                                       0.0s
- => [deps 10/10] RUN pnpm install --frozen-lockfile                                                                                                                          18.6s
- => [builder 4/8] COPY --from=deps /app/node_modules ./node_modules                                                                                                           2.3s 
- => [builder 5/8] COPY --from=deps /app/packages ./packages                                                                                                                   0.1s 
- => [builder 6/8] COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules                                                                                         0.0s 
- => [builder 7/8] COPY . .                                                                                                                                                    0.0s 
- => [builder 8/8] RUN pnpm --filter @acad/web run build                                                                                                                      31.2s
- => ERROR [runner 4/6] COPY --from=builder /app/apps/web/public ./apps/web/public                                                                                             0.0s
-------
- > [runner 4/6] COPY --from=builder /app/apps/web/public ./apps/web/public:
-------
-Dockerfile.web.prod:48
---------------------
-  46 |     
-  47 |     # Tận dụng tính năng standalone xuất ra từ next build
-  48 | >>> COPY --from=builder /app/apps/web/public ./apps/web/public
-  49 |     COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
-  50 |     COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
---------------------
-ERROR: failed to build: failed to solve: failed to compute cache key: failed to calculate checksum of ref pt8a1rl4echg42sw4vhvb6hso::od0ndllbdqldv15n8tt0yxk3a: "/app/apps/web/public": not found
-
+053701225Z #22 0.390 packages/contracts build$ tsc
+065744553Z #22 1.552 packages/contracts build: Done
+217356708Z #22 1.554 services/community build$ tsc
+087102216Z #22 2.574 services/community build: Done
+238014398Z #22 2.574 services/auth build$ tsc
+420057811Z #22 4.907 services/auth build: Done
+570843978Z #22 4.907 apps/api build$ tsc
+693775712Z #22 6.180 apps/api build: Done
+874983927Z #22 DONE 6.2s
+885205672Z 
+885217275Z #23 [runner  4/11] COPY --from=builder /app/package.json ./
+88521889Z #23 CACHED
+885220186Z 
+885221892Z #24 [runner  2/11] WORKDIR /app
+885223369Z #24 CACHED
+885224602Z 
+885226511Z #25 [runner  3/11] RUN addgroup --system --gid 1001 nodejs &&     adduser --system --uid 1001 appuser
+885228031Z #25 CACHED
+885229236Z 
+885231619Z #26 [runner  5/11] COPY --from=builder /app/pnpm-workspace.yaml ./
+985868096Z #26 extracting sha256:3f290f394ec164f59e1ffd0b3404c8998b7213ac8fcd793074c42fb87224045e done
+985886393Z #26 extracting sha256:2e0f90d79d7807130ce7d236dd232677ad4e8e96a98a0330739d878ac22ee869 done
+98588844Z #26 extracting sha256:83d4ced383c65fbe93af1dbb6c212090a785f818fda6477e34272a6b338e9b3d done
+985889932Z #26 extracting sha256:371ae1e1ac97db04104505a117142427f7796302fe9c99842c66ccd4019dc3a0 done
+985895826Z #26 DONE 0.1s
+136778118Z 
+136794421Z #27 [runner  6/11] COPY --from=builder /app/node_modules ./node_modules
+177300565Z #27 DONE 0.2s
+385162805Z 
+385172488Z #28 [runner  7/11] COPY --from=builder /app/packages ./packages
+385174291Z #28 DONE 0.0s
+385175849Z 
+385178033Z #29 [runner  8/11] COPY --from=builder /app/services ./services
+385181091Z #29 DONE 0.0s
+385182898Z 
+385185374Z #30 [runner  9/11] COPY --from=builder /app/apps/api/dist ./apps/api/dist
+385187645Z #30 DONE 0.0s
+385189496Z 
+385193036Z #31 [runner 10/11] COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
+38519482Z #31 DONE 0.0s
+385196035Z 
+385197436Z #32 [runner 11/11] COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
+385198711Z #32 DONE 0.0s
+385199887Z 
+385201927Z #33 exporting to image
+385203348Z #33 exporting layers
+581391637Z #33 exporting layers 0.3s done
+735658311Z #33 pushing layers
+799517649Z #33 pushing layers 1.2s done
+984561325Z #33 DONE 1.7s
+984574029Z 
+984576899Z #34 exporting cache to registry
+98458101Z #34 preparing build cache for export
+655353909Z #34 sending cache export
+846869288Z #34 sending cache export 3.2s done
+846877008Z #34 DONE 5.3s
+644583797Z ==> Deploying...
+862650224Z ==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+824915162Z node:internal/modules/esm/resolve:272
+824962953Z     throw new ERR_MODULE_NOT_FOUND(
+824966313Z           ^
+824968453Z 
+824972064Z Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/app/packages/contracts/src/auth.js' imported from /app/packages/contracts/src/index.ts
+824977934Z     at finalizeResolution (node:internal/modules/esm/resolve:272:11)
+824980074Z     at moduleResolve (node:internal/modules/esm/resolve:879:10)
+824982044Z     at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+824983974Z     at #cachedDefaultResolve (node:internal/modules/esm/loader:705:20)
+824987374Z     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:725:38)
+824989394Z     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:763:56)
+824991944Z     at #resolve (node:internal/modules/esm/loader:687:17)
+824995174Z     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:607:35)
+824998114Z     at ModuleJob.syncLink (node:internal/modules/esm/module_job:276:33)
+825001104Z     at ModuleJob.link (node:internal/modules/esm/module_job:381:17) {
+825005774Z   code: 'ERR_MODULE_NOT_FOUND',
+825008774Z   url: 'file:///app/packages/contracts/src/auth.js'
+825011834Z }
+825014695Z 
+825017385Z Node.js v24.21.0
+043321165Z ==> Exited with status 1
+045840027Z ==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
+234380877Z node:internal/modules/esm/resolve:272
+234618322Z     throw new ERR_MODULE_NOT_FOUND(
+234622632Z           ^
+234625482Z 
+234628892Z Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/app/packages/contracts/src/auth.js' imported from /app/packages/contracts/src/index.ts
+234633772Z     at finalizeResolution (node:internal/modules/esm/resolve:272:11)
+234636782Z     at moduleResolve (node:internal/modules/esm/resolve:879:10)
+234641282Z     at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+234644073Z     at #cachedDefaultResolve (node:internal/modules/esm/loader:705:20)
+234647193Z     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:725:38)
+234650033Z     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:763:56)
+234652753Z     at #resolve (node:internal/modules/esm/loader:687:17)
+234655483Z     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:607:35)
+234658213Z     at ModuleJob.syncLink (node:internal/modules/esm/module_job:276:33)
+234660923Z     at ModuleJob.link (node:internal/modules/esm/module_job:381:17) {
+234663783Z   code: 'ERR_MODULE_NOT_FOUND',
+234666523Z   url: 'file:///app/packages/contracts/src/auth.js'
+234669263Z }
+234671753Z 
+234674383Z Node.js v24.21.0

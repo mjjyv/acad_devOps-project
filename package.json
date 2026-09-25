@@ -6,6 +6,7 @@
   "packageManager": "pnpm@10.15.0",
   "scripts": {
     "build": "pnpm --recursive run build",
+    "build:libs": "pnpm --filter @acad/contracts --filter @acad/community-service --filter @acad/auth-service run build",
     "test": "pnpm --recursive run test",
     "typecheck": "pnpm --recursive run typecheck",
     "lint": "pnpm --recursive run lint"

@@ -247,6 +247,16 @@ Mỗi khi có commit hoặc Pull Request lên nhánh \`main\` / \`develop\`, Git
   bash deploy/scripts/keep-alive.sh https://acad-core-api.onrender.com 600
   \`\`\`
   Kịch bản gửi yêu cầu kiểm tra sức khỏe tới endpoint \`/healthz\` mỗi 10 phút, giữ container luôn thức và sẵn sàng phục vụ.
+
+## 5. Sổ Tay Khắc Phục Sự Cố Vận Hành (DevOps Post-Mortem)
+- **Sự cố Render Docker \`ERR_MODULE_NOT_FOUND\`: Cannot find module '/app/packages/contracts/src/auth.js'**:
+  - *Nguyên nhân*: \`package.json\` trỏ trường \`exports\` về \`./src/index.ts\`. Node.js 24 khi nạp mã TypeScript đã cố tìm \`src/auth.js\` (chỉ tồn tại \`auth.ts\`).
+  - *Khắc phục*: Trỏ chuẩn ESM \`exports\` về \`./dist/index.js\` và \`./dist/index.d.ts\`, đồng thời đảm bảo lệnh build Docker thực hiện \`pnpm --filter @acad/api... run build\`.
+- **Sự cố CI Pipeline Gate 2 & Gate 3 fail vì thiếu package entry**:
+  - *Nguyên nhân*: Runner GitHub Actions khởi chạy môi trường sạch chưa có thư mục \`dist/\` của các shared packages.
+  - *Khắc phục*: Bổ sung bước tiền đề \`pnpm run build:libs\` trong Cổng 2 (Typecheck) và Cổng 3 (Tests) trong \`.github/workflows/ci.yml\`, đồng thời trang bị alias trong \`vitest.config.ts\`.
+- **Sự cố Upstash Redis URL TypeError: Invalid URL**:
+  - *Khắc phục*: Tích hợp hàm làm sạch \`sanitizeRedisUrl\` tự động lọc bỏ tiền tố CLI \`redis-cli --tls -u\` và cung cấp cơ chế fallback an toàn sang In-Memory session/user store nếu credentials không hợp lệ.
 `,
   },
 
