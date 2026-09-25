@@ -282,7 +282,7 @@ export class AuthController {
     refreshToken: string,
     userId?: string,
     deviceFingerprint?: string,
-  ): Promise<{ response: { accessToken: string; expiresIn: number }; cookies: string[] }> {
+  ): Promise<{ response: { accessToken: string; expiresIn: number; refreshToken?: string }; cookies: string[] }> {
     const result = await this.rotationService.rotateTokens(refreshToken, userId, deviceFingerprint);
 
     if (result.status === 'TOKEN_REUSE_DETECTED') {
@@ -297,6 +297,7 @@ export class AuthController {
       response: {
         accessToken: result.tokens.accessToken,
         expiresIn: result.tokens.expiresIn,
+        refreshToken: result.tokens.refreshToken,
       },
       cookies: this.generateAuthCookies(result.tokens),
     };
@@ -391,19 +392,27 @@ export class AuthController {
   }
 
   public generateAuthCookies(tokens: TokenPair): string[] {
-    const secureFlag = COOKIE_CONFIG.ACCESS_TOKEN.SECURE ? '; Secure' : '';
-    
-    const accessCookie = `${COOKIE_CONFIG.ACCESS_TOKEN.NAME}=${tokens.accessToken}; Path=${COOKIE_CONFIG.ACCESS_TOKEN.PATH}; Max-Age=${COOKIE_CONFIG.ACCESS_TOKEN.MAX_AGE}; HttpOnly; SameSite=${COOKIE_CONFIG.ACCESS_TOKEN.SAME_SITE}${secureFlag}`;
+    const isProd = COOKIE_CONFIG.ACCESS_TOKEN.SECURE;
+    const accessSameSite = isProd ? 'None' : COOKIE_CONFIG.ACCESS_TOKEN.SAME_SITE;
+    const refreshSameSite = isProd ? 'None' : COOKIE_CONFIG.REFRESH_TOKEN.SAME_SITE;
+    const secureFlag = isProd ? '; Secure' : '';
 
-    const refreshCookie = `${COOKIE_CONFIG.REFRESH_TOKEN.NAME}=${tokens.refreshToken}; Path=${COOKIE_CONFIG.REFRESH_TOKEN.PATH}; Max-Age=${COOKIE_CONFIG.REFRESH_TOKEN.MAX_AGE}; HttpOnly; SameSite=${COOKIE_CONFIG.REFRESH_TOKEN.SAME_SITE}${secureFlag}`;
+    const accessCookie = `${COOKIE_CONFIG.ACCESS_TOKEN.NAME}=${tokens.accessToken}; Path=${COOKIE_CONFIG.ACCESS_TOKEN.PATH}; Max-Age=${COOKIE_CONFIG.ACCESS_TOKEN.MAX_AGE}; HttpOnly; SameSite=${accessSameSite}${secureFlag}`;
+
+    const refreshCookie = `${COOKIE_CONFIG.REFRESH_TOKEN.NAME}=${tokens.refreshToken}; Path=${COOKIE_CONFIG.REFRESH_TOKEN.PATH}; Max-Age=${COOKIE_CONFIG.REFRESH_TOKEN.MAX_AGE}; HttpOnly; SameSite=${refreshSameSite}${secureFlag}`;
 
     return [accessCookie, refreshCookie];
   }
 
   public generateClearCookies(): string[] {
-    const accessCookie = `${COOKIE_CONFIG.ACCESS_TOKEN.NAME}=; Path=${COOKIE_CONFIG.ACCESS_TOKEN.PATH}; Max-Age=0; HttpOnly; SameSite=${COOKIE_CONFIG.ACCESS_TOKEN.SAME_SITE}`;
+    const isProd = COOKIE_CONFIG.ACCESS_TOKEN.SECURE;
+    const accessSameSite = isProd ? 'None' : COOKIE_CONFIG.ACCESS_TOKEN.SAME_SITE;
+    const refreshSameSite = isProd ? 'None' : COOKIE_CONFIG.REFRESH_TOKEN.SAME_SITE;
+    const secureFlag = isProd ? '; Secure' : '';
 
-    const refreshCookie = `${COOKIE_CONFIG.REFRESH_TOKEN.NAME}=; Path=${COOKIE_CONFIG.REFRESH_TOKEN.PATH}; Max-Age=0; HttpOnly; SameSite=${COOKIE_CONFIG.REFRESH_TOKEN.SAME_SITE}`;
+    const accessCookie = `${COOKIE_CONFIG.ACCESS_TOKEN.NAME}=; Path=${COOKIE_CONFIG.ACCESS_TOKEN.PATH}; Max-Age=0; HttpOnly; SameSite=${accessSameSite}${secureFlag}`;
+
+    const refreshCookie = `${COOKIE_CONFIG.REFRESH_TOKEN.NAME}=; Path=${COOKIE_CONFIG.REFRESH_TOKEN.PATH}; Max-Age=0; HttpOnly; SameSite=${refreshSameSite}${secureFlag}`;
 
     return [accessCookie, refreshCookie];
   }

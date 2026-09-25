@@ -10,11 +10,41 @@ import {
 } from '@acad/contracts';
 
 function getApiBaseUrl(): string {
-  const envUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (!envUrl) return 'http://localhost:8080';
-  if (envUrl.startsWith('http://') || envUrl.startsWith('https://')) {
-    return envUrl.replace(/\/+$/, '');
+  // 1. Kiểm tra biến môi trường được Next.js inject lúc build
+  const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+
+  // 2. Nếu đang chạy trên trình duyệt (client-side)
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    // Nếu ứng dụng đang truy cập qua domain Render (*.onrender.com)
+    if (hostname.endsWith('.onrender.com')) {
+      // Nếu envUrl rỗng, hoặc là localhost, hoặc là tên private host Render "acad-core-api"
+      if (!envUrl || envUrl.includes('localhost') || envUrl === 'acad-core-api' || !envUrl.includes('.')) {
+        return 'https://acad-core-api.onrender.com';
+      }
+    }
   }
+
+  // 3. Fallback mặc định cho local development
+  if (!envUrl) {
+    return 'http://localhost:8080';
+  }
+
+  // 4. Nếu Render Blueprint vô tình truyền private service name trần (ví dụ 'acad-core-api')
+  if (envUrl === 'acad-core-api' || (!envUrl.includes('.') && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1'))) {
+    return `https://${envUrl.replace(/^https?:\/\//, '')}.onrender.com`;
+  }
+
+  // 5. Chuẩn hóa protocol
+  if (envUrl.startsWith('http://') || envUrl.startsWith('https://')) {
+    const cleanUrl = envUrl.replace(/\/+$/, '');
+    const domainPart = cleanUrl.replace(/^https?:\/\//, '');
+    if (!domainPart.includes('.') && !domainPart.includes('localhost') && !domainPart.includes(':')) {
+      return `https://${domainPart}.onrender.com`;
+    }
+    return cleanUrl;
+  }
+
   return `https://${envUrl.replace(/\/+$/, '')}`;
 }
 
@@ -26,12 +56,22 @@ export class WebAuthService {
   constructor() {
     this.interceptor = new ClientAuthInterceptor({
       refreshEndpoint: async () => {
+        let storedRefreshToken: string | undefined;
+        if (typeof window !== 'undefined') {
+          try {
+            storedRefreshToken = localStorage.getItem('acad_refresh_token') || undefined;
+          } catch {
+            // bỏ qua lỗi nếu localStorage bị chặn
+          }
+        }
+
         const response = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           credentials: 'include', // Tự động gửi httpOnly refresh_token cookie
+          body: storedRefreshToken ? JSON.stringify({ refreshToken: storedRefreshToken }) : undefined,
         });
 
         if (!response.ok) {
@@ -39,7 +79,14 @@ export class WebAuthService {
           throw new Error(errData.error || 'Phiên làm việc đã hết hạn');
         }
 
-        const data = (await response.json()) as { accessToken: string };
+        const data = (await response.json()) as { accessToken: string; refreshToken?: string };
+        if (data.refreshToken && typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('acad_refresh_token', data.refreshToken);
+          } catch {
+            // bỏ qua
+          }
+        }
         return { accessToken: data.accessToken };
       },
       onUnauthenticated: (reason) => {
@@ -118,6 +165,13 @@ export class WebAuthService {
     }
 
     this.setAccessToken(data.accessToken);
+    if ((data as any).refreshToken && typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('acad_refresh_token', (data as any).refreshToken);
+      } catch {
+        // ignore
+      }
+    }
     return data;
   }
 
@@ -142,6 +196,13 @@ export class WebAuthService {
     }
 
     this.setAccessToken(data.accessToken);
+    if ((data as any).refreshToken && typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('acad_refresh_token', (data as any).refreshToken);
+      } catch {
+        // ignore
+      }
+    }
     return data;
   }
 
@@ -165,6 +226,11 @@ export class WebAuthService {
     } finally {
       this.setAccessToken(null);
       if (typeof window !== 'undefined') {
+        try {
+          localStorage.removeItem('acad_refresh_token');
+        } catch {
+          // ignore
+        }
         window.location.href = '/login';
       }
     }

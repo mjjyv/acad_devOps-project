@@ -76,7 +76,10 @@ export function createAuthRouter(authModule: AuthModule) {
         const result = await controller.register(body, clientIp, userAgent);
 
         res.setHeader('Set-Cookie', result.cookies);
-        sendJson(res, 201, result.response);
+        sendJson(res, 201, {
+          ...result.response,
+          refreshToken: result.rawTokens.refreshToken,
+        });
         return true;
       } catch (err: any) {
         sendJson(res, 400, { error: err.message || 'Đăng ký tài khoản thất bại' });
@@ -114,7 +117,10 @@ export function createAuthRouter(authModule: AuthModule) {
         }
 
         res.setHeader('Set-Cookie', result.cookies);
-        sendJson(res, 200, result.response);
+        sendJson(res, 200, {
+          ...result.response,
+          refreshToken: result.rawTokens.refreshToken,
+        });
         return true;
       } catch (err: any) {
         sendJson(res, 401, { error: err.message || 'Đăng nhập thất bại' });
