@@ -157,3 +157,36 @@ export const COOKIE_CONFIG = {
     MAX_AGE: 7 * 24 * 60 * 60, // 7 ngày (604800s)
   },
 } as const;
+
+// ==========================================
+// 5. CÁC ĐẶC TẢ QUẢN TRỊ ADMIN (ADMIN OPERATIONS)
+// ==========================================
+
+export const AdminUserListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  role: UserRoleSchema.optional(),
+  status: UserStatusSchema.optional(),
+  search: z.string().optional(),
+});
+export type AdminUserListQuery = z.infer<typeof AdminUserListQuerySchema>;
+
+export const AdminUpdateRoleSchema = z.object({
+  role: UserRoleSchema,
+});
+export type AdminUpdateRoleInput = z.infer<typeof AdminUpdateRoleSchema>;
+
+export const AdminUpdateStatusSchema = z.object({
+  status: UserStatusSchema,
+});
+export type AdminUpdateStatusInput = z.infer<typeof AdminUpdateStatusSchema>;
+
+export const AdminSystemStatsSchema = z.object({
+  totalUsers: z.number().int(),
+  activeUsers: z.number().int(),
+  suspendedUsers: z.number().int(),
+  adminUsers: z.number().int(),
+  moderatorUsers: z.number().int(),
+});
+export type AdminSystemStats = z.infer<typeof AdminSystemStatsSchema>;
+

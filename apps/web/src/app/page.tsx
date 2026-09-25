@@ -1,81 +1,19 @@
 import Link from 'next/link';
+import { Navbar } from '../components/navbar';
 
 export default function HomePage() {
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        backgroundColor: '#0b0f17',
-        color: '#f8fafc',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        padding: '3rem 1.5rem',
-      }}
-    >
-      {/* HEADER NAV */}
-      <nav
+    <div style={{ minHeight: '100vh', backgroundColor: '#0b0f17', color: '#f8fafc' }}>
+      <Navbar />
+
+      <main
         style={{
-          width: '100%',
-          maxWidth: '1200px',
           display: 'flex',
-          justifyContent: 'space-between',
+          flexDirection: 'column',
           alignItems: 'center',
-          marginBottom: '4rem',
+          padding: '3.5rem 1.5rem',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1.25rem', fontWeight: 800 }}>
-          <span>🏛️</span>
-          <span>Acad Community Platform</span>
-        </div>
-
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <Link
-            href="/docs"
-            style={{
-              padding: '0.5rem 1rem',
-              borderRadius: '6px',
-              backgroundColor: '#1e3a5f',
-              color: '#38bdf8',
-              fontWeight: 600,
-              textDecoration: 'none',
-              fontSize: '0.9rem',
-            }}
-          >
-            📚 Tài Liệu Kỹ Thuật (/docs)
-          </Link>
-
-          <Link
-            href="/login"
-            style={{
-              padding: '0.5rem 1rem',
-              borderRadius: '6px',
-              backgroundColor: '#1e293b',
-              color: '#f8fafc',
-              fontWeight: 500,
-              textDecoration: 'none',
-              fontSize: '0.9rem',
-            }}
-          >
-            Đăng nhập
-          </Link>
-
-          <Link
-            href="/register"
-            style={{
-              padding: '0.5rem 1rem',
-              borderRadius: '6px',
-              backgroundColor: '#2563eb',
-              color: '#ffffff',
-              fontWeight: 600,
-              textDecoration: 'none',
-              fontSize: '0.9rem',
-            }}
-          >
-            Đăng ký
-          </Link>
-        </div>
-      </nav>
 
       {/* HERO SECTION */}
       <div style={{ maxWidth: '800px', textAlign: 'center', marginBottom: '3.5rem' }}>
@@ -189,5 +127,6 @@ export default function HomePage() {
         </div>
       </div>
     </main>
+    </div>
   );
 }

@@ -8,4 +8,5 @@ export * from './repository/postgres-user-repository.js';
 export * from './policy/rbac-abac-engine.js';
 export * from './handlers/auth-controller.js';
 export * from './middleware/auth-guard.js';
+export * from './middleware/rate-limiter.js';
 export * from './factory.js';

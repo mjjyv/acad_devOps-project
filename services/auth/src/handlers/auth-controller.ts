@@ -30,11 +30,36 @@ export interface UserRecord {
   updatedAt: Date;
 }
 
+export interface UserListFilter {
+  role?: UserRole;
+  status?: UserStatus;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface UserListResult {
+  users: UserRecord[];
+  total: number;
+}
+
+export interface UserStatsResult {
+  totalUsers: number;
+  activeUsers: number;
+  suspendedUsers: number;
+  adminUsers: number;
+  moderatorUsers: number;
+}
+
 export interface IUserRepository {
   create(user: Omit<UserRecord, 'id' | 'createdAt' | 'updatedAt'>): Promise<UserRecord>;
   findByEmail(email: string): Promise<UserRecord | null>;
   findByUsername(username: string): Promise<UserRecord | null>;
   findById(id: string): Promise<UserRecord | null>;
+  listUsers(filter?: UserListFilter): Promise<UserListResult>;
+  updateRole(id: string, role: UserRole): Promise<UserRecord>;
+  updateStatus(id: string, status: UserStatus): Promise<UserRecord>;
+  getStats(): Promise<UserStatsResult>;
 }
 
 export class InMemoryUserRepository implements IUserRepository {
@@ -72,6 +97,55 @@ export class InMemoryUserRepository implements IUserRepository {
   public async findById(id: string): Promise<UserRecord | null> {
     const u = this.users.get(id);
     return u ? { ...u } : null;
+  }
+
+  public async listUsers(filter: UserListFilter = {}): Promise<UserListResult> {
+    let result = Array.from(this.users.values());
+    if (filter.role) {
+      result = result.filter((u) => u.role === filter.role);
+    }
+    if (filter.status) {
+      result = result.filter((u) => u.status === filter.status);
+    }
+    if (filter.search) {
+      const q = filter.search.toLowerCase();
+      result = result.filter((u) => u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+    }
+    result.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    const total = result.length;
+    const offset = filter.offset || 0;
+    const limit = filter.limit || 20;
+    const paginated = result.slice(offset, offset + limit).map((u) => ({ ...u }));
+    return { users: paginated, total };
+  }
+
+  public async updateRole(id: string, role: UserRole): Promise<UserRecord> {
+    const user = this.users.get(id);
+    if (!user) throw new Error(`Người dùng ID ${id} không tồn tại`);
+    user.role = role;
+    user.updatedAt = new Date();
+    this.users.set(id, user);
+    return { ...user };
+  }
+
+  public async updateStatus(id: string, status: UserStatus): Promise<UserRecord> {
+    const user = this.users.get(id);
+    if (!user) throw new Error(`Người dùng ID ${id} không tồn tại`);
+    user.status = status;
+    user.updatedAt = new Date();
+    this.users.set(id, user);
+    return { ...user };
+  }
+
+  public async getStats(): Promise<UserStatsResult> {
+    const all = Array.from(this.users.values());
+    return {
+      totalUsers: all.length,
+      activeUsers: all.filter((u) => u.status === 'ACTIVE').length,
+      suspendedUsers: all.filter((u) => u.status === 'SUSPENDED').length,
+      adminUsers: all.filter((u) => u.role === 'ADMIN').length,
+      moderatorUsers: all.filter((u) => u.role === 'SPACE_MOD' || u.role === 'GLOBAL_MOD').length,
+    };
   }
 }
 

@@ -60,7 +60,7 @@ services:
       DATABASE_URL: postgresql://postgres:postgres_secret_password@infra-db:5432/acad_community_dev
       REDIS_URL: redis://infra-cache:6379
       JWT_SECRET: acad_super_secure_jwt_hmac_secret_key_change_me_in_production_32chars!
-    command: sh -c "corepack enable && corepack prepare pnpm@10.15.0 --activate && pnpm --filter @acad/api run dev"
+    command: sh -c "corepack enable && corepack prepare pnpm@10.15.0 --activate && pnpm --filter @acad/api... run build && pnpm --filter @acad/api run dev"
     ports:
       - "8080:8080"
     depends_on:
@@ -85,7 +85,7 @@ services:
       NODE_ENV: development
       PORT: 3000
       NEXT_PUBLIC_API_URL: http://localhost:8080
-    command: sh -c "corepack enable && corepack prepare pnpm@10.15.0 --activate && pnpm --filter @acad/web run dev"
+    command: sh -c "corepack enable && corepack prepare pnpm@10.15.0 --activate && pnpm --filter @acad/contracts run build && pnpm --filter @acad/web run dev"
     ports:
       - "3000:3000"
     depends_on:

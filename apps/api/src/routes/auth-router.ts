@@ -55,7 +55,7 @@ export function sendJson(
 }
 
 export function createAuthRouter(authModule: AuthModule) {
-  const { controller, sessionStore, userRepo } = authModule;
+  const { controller, sessionStore, userRepo, rateLimiter } = authModule;
 
   return async (req: IncomingMessage, res: ServerResponse, url: URL): Promise<boolean> => {
     const method = req.method?.toUpperCase();
@@ -89,8 +89,29 @@ export function createAuthRouter(authModule: AuthModule) {
     // =========================================================================
     if (method === 'POST' && pathname === '/api/v1/auth/login') {
       try {
+        if (rateLimiter) {
+          const rateCheck = await rateLimiter.consume(`login:${clientIp}`, 10, 900);
+          if (!rateCheck.allowed) {
+            sendJson(
+              res,
+              429,
+              {
+                error: `Quá nhiều lượt đăng nhập thất bại. Vui lòng thử lại sau ${rateCheck.retryAfterSeconds || 60} giây.`,
+                code: 'RATE_LIMIT_EXCEEDED',
+                retryAfter: rateCheck.retryAfterSeconds,
+              },
+              { 'Retry-After': String(rateCheck.retryAfterSeconds || 60) },
+            );
+            return true;
+          }
+        }
+
         const body = await readJsonBody(req);
         const result = await controller.login(body, clientIp, userAgent);
+
+        if (rateLimiter) {
+          await rateLimiter.reset(`login:${clientIp}`);
+        }
 
         res.setHeader('Set-Cookie', result.cookies);
         sendJson(res, 200, result.response);
@@ -258,7 +279,36 @@ export function createAuthRouter(authModule: AuthModule) {
     }
 
     // =========================================================================
-    // 7. DELETE /api/v1/auth/sessions/:sessionId
+    // 7. DELETE /api/v1/auth/sessions (Thu hồi toàn bộ phiên của tài khoản)
+    // =========================================================================
+    if (method === 'DELETE' && pathname === '/api/v1/auth/sessions') {
+      try {
+        const authHeader = req.headers.authorization;
+        let token = '';
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+          token = authHeader.substring(7).trim();
+        } else if (cookies[COOKIE_CONFIG.ACCESS_TOKEN.NAME]) {
+          token = cookies[COOKIE_CONFIG.ACCESS_TOKEN.NAME];
+        }
+
+        if (!token) {
+          sendJson(res, 401, { error: 'Yêu cầu không có quyền truy cập (Thiếu token)' });
+          return true;
+        }
+
+        const claims = TokenManager.verifyAccessToken(token);
+        await sessionStore.revokeAllUserSessions(claims.sub);
+
+        sendJson(res, 200, { message: 'Đã thu hồi tất cả các phiên đăng nhập thành công' });
+        return true;
+      } catch (err: any) {
+        sendJson(res, 401, { error: err.message || 'Token không hợp lệ' });
+        return true;
+      }
+    }
+
+    // =========================================================================
+    // 8. DELETE /api/v1/auth/sessions/:sessionId (Thu hồi 1 phiên cụ thể)
     // =========================================================================
     if (method === 'DELETE' && pathname.startsWith('/api/v1/auth/sessions/')) {
       try {

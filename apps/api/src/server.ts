@@ -1,6 +1,7 @@
 import { createServer, IncomingMessage, ServerResponse } from 'node:http';
 import { AuthModule, createAuthModule } from '@acad/auth-service';
 import { createAuthRouter } from './routes/auth-router.js';
+import { createAdminRouter } from './routes/admin-router.js';
 
 export interface ServerInstance {
   server: ReturnType<typeof createServer>;
@@ -15,6 +16,7 @@ export interface ApiServerOptions {
 export function createApiServer(options: ApiServerOptions = {}) {
   const authModule = options.authModule || createAuthModule();
   const authRouter = createAuthRouter(authModule);
+  const adminRouter = createAdminRouter(authModule);
 
   const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
     const origin = req.headers.origin;
@@ -61,6 +63,14 @@ export function createApiServer(options: ApiServerOptions = {}) {
     // =========================================================================
     if (url.pathname.startsWith('/api/v1/auth')) {
       const handled = await authRouter(req, res, url);
+      if (handled) return;
+    }
+
+    // =========================================================================
+    // XỬ LÝ CÁC ROUTE ADMIN (/api/v1/admin/*)
+    // =========================================================================
+    if (url.pathname.startsWith('/api/v1/admin')) {
+      const handled = await adminRouter(req, res, url);
       if (handled) return;
     }
 

@@ -12,9 +12,10 @@ export function middleware(request: NextRequest) {
   if (isProtectedRoute) {
     const accessToken = request.cookies.get(COOKIE_CONFIG.ACCESS_TOKEN.NAME)?.value;
     const refreshToken = request.cookies.get(COOKIE_CONFIG.REFRESH_TOKEN.NAME)?.value;
+    const sessionActive = request.cookies.get('acad_session_active')?.value;
 
-    // Nếu không có cả access token lẫn refresh token thì chuyển hướng về /login
-    if (!accessToken && !refreshToken) {
+    // Nếu không có bất kỳ dấu hiệu phiên nào thì chuyển hướng về /login
+    if (!accessToken && !refreshToken && !sessionActive) {
       const loginUrl = new URL('/login', request.url);
       loginUrl.searchParams.set('redirect', pathname);
       loginUrl.searchParams.set('reason', 'unauthenticated');

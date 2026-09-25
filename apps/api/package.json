@@ -5,7 +5,7 @@
   "type": "module",
   "main": "./src/server.ts",
   "scripts": {
-    "dev": "node --watch src/server.ts",
+    "dev": "node --watch dist/server.js",
     "start": "node dist/server.js",
     "build": "tsc",
     "test": "vitest run",

@@ -2,6 +2,7 @@ import { AuthController, IUserRepository, InMemoryUserRepository } from './handl
 import { ISessionStore, InMemorySessionStore } from './session/store.js';
 import { PostgresUserRepository } from './repository/postgres-user-repository.js';
 import { RedisSessionStore } from './session/redis-session-store.js';
+import { AuthRateLimiter } from './middleware/rate-limiter.js';
 
 export interface AuthModuleOptions {
   databaseUrl?: string;
@@ -9,12 +10,14 @@ export interface AuthModuleOptions {
   inMemory?: boolean;
   userRepo?: IUserRepository;
   sessionStore?: ISessionStore;
+  rateLimiter?: AuthRateLimiter;
 }
 
 export interface AuthModule {
   controller: AuthController;
   userRepo: IUserRepository;
   sessionStore: ISessionStore;
+  rateLimiter: AuthRateLimiter;
   close: () => Promise<void>;
 }
 
@@ -63,12 +66,16 @@ export function createAuthModule(options: AuthModuleOptions = {}): AuthModule {
     }
   }
 
+  const redisClient = (sessionStore instanceof RedisSessionStore) ? sessionStore.getClient() : null;
+  const rateLimiter = options.rateLimiter || new AuthRateLimiter(redisClient);
+
   const controller = new AuthController(userRepo, sessionStore);
 
   return {
     controller,
     userRepo,
     sessionStore,
+    rateLimiter,
     close: async () => {
       for (const closer of closers) {
         try {
