@@ -1,0 +1,327 @@
+Run pnpm run typecheck
+
+> acad-devops-project@1.0.0 typecheck /home/runner/work/acad_devOps-project/acad_devOps-project
+> pnpm --recursive run typecheck
+
+Scope: 8 of 9 workspace projects
+packages/contracts typecheck$ tsc --noEmit
+packages/ui-tokens typecheck$ tsc --noEmit
+packages/ui-tokens typecheck: Done
+packages/contracts typecheck: Done
+packages/auth-client typecheck$ tsc --noEmit
+packages/tree-virtualizer typecheck$ tsc --noEmit
+services/community typecheck$ tsc --noEmit
+Error: services/community typecheck: src/voting/lua-vote-engine.ts(1,31): error TS2307: Cannot find module '@acad/contracts' or its corresponding type declarations.
+services/community typecheck: Failed
+/home/runner/work/acad_devOps-project/acad_devOps-project/services/community:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @acad/community-service@1.0.0 typecheck: `tsc --noEmit`
+Exit status 2
+ ELIFECYCLE  Command failed with exit code 2.
+Error: Process completed with exit code 2.
+
+Run pnpm test
+
+> acad-devops-project@1.0.0 test /home/runner/work/acad_devOps-project/acad_devOps-project
+> pnpm --recursive run test
+
+Scope: 8 of 9 workspace projects
+packages/tree-virtualizer test$ vitest run
+services/community test$ vitest run
+packages/tree-virtualizer test:  RUN  v3.2.7 /home/runner/work/acad_devOps-project/acad_devOps-project/packages/tree-virtualizer
+services/community test:  RUN  v3.2.7 /home/runner/work/acad_devOps-project/acad_devOps-project/services/community
+services/community test:  ✓ tests/ltree-path.test.ts (5 tests) 11ms
+packages/tree-virtualizer test:  ✓ tests/flatten-tree.test.ts (3 tests) 15ms
+services/community test:  ✓ tests/gravity-decay.test.ts (2 tests) 4ms
+services/community test:  ✓ tests/lua-vote.test.ts (4 tests) 27ms
+packages/tree-virtualizer test:  Test Files  1 passed (1)
+packages/tree-virtualizer test:       Tests  3 passed (3)
+packages/tree-virtualizer test:    Start at  06:31:48
+packages/tree-virtualizer test:    Duration  772ms (transform 140ms, setup 0ms, collect 131ms, tests 15ms, environment 0ms, prepare 131ms)
+services/community test:  Test Files  3 passed (3)
+services/community test:       Tests  11 passed (11)
+services/community test:    Start at  06:31:48
+services/community test:    Duration  802ms (transform 230ms, setup 0ms, collect 314ms, tests 42ms, environment 1ms, prepare 504ms)
+packages/tree-virtualizer test: Done
+services/community test: Done
+services/auth test$ vitest run
+services/auth test:  RUN  v3.2.7 /home/runner/work/acad_devOps-project/acad_devOps-project/services/auth
+services/auth test:  ✓ tests/rbac-abac.test.ts (7 tests) 21ms
+services/auth test:  ✓ tests/client-interceptor.test.ts (2 tests) 59ms
+services/auth test: ⎯⎯⎯⎯⎯⎯ Failed Suites 2 ⎯⎯⎯⎯⎯⎯⎯
+services/auth test:  FAIL  tests/crypto.test.ts [ tests/crypto.test.ts ]
+services/auth test:  FAIL  tests/token-rotation.test.ts [ tests/token-rotation.test.ts ]
+services/auth test: Error: Failed to resolve entry for package "@acad/contracts". The package may have incorrect main/module/exports specified in its package.json.
+services/auth test:   Plugin: vite:import-analysis
+services/auth test:   File: /home/runner/work/acad_devOps-project/acad_devOps-project/services/auth/src/crypto/token.ts:2:43
+services/auth test:   1  |  import { createHmac, createHash, randomBytes, timingSafeEqual } from "node:crypto";
+services/auth test:   2  |  import { JWTClaimsSchema } from "@acad/contracts";
+services/auth test:      |                                   ^
+services/auth test:   3  |  export class TokenManager {
+services/auth test:   4  |    static DEFAULT_SECRET = "acad-super-secure-jwt-hmac-secret-key-32-chars-min!";
+services/auth test:  ❯ packageEntryFailure ../../node_modules/.pnpm/vite@7.3.6_@types+node@22.20.4/node_modules/vite/dist/node/chunks/config.js:32896:32
+services/auth test:  ❯ resolvePackageEntry ../../node_modules/.pnpm/vite@7.3.6_@types+node@22.20.4/node_modules/vite/dist/node/chunks/config.js:32893:2
+services/auth test:  ❯ tryNodeResolve ../../node_modules/.pnpm/vite@7.3.6_@types+node@22.20.4/node_modules/vite/dist/node/chunks/config.js:32796:70
+services/auth test:  ❯ ResolveIdContext.handler ../../node_modules/.pnpm/vite@7.3.6_@types+node@22.20.4/node_modules/vite/dist/node/chunks/config.js:32635:16
+services/auth test:  ❯ EnvironmentPluginContainer.resolveId ../../node_modules/.pnpm/vite@7.3.6_@types+node@22.20.4/node_modules/vite/dist/node/chunks/config.js:28797:56
+services/auth test:  ❯ TransformPluginContext.resolve ../../node_modules/.pnpm/vite@7.3.6_@types+node@22.20.4/node_modules/vite/dist/node/chunks/config.js:29009:13
+services/auth test:  ❯ normalizeUrl ../../node_modules/.pnpm/vite@7.3.6_@types+node@22.20.4/node_modules/vite/dist/node/chunks/config.js:27191:22
+services/auth test:  ❯ ../../node_modules/.pnpm/vite@7.3.6_@types+node@22.20.4/node_modules/vite/dist/node/chunks/config.js:27257:32
+services/auth test: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+services/auth test:  Test Files  2 failed | 2 passed (4)
+services/auth test:       Tests  9 passed (9)
+services/auth test:    Start at  06:31:49
+services/auth test:    Duration  848ms (transform 220ms, setup 0ms, collect 127ms, tests 80ms, environment 1ms, prepare 411ms)
+services/auth test: Failed
+/home/runner/work/acad_devOps-project/acad_devOps-project/services/auth:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @acad/auth-service@1.0.0 test: `vitest run`
+Exit status 1
+ ELIFECYCLE  Test failed. See above for more details.
+Error: Process completed with exit code 1.
+
+
+695143622Z ==> Cloning from https://github.com/mjjyv/acad_devOps-project
+731180917Z ==> Checking out commit 4788ba9e50899bd6615d7da7b941315d85a3bcec in branch main
+152881304Z #1 [internal] load build definition from Dockerfile.api.prod
+152894242Z #1 transferring dockerfile: 2.17kB done
+15289598Z #1 DONE 0.0s
+152897397Z 
+152898807Z #2 [internal] load metadata for docker.io/library/node:24-alpine
+388450039Z #2 ...
+38846385Z 
+388466132Z #3 [auth] library/node:pull render-prod/docker-mirror-repository/library/node:pull token for us-west1-docker.pkg.dev
+388467648Z #3 DONE 0.0s
+537675187Z 
+537686035Z #2 [internal] load metadata for docker.io/library/node:24-alpine
+926970155Z #2 DONE 5.9s
+066044563Z 
+066061285Z #4 [internal] load .dockerignore
+066064231Z #4 transferring context: 195B done
+066066518Z #4 DONE 0.0s
+06606864Z 
+066070925Z #5 [internal] load build context
+066074059Z #5 DONE 0.0s
+066075522Z 
+066085954Z #6 [builder  1/16] FROM docker.io/library/node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
+066088949Z #6 resolve docker.io/library/node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 done
+066090327Z #6 DONE 0.0s
+066091579Z 
+066092895Z #7 importing cache manifest
+066095043Z #7 inferred cache manifest type: application/vnd.oci.image.manifest.v1+json done
+066096436Z #7 DONE 0.1s
+22674548Z 
+226762635Z #5 [internal] load build context
+226765244Z #5 transferring context: 231.89kB done
+226766672Z #5 DONE 0.0s
+226767902Z 
+226769555Z #8 [builder  2/16] RUN corepack enable && corepack prepare pnpm@10.15.0 --activate
+226770971Z #8 CACHED
+226772252Z 
+226773622Z #9 [builder  3/16] WORKDIR /app
+226774999Z #9 CACHED
+226776455Z 
+226778175Z #10 [builder  4/16] COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+461428652Z #10 extracting sha256:e2de96513ba9eb53b431787ec8a65cdde380ac4772a3e4c4b714dcfde2a102b5 0.1s done
+883766308Z #10 DONE 0.8s
+034695381Z 
+034711596Z #10 [builder  4/16] COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+034714048Z #10 extracting sha256:3c504d5a797be28f9de43147d49cd8ecb2eea46dfaf7beb8715db695d5f0a7f0
+737070856Z #10 extracting sha256:3c504d5a797be28f9de43147d49cd8ecb2eea46dfaf7beb8715db695d5f0a7f0 0.9s done
+737085847Z #10 DONE 1.7s
+911000607Z 
+911023779Z #10 [builder  4/16] COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+911027023Z #10 extracting sha256:02f40d53b06f6b91fec0cd6a6719656da99270bff8ee54ed8dcdf4c157763fc1 0.0s done
+911028578Z #10 extracting sha256:7ce7dcbafb7f750cf0c6be3c30e34372b06dd1182fa67f6ae30782c8150c5444 done
+911029999Z #10 extracting sha256:4f5965bd73b78e359078039fbfaa9fd479bd59bf1ffcb80c2e0af0ceb1f60db9
+963092313Z #10 extracting sha256:4f5965bd73b78e359078039fbfaa9fd479bd59bf1ffcb80c2e0af0ceb1f60db9 0.2s done
+963104414Z #10 DONE 1.9s
+146270904Z 
+146293707Z #10 [builder  4/16] COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+146296086Z #10 extracting sha256:262de7bcd2507db120d345eb6efda5608890c6aa64e9ee37303798a410180540 done
+146297806Z #10 extracting sha256:928850e07a63fc9047daf4e43bc8bb2c16508cb942e570496238072a3ca1980b done
+146299292Z #10 DONE 1.9s
+146300522Z 
+146301889Z #11 [builder  5/16] COPY packages/contracts/package.json ./packages/contracts/
+146303298Z #11 DONE 0.0s
+146304533Z 
+14630586Z #12 [builder  6/16] COPY packages/ui-tokens/package.json ./packages/ui-tokens/
+146307196Z #12 DONE 0.0s
+146308349Z 
+146309709Z #13 [builder  7/16] COPY packages/auth-client/package.json ./packages/auth-client/
+146310996Z #13 DONE 0.0s
+146312117Z 
+146313469Z #14 [builder  8/16] COPY packages/tree-virtualizer/package.json ./packages/tree-virtualizer/
+14631472Z #14 DONE 0.0s
+146315877Z 
+14631724Z #15 [builder  9/16] COPY services/auth/package.json ./services/auth/
+146318502Z #15 DONE 0.0s
+146319982Z 
+146321322Z #16 [builder 10/16] COPY services/community/package.json ./services/community/
+146322613Z #16 DONE 0.0s
+146323838Z 
+146325352Z #17 [builder 11/16] COPY apps/api/package.json ./apps/api/
+146326622Z #17 DONE 0.0s
+146327698Z 
+146329108Z #18 [builder 12/16] RUN pnpm install --frozen-lockfile
+498965936Z #18 0.503 Scope: all 8 workspace projects
+732714939Z #18 0.565 Lockfile is up to date, resolution step is skipped
+732729473Z #18 0.586 Progress: resolved 1, reused 0, downloaded 0, added 0
+942678392Z #18 0.947 Packages: +78
+942702528Z #18 0.947 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+928907506Z #18 4.933 Progress: resolved 78, reused 0, downloaded 0, added 0
+605298435Z #18 6.609 Progress: resolved 78, reused 0, downloaded 1, added 0
+060876245Z #18 7.065 
+060897244Z #18 7.065    ╭──────────────────────────────────────────────╮
+060901707Z #18 7.065    │                                              │
+060904294Z #18 7.065    │     Update available! 10.15.0 → 12.6.0.      │
+060906505Z #18 7.065    │     Changelog: https://pnpm.io/v/12.6.0      │
+060908794Z #18 7.065    │   To update, run: corepack use pnpm@12.6.0   │
+060910878Z #18 7.065    │                                              │
+060913182Z #18 7.065    ╰──────────────────────────────────────────────╯
+060915345Z #18 7.065 
+161451342Z #18 7.165 Progress: resolved 78, reused 0, downloaded 78, added 78, done
+299256584Z #18 7.233 
+299272561Z #18 7.233 devDependencies:
+299274297Z #18 7.233 + typescript 5.9.3
+299275927Z #18 7.233 
+299280384Z #18 7.233 ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+29928324Z #18 7.233 │                                                                              │
+299284932Z #18 7.233 │   Ignored build scripts: esbuild.                                            │
+299286408Z #18 7.233 │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+299287754Z #18 7.233 │   to run scripts.                                                            │
+299289084Z #18 7.233 │                                                                              │
+299291015Z #18 7.233 ╰──────────────────────────────────────────────────────────────────────────────╯
+299292267Z #18 7.233 
+299294524Z #18 7.303 Done in 7.1s using pnpm v10.15.0
+412146098Z #18 DONE 7.4s
+606549375Z 
+606563262Z #19 [builder 13/16] COPY packages/ ./packages/
+606564886Z #19 DONE 0.0s
+606566288Z 
+60656789Z #20 [builder 14/16] COPY services/ ./services/
+606569808Z #20 DONE 0.0s
+60657103Z 
+606572426Z #21 [builder 15/16] COPY apps/api/ ./apps/api/
+606573841Z #21 DONE 0.0s
+606575042Z 
+606576838Z #22 [builder 16/16] RUN pnpm --filter @acad/api... run build
+855937564Z #22 0.400 Scope: 5 of 8 workspace projects
+010051358Z #22 0.404 packages/contracts build$ tsc
+061096685Z #22 1.605 packages/contracts build: Done
+212584111Z #22 1.606 services/community build$ tsc
+716533726Z #22 2.260 services/community build: Done
+867297123Z #22 2.261 services/auth build$ tsc
+708185098Z #22 4.252 services/auth build: Done
+859044863Z #22 4.253 apps/api build$ tsc
+592351188Z #22 5.136 apps/api build: Done
+766382932Z #22 DONE 5.2s
+775296819Z 
+775310739Z #23 [runner  2/11] WORKDIR /app
+775312625Z #23 CACHED
+775313889Z 
+775315797Z #24 [runner  3/11] RUN addgroup --system --gid 1001 nodejs &&     adduser --system --uid 1001 appuser
+775317476Z #24 CACHED
+775318712Z 
+775323408Z #25 [runner  4/11] COPY --from=builder /app/package.json ./
+775324795Z #25 CACHED
+775326046Z 
+775327789Z #26 [runner  5/11] COPY --from=builder /app/pnpm-workspace.yaml ./
+013756637Z #26 extracting sha256:3f290f394ec164f59e1ffd0b3404c8998b7213ac8fcd793074c42fb87224045e done
+01377005Z #26 extracting sha256:2e0f90d79d7807130ce7d236dd232677ad4e8e96a98a0330739d878ac22ee869 done
+013776215Z #26 extracting sha256:83d4ced383c65fbe93af1dbb6c212090a785f818fda6477e34272a6b338e9b3d done
+013778085Z #26 extracting sha256:371ae1e1ac97db04104505a117142427f7796302fe9c99842c66ccd4019dc3a0 done
+013779395Z #26 DONE 0.1s
+013780726Z 
+013782433Z #27 [runner  6/11] COPY --from=builder /app/node_modules ./node_modules
+059342666Z #27 DONE 0.2s
+266748472Z 
+26676385Z #28 [runner  7/11] COPY --from=builder /app/packages ./packages
+266765609Z #28 DONE 0.0s
+266766927Z 
+266768374Z #29 [runner  8/11] COPY --from=builder /app/services ./services
+266769768Z #29 DONE 0.0s
+266771208Z 
+266772913Z #30 [runner  9/11] COPY --from=builder /app/apps/api/dist ./apps/api/dist
+266774392Z #30 DONE 0.0s
+266775721Z 
+266777538Z #31 [runner 10/11] COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
+266779013Z #31 DONE 0.0s
+26678023Z 
+266781576Z #32 [runner 11/11] COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
+266782925Z #32 DONE 0.0s
+266784052Z 
+266785636Z #33 exporting to image
+266786921Z #33 exporting layers
+473791094Z #33 exporting layers 0.4s done
+628130831Z #33 pushing layers
+583132685Z #33 pushing layers 1.1s done
+764985229Z #33 DONE 1.6s
+764990016Z 
+764991832Z #34 exporting cache to registry
+764993762Z #34 preparing build cache for export
+567526179Z #34 sending cache export
+793443242Z #34 sending cache export 3.2s done
+793449689Z #34 DONE 5.3s
+889192174Z ==> Deploying...
+142805922Z ==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+931501576Z node:internal/url:895
+931541979Z       href = bindingUrl.parse(input, base, true);
+931547259Z                         ^
+93154993Z 
+93155298Z TypeError: Invalid URL
+93155672Z     at new URL (node:internal/url:895:25)
+93155968Z     at parseURL (/app/node_modules/.pnpm/ioredis@6.0.0/node_modules/ioredis/built/utils/index.js:280:18)
+931562991Z     at EventEmitter.parseOptions (/app/node_modules/.pnpm/ioredis@6.0.0/node_modules/ioredis/built/Redis.js:706:70)
+931566821Z     at new Redis (/app/node_modules/.pnpm/ioredis@6.0.0/node_modules/ioredis/built/Redis.js:64:14)
+931569931Z     at new RedisSessionStore (file:///app/services/auth/dist/session/redis-session-store.js:10:27)
+931572891Z     at createAuthModule (file:///app/services/auth/dist/factory.js:31:24)
+931575832Z     at createApiServer (file:///app/apps/api/dist/server.js:5:46)
+931578442Z     at file:///app/apps/api/dist/server.js:65:20
+931580952Z     at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+931583602Z     at async node:internal/modules/esm/loader:647:26 {
+931586672Z   code: 'ERR_INVALID_URL',
+931589593Z   input: 'redis://redis-cli --tls -u redis://default:gQAAAAAABIjvAAIgcDJhZmY0MWY1NjdmYTI0ZjA4OTc5MTA0MzQ1OWMwNmM0OA@select-poodle-297199.upstash.io:6379'
+931592483Z }
+931601183Z 
+931604374Z Node.js v24.21.0
+59935642Z ==> Exited with status 1
+612726897Z ==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
+147018427Z node:internal/url:895
+147046819Z       href = bindingUrl.parse(input, base, true);
+147122375Z                         ^
+147125085Z 
+147127655Z TypeError: Invalid URL
+147131046Z     at new URL (node:internal/url:895:25)
+147134046Z     at parseURL (/app/node_modules/.pnpm/ioredis@6.0.0/node_modules/ioredis/built/utils/index.js:280:18)
+147137156Z     at EventEmitter.parseOptions (/app/node_modules/.pnpm/ioredis@6.0.0/node_modules/ioredis/built/Redis.js:706:70)
+147139736Z     at new Redis (/app/node_modules/.pnpm/ioredis@6.0.0/node_modules/ioredis/built/Redis.js:64:14)
+147141956Z     at new RedisSessionStore (file:///app/services/auth/dist/session/redis-session-store.js:10:27)
+147144807Z     at createAuthModule (file:///app/services/auth/dist/factory.js:31:24)
+147147407Z     at createApiServer (file:///app/apps/api/dist/server.js:5:46)
+147149677Z     at file:///app/apps/api/dist/server.js:65:20
+147151977Z     at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+147154308Z     at async node:internal/modules/esm/loader:647:26 {
+147156558Z   code: 'ERR_INVALID_URL',
+147159708Z   input: 'redis://redis-cli --tls -u redis://default:gQAAAAAABIjvAAIgcDJhZmY0MWY1NjdmYTI0ZjA4OTc5MTA0MzQ1OWMwNmM0OA@select-poodle-297199.upstash.io:6379'
+147162048Z }
+147164188Z 
+147166368Z Node.js v24.21.0
+748599241Z node:internal/url:895
+748647835Z       href = bindingUrl.parse(input, base, true);
+748654206Z                         ^
+748656926Z 
+748659906Z TypeError: Invalid URL
+748663437Z     at new URL (node:internal/url:895:25)
+748666767Z     at parseURL (/app/node_modules/.pnpm/ioredis@6.0.0/node_modules/ioredis/built/utils/index.js:280:18)
+748670787Z     at EventEmitter.parseOptions (/app/node_modules/.pnpm/ioredis@6.0.0/node_modules/ioredis/built/Redis.js:706:70)
+748673777Z     at new Redis (/app/node_modules/.pnpm/ioredis@6.0.0/node_modules/ioredis/built/Redis.js:64:14)
+748676707Z     at new RedisSessionStore (file:///app/services/auth/dist/session/redis-session-store.js:10:27)
+748680258Z     at createAuthModule (file:///app/services/auth/dist/factory.js:31:24)
+748683008Z     at createApiServer (file:///app/apps/api/dist/server.js:5:46)
+748685878Z     at file:///app/apps/api/dist/server.js:65:20
+748688958Z     at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+748691799Z     at async node:internal/modules/esm/loader:647:26 {
+748694569Z   code: 'ERR_INVALID_URL',
+748698139Z   input: 'redis://redis-cli --tls -u redis://default:gQAAAAAABIjvAAIgcDJhZmY0MWY1NjdmYTI0ZjA4OTc5MTA0MzQ1OWMwNmM0OA@select-poodle-297199.upstash.io:6379'
+748701149Z }
+74870378Z 
+74870652Z Node.js v24.21.0

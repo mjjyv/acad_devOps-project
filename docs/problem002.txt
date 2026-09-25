@@ -1,0 +1,250 @@
+GITHUB:
+Dưới đây là toàn bộ nội dung văn bản hiển thị trong hình:
+
+---
+
+### **Thanh điều hướng bên trái (Sidebar)**
+
+* **Summary**
+
+* **All jobs**
+
+* Cổng 1: Lint & Code Formatting
+
+
+* Cổng 2: TypeScript & OpenAPI Validation
+
+
+* Cổng 3: Unit & Integration Tests
+
+
+* Cổng 4: Dockerfiles Syntax & Build Check
+
+
+
+
+* **Run details**
+
+* Usage
+
+
+* Workflow file
+
+
+
+
+
+---
+
+### **Sơ đồ quy trình (Workflow Graph)**
+
+* **Cổng 2: TypeScript & Open...** `23s`
+
+* **Cổng 3: Unit & Integration T...** `14s`
+
+* **Cổng 4: Dockerfiles Syntax...** `14s` *(nối từ Cổng 2 & 3)*
+
+* **Cổng 1: Lint & Code Forma...** `15s`
+
+
+---
+
+### **Mục Chú thích (Annotations)**
+
+**4 warnings and 4 notices**
+
+* ⚠️ **Cổng 3: Unit & Integration Tests**
+
+> Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/cache@v4, actions/checkout@v4, actions/setup-node@v4, pnpm/action-setup@v4. For more information see: `[https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/](https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/)`
+> 
+> 
+> *Show less*
+> 
+
+
+* ⚠️ **Cổng 1: Lint & Code Formatting**
+
+> Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/cache@v4, actions/checkout@v4,...
+> *Show more*
+> 
+> 
+
+
+* ⚠️ **Cổng 2: TypeScript & OpenAPI Validation**
+
+> Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/cache@v4, actions/checkout@v4,...
+> *Show more*
+> 
+> 
+
+
+* ⚠️ **Cổng 4: Dockerfiles Syntax & Build Check**
+
+> Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, docker/setup-buil...
+> *Show more*
+> 
+> 
+
+
+* ℹ️ **Cổng 3: Unit & Integration Tests**
+
+> 'The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see `[https://github.com/actions/runner-images/i](https://github.com/actions/runner-images/i)...`
+> 
+> 
+> *Show more*
+> 
+
+
+* ℹ️ **Cổng 1: Lint & Code Formatting** *(phần tiêu đề bị cắt ở mép dưới)*
+
+RENDER:
+2026-09-25T06:01:31.342315091Z #9 DONE 0.9s
+2026-09-25T06:01:31.567939695Z 
+2026-09-25T06:01:31.567958235Z #10 [builder  3/16] WORKDIR /app
+2026-09-25T06:01:31.567960271Z #10 DONE 0.0s
+2026-09-25T06:01:31.567961513Z 
+2026-09-25T06:01:31.567963405Z #11 [builder  4/16] COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+2026-09-25T06:01:31.567964827Z #11 DONE 0.0s
+2026-09-25T06:01:31.567966178Z 
+2026-09-25T06:01:31.567967529Z #12 [builder  5/16] COPY packages/contracts/package.json ./packages/contracts/
+2026-09-25T06:01:31.567975345Z #12 DONE 0.0s
+2026-09-25T06:01:31.567976784Z 
+2026-09-25T06:01:31.567978155Z #13 [builder  6/16] COPY packages/ui-tokens/package.json ./packages/ui-tokens/
+2026-09-25T06:01:31.567979402Z #13 DONE 0.0s
+2026-09-25T06:01:31.567980529Z 
+2026-09-25T06:01:31.567982202Z #14 [builder  7/16] COPY packages/auth-client/package.json ./packages/auth-client/
+2026-09-25T06:01:31.567983658Z #14 DONE 0.0s
+2026-09-25T06:01:31.567984792Z 
+2026-09-25T06:01:31.567986151Z #15 [builder  8/16] COPY packages/tree-virtualizer/package.json ./packages/tree-virtualizer/
+2026-09-25T06:01:31.567987562Z #15 DONE 0.0s
+2026-09-25T06:01:31.567988693Z 
+2026-09-25T06:01:31.567990005Z #16 [builder  9/16] COPY services/auth/package.json ./services/auth/
+2026-09-25T06:01:31.567991253Z #16 DONE 0.0s
+2026-09-25T06:01:31.567992423Z 
+2026-09-25T06:01:31.567993805Z #17 [builder 10/16] COPY services/community/package.json ./services/community/
+2026-09-25T06:01:31.567995229Z #17 DONE 0.0s
+2026-09-25T06:01:31.567996384Z 
+2026-09-25T06:01:31.567998005Z #18 [builder 11/16] COPY apps/api/package.json ./apps/api/
+2026-09-25T06:01:31.567999291Z #18 DONE 0.0s
+2026-09-25T06:01:31.568000378Z 
+2026-09-25T06:01:31.56800168Z #19 [builder 12/16] RUN pnpm install --frozen-lockfile
+2026-09-25T06:01:31.914583856Z #19 0.497 Scope: all 8 workspace projects
+2026-09-25T06:01:32.104668512Z #19 0.560 Lockfile is up to date, resolution step is skipped
+2026-09-25T06:01:32.104682002Z #19 0.585 Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-09-25T06:01:32.104683773Z #19 0.687 Packages: +56
+2026-09-25T06:01:32.104685459Z #19 0.687 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+2026-09-25T06:01:34.409639607Z #19 2.992 Progress: resolved 56, reused 0, downloaded 0, added 0
+2026-09-25T06:01:38.184364062Z #19 6.767 Progress: resolved 56, reused 0, downloaded 1, added 0
+2026-09-25T06:01:38.641822361Z #19 7.224 
+2026-09-25T06:01:38.641831696Z #19 7.224    ╭──────────────────────────────────────────────╮
+2026-09-25T06:01:38.641836381Z #19 7.224    │                                              │
+2026-09-25T06:01:38.641837961Z #19 7.224    │     Update available! 10.15.0 → 12.6.0.      │
+2026-09-25T06:01:38.641839477Z #19 7.224    │     Changelog: https://pnpm.io/v/12.6.0      │
+2026-09-25T06:01:38.64184098Z #19 7.224    │   To update, run: corepack use pnpm@12.6.0   │
+2026-09-25T06:01:38.641842267Z #19 7.224    │                                              │
+2026-09-25T06:01:38.64184355Z #19 7.224    ╰──────────────────────────────────────────────╯
+2026-09-25T06:01:38.641844783Z #19 7.224 
+2026-09-25T06:01:38.791651102Z #19 7.307 Progress: resolved 56, reused 0, downloaded 56, added 56, done
+2026-09-25T06:01:38.79165921Z #19 7.374 
+2026-09-25T06:01:38.79166137Z #19 7.374 devDependencies:
+2026-09-25T06:01:38.791663001Z #19 7.374 + typescript 5.9.3
+2026-09-25T06:01:38.791664333Z #19 7.374 
+2026-09-25T06:01:38.79166619Z #19 7.374 ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+2026-09-25T06:01:38.791667981Z #19 7.374 │                                                                              │
+2026-09-25T06:01:38.791669254Z #19 7.374 │   Ignored build scripts: esbuild.                                            │
+2026-09-25T06:01:38.791670512Z #19 7.374 │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+2026-09-25T06:01:38.791676643Z #19 7.374 │   to run scripts.                                                            │
+2026-09-25T06:01:38.791678301Z #19 7.374 │                                                                              │
+2026-09-25T06:01:38.791680001Z #19 7.374 ╰──────────────────────────────────────────────────────────────────────────────╯
+2026-09-25T06:01:38.791681301Z #19 7.374 
+2026-09-25T06:01:38.979789734Z #19 7.441 Done in 7.3s using pnpm v10.15.0
+2026-09-25T06:01:38.979806684Z #19 DONE 7.6s
+2026-09-25T06:01:39.17414343Z 
+2026-09-25T06:01:39.174153987Z #20 [builder 13/16] COPY packages/ ./packages/
+2026-09-25T06:01:39.174155798Z #20 DONE 0.0s
+2026-09-25T06:01:39.174157058Z 
+2026-09-25T06:01:39.174158389Z #21 [builder 14/16] COPY services/ ./services/
+2026-09-25T06:01:39.174159798Z #21 DONE 0.0s
+2026-09-25T06:01:39.17416101Z 
+2026-09-25T06:01:39.174162308Z #22 [builder 15/16] COPY apps/api/ ./apps/api/
+2026-09-25T06:01:39.174163816Z #22 DONE 0.0s
+2026-09-25T06:01:39.174165006Z 
+2026-09-25T06:01:39.174166969Z #23 [builder 16/16] RUN pnpm --filter @acad/api run build
+2026-09-25T06:01:39.476372338Z #23 0.453 
+2026-09-25T06:01:39.476380561Z #23 0.453 > @acad/api@1.0.0 build /app/apps/api
+2026-09-25T06:01:39.47638213Z #23 0.453 > tsc
+2026-09-25T06:01:39.476383468Z #23 0.453 
+2026-09-25T06:01:40.39728306Z #23 DONE 1.4s
+2026-09-25T06:01:40.541364372Z 
+2026-09-25T06:01:40.541379976Z #24 [runner  4/10] COPY --from=builder /app/package.json ./
+2026-09-25T06:01:40.705286307Z #24 DONE 0.0s
+2026-09-25T06:01:40.705297345Z 
+2026-09-25T06:01:40.705299949Z #25 [runner  5/10] COPY --from=builder /app/pnpm-workspace.yaml ./
+2026-09-25T06:01:40.705301488Z #25 DONE 0.0s
+2026-09-25T06:01:40.705302919Z 
+2026-09-25T06:01:40.705304395Z #26 [runner  6/10] COPY --from=builder /app/node_modules ./node_modules
+2026-09-25T06:01:40.739924995Z #26 DONE 0.2s
+2026-09-25T06:01:40.933400404Z 
+2026-09-25T06:01:40.933415873Z #27 [runner  7/10] COPY --from=builder /app/packages ./packages
+2026-09-25T06:01:40.933417728Z #27 DONE 0.0s
+2026-09-25T06:01:40.933419348Z 
+2026-09-25T06:01:40.933420848Z #28 [runner  8/10] COPY --from=builder /app/services ./services
+2026-09-25T06:01:40.933422311Z #28 DONE 0.0s
+2026-09-25T06:01:40.933423776Z 
+2026-09-25T06:01:40.933425498Z #29 [runner  9/10] COPY --from=builder /app/apps/api/dist ./apps/api/dist
+2026-09-25T06:01:40.933426951Z #29 DONE 0.0s
+2026-09-25T06:01:40.933428144Z 
+2026-09-25T06:01:40.933430377Z #30 [runner 10/10] COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
+2026-09-25T06:01:40.933431778Z #30 DONE 0.0s
+2026-09-25T06:01:40.933433015Z 
+2026-09-25T06:01:40.933434615Z #31 exporting to image
+2026-09-25T06:01:40.933435946Z #31 exporting layers
+2026-09-25T06:01:41.123686178Z #31 exporting layers 0.3s done
+2026-09-25T06:01:41.277683993Z #31 pushing layers
+2026-09-25T06:01:43.835485523Z #31 pushing layers 2.7s done
+2026-09-25T06:01:43.973516865Z #31 DONE 3.2s
+2026-09-25T06:01:43.973533856Z 
+2026-09-25T06:01:43.973535847Z #32 exporting cache to registry
+2026-09-25T06:01:43.973537939Z #32 sending cache export
+2026-09-25T06:01:47.139337688Z #32 sending cache export 4.0s done
+2026-09-25T06:01:47.139357002Z #32 DONE 6.0s
+2026-09-25T06:01:49.043114178Z ==> Deploying...
+2026-09-25T06:01:49.334117664Z ==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+2026-09-25T06:01:54.009017289Z node:internal/modules/cjs/loader:1568
+2026-09-25T06:01:54.00905963Z   throw err;
+2026-09-25T06:01:54.009063521Z   ^
+2026-09-25T06:01:54.009066081Z 
+2026-09-25T06:01:54.00906853Z Error: Cannot find module '/app/apps/api/dist/server.js'
+2026-09-25T06:01:54.00907163Z     at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+2026-09-25T06:01:54.009074041Z     at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+2026-09-25T06:01:54.009076921Z     at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+2026-09-25T06:01:54.009079171Z     at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+2026-09-25T06:01:54.009081621Z     at Module._load (node:internal/modules/cjs/loader:1341:5)
+2026-09-25T06:01:54.009083981Z     at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+2026-09-25T06:01:54.009086391Z     at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+2026-09-25T06:01:54.009088681Z     at node:internal/main/run_main_module:33:47 {
+2026-09-25T06:01:54.009091371Z   code: 'MODULE_NOT_FOUND',
+2026-09-25T06:01:54.009094251Z   requireStack: []
+2026-09-25T06:01:54.009096621Z }
+2026-09-25T06:01:54.009098761Z 
+2026-09-25T06:01:54.009100991Z Node.js v24.21.0
+2026-09-25T06:01:55.47426206Z node:internal/modules/cjs/loader:1568
+2026-09-25T06:01:55.474654848Z   throw err;
+2026-09-25T06:01:55.474660149Z   ^
+2026-09-25T06:01:55.474662389Z 
+2026-09-25T06:01:55.474673889Z Error: Cannot find module '/app/apps/api/dist/server.js'
+2026-09-25T06:01:55.474676369Z     at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+2026-09-25T06:01:55.474678449Z     at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+2026-09-25T06:01:55.474680929Z     at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+2026-09-25T06:01:55.474682869Z     at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+2026-09-25T06:01:55.474684839Z     at Module._load (node:internal/modules/cjs/loader:1341:5)
+2026-09-25T06:01:55.474686839Z     at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+2026-09-25T06:01:55.474688809Z     at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+2026-09-25T06:01:55.474694249Z     at node:internal/main/run_main_module:33:47 {
+2026-09-25T06:01:55.474696869Z   code: 'MODULE_NOT_FOUND',
+2026-09-25T06:01:55.47469964Z   requireStack: []
+2026-09-25T06:01:55.47471226Z }
+2026-09-25T06:01:55.47471424Z 
+2026-09-25T06:01:55.47471614Z Node.js v24.21.0
+2026-09-25T06:01:56.405332314Z ==> Exited with status 1
+2026-09-25T06:01:56.408068304Z ==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys

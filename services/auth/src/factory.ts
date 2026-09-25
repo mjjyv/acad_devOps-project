@@ -32,10 +32,17 @@ export function createAuthModule(options: AuthModuleOptions = {}): AuthModule {
   } else if (useInMemory) {
     userRepo = new InMemoryUserRepository();
   } else {
-    const dbUrl = options.databaseUrl || process.env.DATABASE_URL!;
-    const pgRepo = new PostgresUserRepository(dbUrl);
-    userRepo = pgRepo;
-    closers.push(() => pgRepo.close());
+    try {
+      const dbUrl = options.databaseUrl || process.env.DATABASE_URL!;
+      const pgRepo = new PostgresUserRepository(dbUrl);
+      userRepo = pgRepo;
+      closers.push(() => pgRepo.close());
+    } catch (pgError: any) {
+      console.warn(
+        `[AuthModule Warning] Không thể kết nối PostgreSQL: ${pgError.message}. Tự động fallback sang InMemoryUserRepository.`,
+      );
+      userRepo = new InMemoryUserRepository();
+    }
   }
 
   if (options.sessionStore) {
@@ -43,10 +50,17 @@ export function createAuthModule(options: AuthModuleOptions = {}): AuthModule {
   } else if (useInMemory) {
     sessionStore = new InMemorySessionStore();
   } else {
-    const redisUrl = options.redisUrl || process.env.REDIS_URL || 'redis://localhost:6379';
-    const rStore = new RedisSessionStore(redisUrl);
-    sessionStore = rStore;
-    closers.push(() => rStore.disconnect());
+    try {
+      const redisUrl = options.redisUrl || process.env.REDIS_URL || 'redis://localhost:6379';
+      const rStore = new RedisSessionStore(redisUrl);
+      sessionStore = rStore;
+      closers.push(() => rStore.disconnect());
+    } catch (redisError: any) {
+      console.warn(
+        `[AuthModule Warning] Không thể kết nối Redis: ${redisError.message}. Tự động fallback sang InMemorySessionStore.`,
+      );
+      sessionStore = new InMemorySessionStore();
+    }
   }
 
   const controller = new AuthController(userRepo, sessionStore);

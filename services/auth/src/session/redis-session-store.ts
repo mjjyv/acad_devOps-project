@@ -2,6 +2,33 @@ import { Redis, RedisOptions } from 'ioredis';
 import { ISessionStore } from './store.js';
 import { UserSession } from './types.js';
 
+export function sanitizeRedisUrl(rawUrl: string): string {
+  let url = rawUrl.trim();
+
+  // Xử lý trường hợp người dùng copy nguyên câu lệnh CLI từ Upstash Console:
+  // "redis-cli --tls -u redis://default:...@select-poodle-297199.upstash.io:6379"
+  // hoặc "redis://redis-cli --tls -u redis://..."
+  const matchWithFlag = url.match(/-u\s+([^\s'"]+)/);
+  if (matchWithFlag) {
+    url = matchWithFlag[1];
+  } else {
+    const matchProtocol = url.match(/(rediss?:\/\/[^\s'"]+)/);
+    if (matchProtocol) {
+      url = matchProtocol[1];
+    }
+  }
+
+  // Loại bỏ các tiền tố redis:// bị ghép thừa nếu có
+  url = url.replace(/^redis:\/\/(?=rediss?:\/\/)/, '');
+
+  // Upstash yêu cầu kết nối TLS (rediss://) nếu hostname là .upstash.io
+  if (url.includes('.upstash.io') && url.startsWith('redis://')) {
+    url = url.replace('redis://', 'rediss://');
+  }
+
+  return url;
+}
+
 export class RedisSessionStore implements ISessionStore {
   private client: Redis;
   private readonly defaultTTL = 7 * 24 * 60 * 60; // 7 ngày (604800 giây)
@@ -10,22 +37,32 @@ export class RedisSessionStore implements ISessionStore {
     if (clientOrUrlOrOptions instanceof Redis) {
       this.client = clientOrUrlOrOptions;
     } else if (typeof clientOrUrlOrOptions === 'string') {
-      this.client = new Redis(clientOrUrlOrOptions, {
+      const sanitized = sanitizeRedisUrl(clientOrUrlOrOptions);
+      this.client = new Redis(sanitized, {
         lazyConnect: true,
         enableOfflineQueue: true,
+        maxRetriesPerRequest: 3,
       });
     } else if (clientOrUrlOrOptions) {
       this.client = new Redis({
         ...clientOrUrlOrOptions,
         lazyConnect: true,
         enableOfflineQueue: true,
+        maxRetriesPerRequest: 3,
       });
     } else {
-      this.client = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+      const sanitized = sanitizeRedisUrl(process.env.REDIS_URL || 'redis://localhost:6379');
+      this.client = new Redis(sanitized, {
         lazyConnect: true,
         enableOfflineQueue: true,
+        maxRetriesPerRequest: 3,
       });
     }
+
+    // Bắt lỗi kết nối Redis để không crash tiến trình Node.js
+    this.client.on('error', (err) => {
+      console.warn(`[RedisSessionStore Warning] Lỗi kết nối Redis: ${err.message}`);
+    });
   }
 
   public getClient(): Redis {
