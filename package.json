@@ -1,0 +1,15 @@
+{
+  "name": "acad-devops-project",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Enterprise Community & Social Platform Monorepo",
+  "scripts": {
+    "build": "pnpm --recursive run build",
+    "test": "pnpm --recursive run test",
+    "typecheck": "pnpm --recursive run typecheck",
+    "lint": "pnpm --recursive run lint"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2"
+  }
+}

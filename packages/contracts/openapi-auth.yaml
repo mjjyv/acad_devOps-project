@@ -1,0 +1,267 @@
+openapi: 3.1.0
+info:
+  title: Acad Community Auth API
+  version: 1.0.0
+  description: API đặc tả Phân hệ Định danh, Quản lý Phiên & Phân quyền bảo mật cao cấp (Enterprise Auth Subsystem).
+
+paths:
+  /api/v1/auth/register:
+    post:
+      summary: Đăng ký tài khoản thành viên mới
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, username, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                username:
+                  type: string
+                  minLength: 3
+                  maxLength: 32
+                password:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                deviceFingerprint:
+                  type: string
+      responses:
+        '201':
+          description: Đăng ký thành công, tự động cấp phiên làm việc
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                description: Cookie access_token và refresh_token an toàn
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Email hoặc Username đã tồn tại
+
+  /api/v1/auth/login:
+    post:
+      summary: Đăng nhập hệ thống & Khởi tạo phiên
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [login, password]
+              properties:
+                login:
+                  type: string
+                  description: Email hoặc Username
+                password:
+                  type: string
+                deviceFingerprint:
+                  type: string
+      responses:
+        '200':
+          description: Đăng nhập thành công, thiết lập Cookie phiên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Thông tin đăng nhập không chính xác
+        '429':
+          description: Vượt quá giới hạn thử đăng nhập (Rate limit)
+
+  /api/v1/auth/refresh:
+    post:
+      summary: Xoay vòng Refresh Token (Token Rotation Protocol)
+      operationId: refreshToken
+      parameters:
+        - in: cookie
+          name: refresh_token
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+                deviceFingerprint:
+                  type: string
+      responses:
+        '200':
+          description: Cấp lại cặp Token mới thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Refresh Token hết hạn hoặc không tồn tại
+        '403':
+          description: Phát hiện tấn công Token Reuse! Toàn bộ Session Family bị hủy.
+
+  /api/v1/auth/logout:
+    post:
+      summary: Đăng xuất & Hủy phiên hiện tại
+      operationId: logout
+      responses:
+        '200':
+          description: Đăng xuất thành công, xóa cookie phiên
+
+  /api/v1/auth/me:
+    get:
+      summary: Lấy thông tin hồ sơ và quyền hạn của tài khoản đang đăng nhập
+      operationId: getMe
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          description: Chưa đăng nhập hoặc token không hợp lệ
+
+  /api/v1/auth/sessions:
+    get:
+      summary: Liệt kê danh sách các thiết bị/phiên đang hoạt động
+      operationId: listSessions
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SessionInfo'
+
+  /api/v1/auth/sessions/{sessionId}:
+    delete:
+      summary: Thu hồi từ xa một phiên làm việc cụ thể
+      operationId: revokeSession
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Thu hồi phiên thành công
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: access_token
+
+  schemas:
+    UserProfile:
+      type: object
+      required: [id, username, email, role, status, karmaScore, accountAgeDays, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [GUEST, USER, SPACE_MOD, GLOBAL_MOD, ADMIN]
+        status:
+          type: string
+          enum: [ACTIVE, SUSPENDED, SHADOWBANNED, DELETED]
+        karmaScore:
+          type: integer
+        accountAgeDays:
+          type: integer
+        avatarUrl:
+          type: string
+          nullable: true
+        bio:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    SessionInfo:
+      type: object
+      required: [sessionId, familyId, userId, deviceFingerprint, createdAt, expiresAt]
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+        familyId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        deviceFingerprint:
+          type: string
+        ipAddress:
+          type: string
+          nullable: true
+        userAgent:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        isCurrent:
+          type: boolean
+
+    AuthResponse:
+      type: object
+      required: [user, accessToken, expiresIn]
+      properties:
+        user:
+          $ref: '#/components/schemas/UserProfile'
+        accessToken:
+          type: string
+        expiresIn:
+          type: integer
+          example: 900
+
+  responses:
+    BadRequest:
+      description: Dữ liệu gửi lên không đúng định dạng
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              details:
+                type: array
+                items:
+                  type: object
