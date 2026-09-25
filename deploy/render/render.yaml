@@ -1,0 +1,49 @@
+# ============================================================================
+# RENDER CLOUD BLUEPRINT SPECIFICATION (INFRASTRUCTURE-AS-CODE)
+# File: deploy/render/render.yaml
+# ============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. FRONTEND WEB SERVICE (NEXT.JS APP)
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: acad-web-client
+    runtime: node
+    plan: free
+    region: singapore # hoặc oregon / frankfurt
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @acad/web run build
+    startCommand: node apps/web/.next/standalone/apps/web/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: acad-core-api
+          property: host
+
+  # ----------------------------------------------------------------------------
+  # 2. BACKEND API SERVICE (DOCKER WEB SERVICE)
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: acad-core-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: deploy/docker/Dockerfile.api.prod
+    dockerContext: .
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: API_PORT
+        value: 8080
+      - key: DATABASE_URL
+        sync: false # Điền connection string của Managed PostgreSQL (Neon / Supabase / Render DB)
+      - key: REDIS_URL
+        sync: false # Điền connection string của Serverless Redis (Upstash)
+      - key: JWT_SECRET
+        generateValue: true # Render tự động sinh khóa ngẫu nhiên an toàn

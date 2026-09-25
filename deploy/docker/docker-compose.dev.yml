@@ -1,0 +1,109 @@
+
+services:
+  # ============================================================================
+  # 1. CƠ SỞ DỮ LIỆU POSTGRESQL 16 (INFRA-DB)
+  # ============================================================================
+  infra-db:
+    image: postgres:16-alpine
+    container_name: acad-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: acad_community_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_secret_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d acad_community_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - acad-internal-net
+
+  # ============================================================================
+  # 2. BỘ NHỚ ĐỆM & TRẠNG THÁI PHIÊN REDIS 7 (INFRA-CACHE)
+  # ============================================================================
+  infra-cache:
+    image: redis:7-alpine
+    container_name: acad-redis-dev
+    restart: unless-stopped
+    command: redis-server --save "" --appendonly no
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - acad-internal-net
+
+  # ============================================================================
+  # 3. MÁY CHỦ BACKEND API (CORE-API)
+  # ============================================================================
+  core-api:
+    image: node:24-alpine
+    container_name: acad-core-api-dev
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ../../:/app
+      - /app/node_modules
+      - /app/apps/api/node_modules
+    environment:
+      NODE_ENV: development
+      API_PORT: 8080
+      DATABASE_URL: postgresql://postgres:postgres_secret_password@infra-db:5432/acad_community_dev
+      REDIS_URL: redis://infra-cache:6379
+      JWT_SECRET: acad_super_secure_jwt_hmac_secret_key_change_me_in_production_32chars!
+    command: sh -c "pnpm --filter @acad/api run dev"
+    ports:
+      - "8080:8080"
+    depends_on:
+      infra-db:
+        condition: service_healthy
+      infra-cache:
+        condition: service_healthy
+    networks:
+      - acad-internal-net
+
+  # ============================================================================
+  # 4. ỨNG DỤNG FRONTEND NEXT.JS (WEB-CLIENT)
+  # ============================================================================
+  web-client:
+    image: node:24-alpine
+    container_name: acad-web-client-dev
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ../../:/app
+      - /app/node_modules
+      - /app/apps/web/node_modules
+      - /app/apps/web/.next
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+    command: sh -c "pnpm --filter @acad/web run dev"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - core-api
+    networks:
+      - acad-internal-net
+
+volumes:
+  pgdata:
+    driver: local
+  redisdata:
+    driver: local
+
+networks:
+  acad-internal-net:
+    driver: bridge

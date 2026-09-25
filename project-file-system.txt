@@ -1,0 +1,132 @@
+tree -I 'node_*|.git|venv|.pytest*|__pycache__' > project-file-system.txt
+.
+├── apps
+│   ├── api
+│   │   ├── package.json
+│   │   ├── src
+│   │   │   └── server.ts
+│   │   ├── tests
+│   │   │   └── healthz.test.ts
+│   │   └── tsconfig.json
+│   └── web
+│       ├── next.config.mjs
+│       ├── package.json
+│       ├── src
+│       │   └── app
+│       │       ├── layout.tsx
+│       │       └── page.tsx
+│       ├── tsconfig.json
+│       └── tsconfig.tsbuildinfo
+├── biome.json
+├── deploy
+│   ├── docker
+│   │   ├── docker-compose.dev.yml
+│   │   ├── Dockerfile.api.prod
+│   │   ├── Dockerfile.web.prod
+│   │   └── init-db.sql
+│   ├── migrations
+│   │   ├── 000001_create_auth_schema.down.sql
+│   │   ├── 000001_create_auth_schema.up.sql
+│   │   ├── 000002_create_community_schema.down.sql
+│   │   └── 000002_create_community_schema.up.sql
+│   ├── redis
+│   │   └── execute_vote.lua
+│   ├── render
+│   │   └── render.yaml
+│   └── scripts
+│       └── keep-alive.sh
+├── docs
+│   ├── acad_devOps-project-docs-checklist.md
+│   ├── acad_devOps-project-docs-checklist-note.md
+│   ├── acad_devOps-project-docs.md
+│   ├── plan
+│   │   ├── implementation_plan001.md
+│   │   ├── implementation_plan002.md
+│   │   ├── implementation_plan003.md
+│   │   ├── walkthrough001.md
+│   │   └── walkthrough002.md
+│   ├── stage-1
+│   │   ├── AUTH_SECURITY_SPECIFICATION.md
+│   │   └── PRD_STAGE_1_DISCOVERY.md
+│   ├── stage-2
+│   │   └── UI_UX_DESIGN_SPECIFICATION.md
+│   └── stage-3
+│       └── DEVOPS_SETUP_GUIDE.md
+├── package.json
+├── packages
+│   ├── auth-client
+│   │   ├── package.json
+│   │   ├── src
+│   │   │   ├── index.ts
+│   │   │   └── interceptor.ts
+│   │   └── tsconfig.json
+│   ├── contracts
+│   │   ├── openapi-auth.yaml
+│   │   ├── openapi.yaml
+│   │   ├── package.json
+│   │   ├── src
+│   │   │   ├── auth.ts
+│   │   │   ├── comments.ts
+│   │   │   ├── index.ts
+│   │   │   ├── rbac-abac.ts
+│   │   │   ├── realtime.ts
+│   │   │   ├── spaces.ts
+│   │   │   └── threads.ts
+│   │   └── tsconfig.json
+│   ├── tree-virtualizer
+│   │   ├── package.json
+│   │   ├── src
+│   │   │   ├── flatten-tree.ts
+│   │   │   └── index.ts
+│   │   ├── tests
+│   │   │   └── flatten-tree.test.ts
+│   │   └── tsconfig.json
+│   └── ui-tokens
+│       ├── package.json
+│       ├── src
+│       │   ├── index.ts
+│       │   └── tokens.ts
+│       └── tsconfig.json
+├── pnpm-lock.yaml
+├── pnpm-workspace.yaml
+├── services
+│   ├── auth
+│   │   ├── package.json
+│   │   ├── src
+│   │   │   ├── crypto
+│   │   │   │   ├── password.ts
+│   │   │   │   └── token.ts
+│   │   │   ├── handlers
+│   │   │   │   └── auth-controller.ts
+│   │   │   ├── index.ts
+│   │   │   ├── middleware
+│   │   │   │   └── auth-guard.ts
+│   │   │   ├── policy
+│   │   │   │   └── rbac-abac-engine.ts
+│   │   │   └── session
+│   │   │       ├── store.ts
+│   │   │       ├── token-rotation-service.ts
+│   │   │       └── types.ts
+│   │   ├── tests
+│   │   │   ├── client-interceptor.test.ts
+│   │   │   ├── crypto.test.ts
+│   │   │   ├── rbac-abac.test.ts
+│   │   │   └── token-rotation.test.ts
+│   │   └── tsconfig.json
+│   └── community
+│       ├── package.json
+│       ├── src
+│       │   ├── comments
+│       │   │   └── ltree-path-generator.ts
+│       │   ├── index.ts
+│       │   └── voting
+│       │       ├── gravity-decay.ts
+│       │       └── lua-vote-engine.ts
+│       ├── tests
+│       │   ├── gravity-decay.test.ts
+│       │   ├── ltree-path.test.ts
+│       │   └── lua-vote.test.ts
+│       └── tsconfig.json
+└── tree.txt
+
+43 directories, 86 files
