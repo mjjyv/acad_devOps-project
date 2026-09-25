@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../contexts/auth-context.js';
+import { useAuth } from '../../contexts/auth-context';
 
 export default function RegisterPage() {
   const router = useRouter();

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Providers } from './providers.js';
+import { Providers } from './providers';
 
 export const metadata = {
   title: 'Acad Community Platform',

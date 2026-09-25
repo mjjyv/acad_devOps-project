@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { UserProfile } from '@acad/contracts';
-import { webAuth } from '../lib/auth-client.js';
+import { webAuth } from '../lib/auth-client';
 
 interface AuthContextType {
   user: UserProfile | null;

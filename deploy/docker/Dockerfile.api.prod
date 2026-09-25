@@ -26,8 +26,8 @@ COPY packages/ ./packages/
 COPY services/ ./services/
 COPY apps/api/ ./apps/api/
 
-# Biên dịch TypeScript sang JavaScript
-RUN pnpm --filter @acad/api run build
+# Biên dịch TypeScript sang JavaScript (bao gồm cả dependencies)
+RUN pnpm --filter @acad/api... run build
 
 # Stage 2: Production Minimal Runner
 FROM node:24-alpine AS runner
@@ -47,6 +47,7 @@ COPY --from=builder /app/packages ./packages
 COPY --from=builder /app/services ./services
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
+COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
 
 USER appuser
 EXPOSE 8080

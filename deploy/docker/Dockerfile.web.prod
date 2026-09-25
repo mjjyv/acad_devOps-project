@@ -30,7 +30,7 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-RUN pnpm --filter @acad/web run build && mkdir -p apps/web/public
+RUN pnpm --filter @acad/web... run build && mkdir -p apps/web/public
 
 # Stage 3: Minimal Production Runner
 FROM node:24-alpine AS runner
