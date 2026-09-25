@@ -1,0 +1,86 @@
+:root {
+  --color-canvas: #F5EFE3;
+  --color-surface: #FFFFFF;
+  --color-surface-subtle: #FAF7F2;
+  --color-surface-hover: #F2ECE0;
+  
+  --color-primary: #12544F;
+  --color-primary-hover: #0E3F3B;
+  --color-primary-active: #0A2F2C;
+  --color-primary-soft: #EAF2F1;
+  
+  --color-neutral-dark: #1E2328;
+  --color-neutral: #4A4A4A;
+  --color-neutral-muted: #787774;
+  --color-neutral-light: #9EA3A8;
+  
+  --color-border: #E6DFD5;
+  --color-border-subtle: rgba(74, 74, 74, 0.08);
+  --color-border-strong: #D5CCC0;
+
+  --color-pastel-teal: #EAF2F1;
+  --color-pastel-teal-text: #12544F;
+  --color-pastel-red: #FDEBEC;
+  --color-pastel-red-text: #9F2F2D;
+  --color-pastel-green: #EDF7ED;
+  --color-pastel-green-text: #1E4620;
+  --color-pastel-amber: #FDF6E2;
+  --color-pastel-amber-text: #8C6514;
+  --color-pastel-blue: #EBF4FC;
+  --color-pastel-blue-text: #1B4F72;
+
+  --font-sans: 'SF Pro Display', 'Geist Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --font-mono: 'Geist Mono', 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+  --font-serif: 'Lyon Text', 'Newsreader', 'Playfair Display', Georgia, serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background-color: var(--color-canvas);
+  color: var(--color-neutral);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input, textarea, select {
+  font-family: inherit;
+}
+
+::selection {
+  background-color: #D3E7E5;
+  color: #12544F;
+}
+
+/* Custom minimal scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D8D0C4;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #BFB5A5;
+}

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { Suspense, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../contexts/auth-context';
 
@@ -33,42 +34,122 @@ function LoginForm() {
   };
 
   return (
-    <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: '#f8fafc', padding: '1rem' }}>
-      <div style={{ maxWidth: '420px', width: '100%', background: '#1e293b', padding: '2rem', borderRadius: '12px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)', border: '1px solid #334155' }}>
-        <h1 style={{ fontSize: '1.75rem', fontWeight: 'bold', marginBottom: '0.5rem', textAlign: 'center' }}>Đăng nhập</h1>
-        <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '1.5rem', textAlign: 'center' }}>
-          Cộng đồng học tập & phát triển kỹ nghệ IT / DevOps
-        </p>
+    <main
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F5EFE3',
+        color: '#4A4A4A',
+        padding: '1.5rem',
+      }}
+    >
+      <div
+        style={{
+          maxWidth: '400px',
+          width: '100%',
+          backgroundColor: '#FFFFFF',
+          padding: '2.5rem 2rem',
+          borderRadius: '8px',
+          border: '1px solid #E6DFD5',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+        }}
+      >
+        {/* LOGO */}
+        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <div
+            style={{
+              width: '36px',
+              height: '36px',
+              backgroundColor: '#12544F',
+              color: '#F5EFE3',
+              borderRadius: '6px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 800,
+              fontSize: '1.1rem',
+              letterSpacing: '-0.03em',
+              marginBottom: '0.75rem',
+            }}
+          >
+            A
+          </div>
+          <h1
+            style={{
+              fontSize: '1.5rem',
+              fontWeight: 800,
+              margin: '0 0 0.35rem 0',
+              color: '#1E2328',
+              letterSpacing: '-0.02em',
+            }}
+          >
+            Đăng Nhập
+          </h1>
+          <p style={{ color: '#787774', fontSize: '0.82rem', margin: 0 }}>
+            Cộng đồng kỹ nghệ DevOps & Kiến trúc hệ thống
+          </p>
+        </div>
 
         {reason === 'session_expired' && (
-          <div style={{ padding: '0.75rem', background: '#fef08a', color: '#854d0e', borderRadius: '6px', fontSize: '0.875rem', marginBottom: '1rem' }}>
-            Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.
+          <div
+            style={{
+              padding: '0.65rem 0.85rem',
+              backgroundColor: '#FDF6E2',
+              color: '#8C6514',
+              borderRadius: '6px',
+              border: '1px solid #F5E5BE',
+              fontSize: '0.8rem',
+              marginBottom: '1rem',
+            }}
+          >
+            Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.
           </div>
         )}
 
         {(localError || authError) && (
-          <div style={{ padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: '6px', fontSize: '0.875rem', marginBottom: '1rem' }}>
+          <div
+            style={{
+              padding: '0.65rem 0.85rem',
+              backgroundColor: '#FDEBEC',
+              color: '#9F2F2D',
+              borderRadius: '6px',
+              border: '1px solid #FAD1D4',
+              fontSize: '0.8rem',
+              marginBottom: '1rem',
+            }}
+          >
             {localError || authError}
           </div>
         )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.375rem', color: '#cbd5e1' }}>
-              Email hoặc Tên người dùng
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem', color: '#1E2328' }}>
+              Email hoặc Tên đăng nhập
             </label>
             <input
               type="text"
               value={loginInput}
               onChange={(e) => setLoginInput(e.target.value)}
-              placeholder="name@example.com hoặc username"
-              style={{ width: '100%', padding: '0.625rem', borderRadius: '6px', border: '1px solid #475569', background: '#0f172a', color: '#f8fafc', boxSizing: 'border-box' }}
+              placeholder="kỹ sư@example.com hoặc username"
+              style={{
+                width: '100%',
+                padding: '0.55rem 0.75rem',
+                borderRadius: '6px',
+                border: '1px solid #E6DFD5',
+                backgroundColor: '#FAF7F2',
+                color: '#1E2328',
+                fontSize: '0.85rem',
+                outline: 'none',
+              }}
               required
             />
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.375rem', color: '#cbd5e1' }}>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem', color: '#1E2328' }}>
               Mật khẩu
             </label>
             <input
@@ -76,7 +157,16 @@ function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              style={{ width: '100%', padding: '0.625rem', borderRadius: '6px', border: '1px solid #475569', background: '#0f172a', color: '#f8fafc', boxSizing: 'border-box' }}
+              style={{
+                width: '100%',
+                padding: '0.55rem 0.75rem',
+                borderRadius: '6px',
+                border: '1px solid #E6DFD5',
+                backgroundColor: '#FAF7F2',
+                color: '#1E2328',
+                fontSize: '0.85rem',
+                outline: 'none',
+              }}
               required
             />
           </div>
@@ -85,26 +175,26 @@ function LoginForm() {
             type="submit"
             disabled={isLoading}
             style={{
-              padding: '0.75rem',
-              background: isLoading ? '#64748b' : '#3b82f6',
-              color: 'white',
+              padding: '0.65rem',
+              backgroundColor: isLoading ? '#787774' : '#12544F',
+              color: '#FFFFFF',
               border: 'none',
               borderRadius: '6px',
-              fontWeight: '600',
+              fontWeight: 600,
+              fontSize: '0.85rem',
               cursor: isLoading ? 'not-allowed' : 'pointer',
-              marginTop: '0.5rem',
-              transition: 'background 0.2s',
+              marginTop: '0.35rem',
             }}
           >
             {isLoading ? 'Đang xác thực...' : 'Đăng nhập'}
           </button>
         </form>
 
-        <p style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.875rem', color: '#94a3b8' }}>
+        <p style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.82rem', color: '#787774', margin: '1.5rem 0 0 0' }}>
           Chưa có tài khoản?{' '}
-          <a href="/register" style={{ color: '#38bdf8', textDecoration: 'none' }}>
-            Đăng ký ngay
-          </a>
+          <Link href="/register" style={{ color: '#12544F', fontWeight: 600, textDecoration: 'none' }}>
+            Tham gia ngay
+          </Link>
         </p>
       </div>
     </main>
@@ -113,7 +203,13 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: '#f8fafc' }}>Đang tải...</div>}>
+    <Suspense
+      fallback={
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5EFE3', color: '#787774' }}>
+          Đang nạp...
+        </div>
+      }
+    >
       <LoginForm />
     </Suspense>
   );

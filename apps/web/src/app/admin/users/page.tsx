@@ -42,7 +42,7 @@ export default function AdminUsersDashboardPage() {
       setPage(usersData.page);
       setTotalPages(usersData.totalPages || 1);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Không thể tải dữ liệu quản trị');
+      setErrorMessage(err.message || 'Không thể nạp dữ liệu quản trị');
     } finally {
       setLoading(false);
     }
@@ -58,48 +58,49 @@ export default function AdminUsersDashboardPage() {
   };
 
   const handleRoleChange = async (userId: string, newRole: UserRole) => {
+    if (!confirm(`Xác nhận đổi vai trò người dùng thành [${newRole}]?`)) return;
+
     try {
       setActionLoadingId(userId);
       await webAuth.adminUpdateRole(userId, newRole);
-      setActionMessage(`Đã cập nhật vai trò thành ${newRole} và thu hồi phiên cũ.`);
+      setActionMessage(`Đã cập nhật vai trò người dùng thành ${newRole}`);
       await loadData();
-      setTimeout(() => setActionMessage(null), 4000);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Cập nhật vai trò thất bại');
+      setErrorMessage(err.message || 'Lỗi khi cập nhật vai trò');
     } finally {
       setActionLoadingId(null);
     }
   };
 
-  const handleToggleStatus = async (user: UserProfile) => {
-    const newStatus: UserStatus = user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
-    const actionText = newStatus === 'SUSPENDED' ? 'khóa tài khoản' : 'kích hoạt lại tài khoản';
+  const handleStatusToggle = async (userId: string, currentStatus: UserStatus) => {
+    const nextStatus: UserStatus = currentStatus === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
+    const actionName = nextStatus === 'SUSPENDED' ? 'TẠM KHÓA' : 'MỞ KHÓA';
 
-    if (!confirm(`Bạn có chắc chắn muốn ${actionText} của ${user.username}?`)) return;
+    if (!confirm(`Xác nhận ${actionName} tài khoản này?`)) return;
 
     try {
-      setActionLoadingId(user.id);
-      await webAuth.adminUpdateStatus(user.id, newStatus);
-      setActionMessage(`Đã ${actionText} thành công cho ${user.username}.`);
+      setActionLoadingId(userId);
+      await webAuth.adminUpdateStatus(userId, nextStatus);
+      setActionMessage(`Đã ${actionName.toLowerCase()} tài khoản thành công`);
       await loadData();
-      setTimeout(() => setActionMessage(null), 4000);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Cập nhật trạng thái thất bại');
+      setErrorMessage(err.message || 'Lỗi khi cập nhật trạng thái');
     } finally {
       setActionLoadingId(null);
     }
   };
 
-  const handleRevokeSessions = async (user: UserProfile) => {
-    if (!confirm(`Cưỡng chế đăng xuất tất cả thiết bị của ${user.username}?`)) return;
+  const handleRevokeSessions = async (userId: string, username: string) => {
+    if (!confirm(`Xác nhận thu hồi toàn bộ phiên đăng nhập của [${username}]? Người dùng này sẽ bị đăng xuất khỏi mọi thiết bị.`)) {
+      return;
+    }
 
     try {
-      setActionLoadingId(user.id);
-      await webAuth.adminRevokeUserSessions(user.id);
-      setActionMessage(`Đã thu hồi toàn bộ phiên đăng nhập của ${user.username}.`);
-      setTimeout(() => setActionMessage(null), 4000);
+      setActionLoadingId(userId);
+      await webAuth.adminRevokeUserSessions(userId);
+      setActionMessage(`Đã thu hồi toàn bộ phiên làm việc của [${username}]`);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Thu hồi phiên thất bại');
+      setErrorMessage(err.message || 'Lỗi khi thu hồi phiên');
     } finally {
       setActionLoadingId(null);
     }
@@ -107,83 +108,129 @@ export default function AdminUsersDashboardPage() {
 
   return (
     <div>
-      {/* HEADER */}
+      {/* PAGE TITLE & HEADER */}
       <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '2rem', fontWeight: 800, margin: '0 0 0.5rem 0', color: '#f8fafc' }}>
-          🛡️ Quản Lý Người Dùng & Phân Quyền Hệ Thống
+        <h1
+          style={{
+            fontSize: '1.75rem',
+            fontWeight: 800,
+            margin: '0 0 0.4rem 0',
+            color: '#1E2328',
+            letterSpacing: '-0.025em',
+          }}
+        >
+          Quản Trị Người Dùng & Thẩm Quyền Hệ Thống
         </h1>
-        <p style={{ color: '#94a3b8', fontSize: '0.95rem', margin: 0 }}>
-          Theo dõi tài khoản người dùng, thăng cấp/hạ cấp vai trò, khóa tài khoản vi phạm và xử lý sự cố an ninh.
+        <p style={{ color: '#787774', margin: 0, fontSize: '0.875rem' }}>
+          Giám sát tài khoản kỹ sư, phân quyền truy cập RBAC/ABAC và kiểm soát an ninh phiên đăng nhập.
         </p>
       </div>
 
-      {/* KPI METRIC CARDS */}
+      {/* 4 BENTO KPI CARDS (MINIMALIST EDITORIAL) */}
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '1.25rem',
-          marginBottom: '2rem',
+          gap: '1rem',
+          marginBottom: '1.75rem',
         }}
       >
-        <div style={{ padding: '1.25rem', backgroundColor: '#131926', borderRadius: '10px', border: '1px solid #1e293b' }}>
-          <div style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600, marginBottom: '0.5rem' }}>
-            TỔNG SỐ THÀNH VIÊN
+        <div style={{ padding: '1.25rem', backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #E6DFD5' }}>
+          <div style={{ fontSize: '0.7rem', color: '#787774', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>
+            Tổng Người Dùng
           </div>
-          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#f8fafc' }}>
+          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#12544F', fontFamily: 'var(--font-mono)' }}>
             {stats ? stats.totalUsers : '—'}
           </div>
         </div>
 
-        <div style={{ padding: '1.25rem', backgroundColor: '#131926', borderRadius: '10px', border: '1px solid #1e293b' }}>
-          <div style={{ fontSize: '0.8rem', color: '#6ee7b7', fontWeight: 600, marginBottom: '0.5rem' }}>
-            ĐANG HOẠT ĐỘNG (ACTIVE)
+        <div style={{ padding: '1.25rem', backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #E6DFD5' }}>
+          <div style={{ fontSize: '0.7rem', color: '#1E4620', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>
+            Đang Hoạt Động (Active)
           </div>
-          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#10b981' }}>
+          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#1E4620', fontFamily: 'var(--font-mono)' }}>
             {stats ? stats.activeUsers : '—'}
           </div>
         </div>
 
-        <div style={{ padding: '1.25rem', backgroundColor: '#131926', borderRadius: '10px', border: '1px solid #1e293b' }}>
-          <div style={{ fontSize: '0.8rem', color: '#fca5a5', fontWeight: 600, marginBottom: '0.5rem' }}>
-            TẠM KHÓA (SUSPENDED)
+        <div style={{ padding: '1.25rem', backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #E6DFD5' }}>
+          <div style={{ fontSize: '0.7rem', color: '#9F2F2D', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>
+            Tạm Khóa (Suspended)
           </div>
-          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#ef4444' }}>
+          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#9F2F2D', fontFamily: 'var(--font-mono)' }}>
             {stats ? stats.suspendedUsers : '—'}
           </div>
         </div>
 
-        <div style={{ padding: '1.25rem', backgroundColor: '#131926', borderRadius: '10px', border: '1px solid #1e293b' }}>
-          <div style={{ fontSize: '0.8rem', color: '#fde047', fontWeight: 600, marginBottom: '0.5rem' }}>
-            QUẢN TRỊ / ĐIỀU HÀNH
+        <div style={{ padding: '1.25rem', backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #E6DFD5' }}>
+          <div style={{ fontSize: '0.7rem', color: '#8C6514', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>
+            Quản Trị / Điều Hành
           </div>
-          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#eab308' }}>
+          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#8C6514', fontFamily: 'var(--font-mono)' }}>
             {stats ? (stats.adminUsers + stats.moderatorUsers) : '—'}
           </div>
         </div>
       </div>
 
-      {/* ALERTS */}
+      {/* FEEDBACK ALERTS */}
       {actionMessage && (
-        <div style={{ padding: '0.85rem 1.25rem', backgroundColor: '#064e3b', color: '#6ee7b7', borderRadius: '8px', border: '1px solid #059669', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-          ✓ {actionMessage}
+        <div
+          style={{
+            padding: '0.75rem 1rem',
+            backgroundColor: '#EDF7ED',
+            color: '#1E4620',
+            borderRadius: '6px',
+            border: '1px solid #C8E6C9',
+            marginBottom: '1.25rem',
+            fontSize: '0.85rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <span>✓ {actionMessage}</span>
+          <button
+            onClick={() => setActionMessage(null)}
+            style={{ background: 'none', border: 'none', color: '#1E4620', cursor: 'pointer', fontWeight: 700 }}
+          >
+            ✕
+          </button>
         </div>
       )}
 
       {errorMessage && (
-        <div style={{ padding: '0.85rem 1.25rem', backgroundColor: '#450a0a', color: '#fca5a5', borderRadius: '8px', border: '1px solid #ef4444', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-          ✕ {errorMessage}
+        <div
+          style={{
+            padding: '0.75rem 1rem',
+            backgroundColor: '#FDEBEC',
+            color: '#9F2F2D',
+            borderRadius: '6px',
+            border: '1px solid #FAD1D4',
+            marginBottom: '1.25rem',
+            fontSize: '0.85rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <span>✕ {errorMessage}</span>
+          <button
+            onClick={() => setErrorMessage(null)}
+            style={{ background: 'none', border: 'none', color: '#9F2F2D', cursor: 'pointer', fontWeight: 700 }}
+          >
+            ✕
+          </button>
         </div>
       )}
 
       {/* SEARCH & FILTERS BAR */}
       <div
         style={{
-          backgroundColor: '#131926',
-          padding: '1.25rem',
-          borderRadius: '10px',
-          border: '1px solid #1e293b',
-          marginBottom: '1.5rem',
+          backgroundColor: '#FFFFFF',
+          padding: '1rem 1.25rem',
+          borderRadius: '8px',
+          border: '1px solid #E6DFD5',
+          marginBottom: '1.25rem',
           display: 'flex',
           flexWrap: 'wrap',
           gap: '1rem',
@@ -199,25 +246,25 @@ export default function AdminUsersDashboardPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
               flex: '1',
-              padding: '0.6rem 1rem',
-              backgroundColor: '#0b0f17',
-              border: '1px solid #334155',
+              padding: '0.5rem 0.85rem',
+              backgroundColor: '#FAF7F2',
+              border: '1px solid #E6DFD5',
               borderRadius: '6px',
-              color: '#f8fafc',
-              fontSize: '0.9rem',
+              color: '#1E2328',
+              fontSize: '0.85rem',
               outline: 'none',
             }}
           />
           <button
             type="submit"
             style={{
-              padding: '0.6rem 1.2rem',
-              backgroundColor: '#2563eb',
-              color: '#ffffff',
+              padding: '0.5rem 1.15rem',
+              backgroundColor: '#12544F',
+              color: '#FFFFFF',
               border: 'none',
               borderRadius: '6px',
               fontWeight: 600,
-              fontSize: '0.875rem',
+              fontSize: '0.82rem',
               cursor: 'pointer',
             }}
           >
@@ -230,20 +277,20 @@ export default function AdminUsersDashboardPage() {
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
             style={{
-              padding: '0.6rem 0.9rem',
-              backgroundColor: '#0b0f17',
-              border: '1px solid #334155',
+              padding: '0.5rem 0.75rem',
+              backgroundColor: '#FAF7F2',
+              border: '1px solid #E6DFD5',
               borderRadius: '6px',
-              color: '#f8fafc',
-              fontSize: '0.875rem',
+              color: '#4A4A4A',
+              fontSize: '0.82rem',
               outline: 'none',
               cursor: 'pointer',
             }}
           >
             <option value="">Tất cả Vai trò</option>
             <option value="USER">USER (Thành viên)</option>
-            <option value="SPACE_MOD">SPACE_MOD (Điều hành Không gian)</option>
-            <option value="GLOBAL_MOD">GLOBAL_MOD (Điều hành Toàn cục)</option>
+            <option value="SPACE_MOD">SPACE_MOD (Điều hành Space)</option>
+            <option value="GLOBAL_MOD">GLOBAL_MOD (Điều hành Toàn diện)</option>
             <option value="ADMIN">ADMIN (Quản trị viên)</option>
           </select>
 
@@ -251,12 +298,12 @@ export default function AdminUsersDashboardPage() {
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             style={{
-              padding: '0.6rem 0.9rem',
-              backgroundColor: '#0b0f17',
-              border: '1px solid #334155',
+              padding: '0.5rem 0.75rem',
+              backgroundColor: '#FAF7F2',
+              border: '1px solid #E6DFD5',
               borderRadius: '6px',
-              color: '#f8fafc',
-              fontSize: '0.875rem',
+              color: '#4A4A4A',
+              fontSize: '0.82rem',
               outline: 'none',
               cursor: 'pointer',
             }}
@@ -264,203 +311,265 @@ export default function AdminUsersDashboardPage() {
             <option value="">Tất cả Trạng thái</option>
             <option value="ACTIVE">ACTIVE (Hoạt động)</option>
             <option value="SUSPENDED">SUSPENDED (Tạm khóa)</option>
+            <option value="SHADOWBANNED">SHADOWBANNED (Hạn chế ngầm)</option>
+            <option value="DELETED">DELETED (Đã xóa)</option>
           </select>
         </div>
       </div>
 
-      {/* USERS TABLE */}
-      <div style={{ backgroundColor: '#131926', borderRadius: '10px', border: '1px solid #1e293b', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+      {/* DATA TABLE */}
+      <div
+        style={{
+          backgroundColor: '#FFFFFF',
+          borderRadius: '8px',
+          border: '1px solid #E6DFD5',
+          overflowX: 'auto',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+        }}
+      >
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
           <thead>
-            <tr style={{ backgroundColor: '#1a2234', color: '#94a3b8', borderBottom: '1px solid #1e293b' }}>
-              <th style={{ padding: '0.85rem 1.25rem' }}>Người dùng</th>
-              <th style={{ padding: '0.85rem 1rem' }}>Karma</th>
-              <th style={{ padding: '0.85rem 1rem' }}>Vai trò</th>
-              <th style={{ padding: '0.85rem 1rem' }}>Trạng thái</th>
-              <th style={{ padding: '0.85rem 1rem' }}>Ngày tham gia</th>
-              <th style={{ padding: '0.85rem 1.25rem', textAlign: 'right' }}>Hành động</th>
+            <tr style={{ backgroundColor: '#FAF7F2', borderBottom: '1px solid #E6DFD5', color: '#787774' }}>
+              <th style={{ padding: '0.75rem 1rem', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Người Dùng</th>
+              <th style={{ padding: '0.75rem 1rem', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Email</th>
+              <th style={{ padding: '0.75rem 1rem', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Vai Trò (Role)</th>
+              <th style={{ padding: '0.75rem 1rem', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Trạng Thái</th>
+              <th style={{ padding: '0.75rem 1rem', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Karma</th>
+              <th style={{ padding: '0.75rem 1rem', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'right' }}>Thao Tác Quản Trị</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-                  Đang nạp dữ liệu...
+                <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: '#787774' }}>
+                  Đang truy xuất danh sách người dùng...
                 </td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-                  Không tìm thấy người dùng phù hợp.
+                <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: '#787774' }}>
+                  Không tìm thấy người dùng nào phù hợp với bộ lọc tìm kiếm.
                 </td>
               </tr>
             ) : (
-              users.map((u) => (
-                <tr key={u.id} style={{ borderBottom: '1px solid #1e293b' }}>
-                  {/* USER INFO */}
-                  <td style={{ padding: '1rem 1.25rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <div
+              users.map((u) => {
+                const isOperating = actionLoadingId === u.id;
+                return (
+                  <tr
+                    key={u.id}
+                    style={{
+                      borderBottom: '1px solid #F0EAE1',
+                      transition: 'background-color 0.15s',
+                    }}
+                  >
+                    {/* USERNAME & AVATAR */}
+                    <td style={{ padding: '0.85rem 1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                        <div
+                          style={{
+                            width: '28px',
+                            height: '28px',
+                            borderRadius: '4px',
+                            backgroundColor: u.role === 'ADMIN' ? '#12544F' : '#FAF7F2',
+                            color: u.role === 'ADMIN' ? '#FFFFFF' : '#4A4A4A',
+                            border: u.role === 'ADMIN' ? 'none' : '1px solid #E6DFD5',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                          }}
+                        >
+                          {u.username.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 600, color: '#1E2328' }}>{u.username}</div>
+                          <div style={{ fontSize: '0.7rem', color: '#9EA3A8', fontFamily: 'var(--font-mono)' }}>{u.id.slice(0, 8)}...</div>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* EMAIL */}
+                    <td style={{ padding: '0.85rem 1rem', color: '#4A4A4A' }}>{u.email}</td>
+
+                    {/* ROLE BADGE */}
+                    <td style={{ padding: '0.85rem 1rem' }}>
+                      <span
                         style={{
-                          width: '36px',
-                          height: '36px',
-                          borderRadius: '50%',
-                          backgroundColor: u.role === 'ADMIN' ? '#dc2626' : '#2563eb',
-                          color: '#ffffff',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '0.9rem',
+                          padding: '0.15rem 0.55rem',
+                          borderRadius: '4px',
+                          fontSize: '0.72rem',
                           fontWeight: 700,
+                          fontFamily: 'var(--font-mono)',
+                          backgroundColor:
+                            u.role === 'ADMIN'
+                              ? '#EAF2F1'
+                              : u.role === 'SPACE_MOD' || u.role === 'GLOBAL_MOD'
+                              ? '#FDF6E2'
+                              : '#FAF7F2',
+                          color:
+                            u.role === 'ADMIN'
+                              ? '#12544F'
+                              : u.role === 'SPACE_MOD' || u.role === 'GLOBAL_MOD'
+                              ? '#8C6514'
+                              : '#4A4A4A',
+                          border: '1px solid',
+                          borderColor:
+                            u.role === 'ADMIN'
+                              ? 'rgba(18,84,79,0.2)'
+                              : u.role === 'SPACE_MOD' || u.role === 'GLOBAL_MOD'
+                              ? 'rgba(140,101,20,0.2)'
+                              : '#E6DFD5',
                         }}
                       >
-                        {u.username.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: 600, color: '#f8fafc' }}>{u.username}</div>
-                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{u.email}</div>
-                      </div>
-                    </div>
-                  </td>
+                        {u.role}
+                      </span>
+                    </td>
 
-                  {/* KARMA */}
-                  <td style={{ padding: '1rem' }}>
-                    <span style={{ padding: '0.15rem 0.5rem', backgroundColor: '#064e3b', color: '#6ee7b7', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600 }}>
-                      ⭐ {u.karmaScore}
-                    </span>
-                  </td>
-
-                  {/* ROLE SELECT */}
-                  <td style={{ padding: '1rem' }}>
-                    <select
-                      value={u.role}
-                      disabled={actionLoadingId === u.id}
-                      onChange={(e) => handleRoleChange(u.id, e.target.value as UserRole)}
-                      style={{
-                        padding: '0.35rem 0.6rem',
-                        backgroundColor: '#0b0f17',
-                        border: '1px solid #334155',
-                        borderRadius: '6px',
-                        color: u.role === 'ADMIN' ? '#f87171' : u.role.includes('MOD') ? '#fde047' : '#94a3b8',
-                        fontSize: '0.8rem',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <option value="USER">USER</option>
-                      <option value="SPACE_MOD">SPACE_MOD</option>
-                      <option value="GLOBAL_MOD">GLOBAL_MOD</option>
-                      <option value="ADMIN">ADMIN</option>
-                    </select>
-                  </td>
-
-                  {/* STATUS BADGE */}
-                  <td style={{ padding: '1rem' }}>
-                    <span
-                      style={{
-                        padding: '0.2rem 0.6rem',
-                        borderRadius: '9999px',
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        backgroundColor: u.status === 'ACTIVE' ? '#065f46' : '#7f1d1d',
-                        color: u.status === 'ACTIVE' ? '#a7f3d0' : '#fca5a5',
-                      }}
-                    >
-                      {u.status}
-                    </span>
-                  </td>
-
-                  {/* JOIN DATE */}
-                  <td style={{ padding: '1rem', color: '#94a3b8', fontSize: '0.8rem' }}>
-                    {new Date(u.createdAt).toLocaleDateString('vi-VN')}
-                  </td>
-
-                  {/* ACTIONS */}
-                  <td style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                      <button
-                        onClick={() => handleToggleStatus(u)}
-                        disabled={actionLoadingId === u.id}
+                    {/* STATUS BADGE */}
+                    <td style={{ padding: '0.85rem 1rem' }}>
+                      <span
                         style={{
-                          padding: '0.35rem 0.75rem',
-                          borderRadius: '6px',
-                          backgroundColor: u.status === 'ACTIVE' ? '#450a0a' : '#064e3b',
-                          color: u.status === 'ACTIVE' ? '#fca5a5' : '#6ee7b7',
-                          border: `1px solid ${u.status === 'ACTIVE' ? '#ef4444' : '#10b981'}`,
-                          fontSize: '0.75rem',
-                          fontWeight: 600,
-                          cursor: 'pointer',
+                          padding: '0.15rem 0.55rem',
+                          borderRadius: '4px',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          backgroundColor:
+                            u.status === 'ACTIVE'
+                              ? '#EDF7ED'
+                              : u.status === 'SUSPENDED'
+                              ? '#FDEBEC'
+                              : '#FAF7F2',
+                          color:
+                            u.status === 'ACTIVE'
+                              ? '#1E4620'
+                              : u.status === 'SUSPENDED'
+                              ? '#9F2F2D'
+                              : '#787774',
                         }}
                       >
-                        {u.status === 'ACTIVE' ? 'Khóa' : 'Kích hoạt'}
-                      </button>
+                        {u.status}
+                      </span>
+                    </td>
 
-                      <button
-                        onClick={() => handleRevokeSessions(u)}
-                        disabled={actionLoadingId === u.id}
-                        title="Thu hồi toàn bộ phiên đăng nhập"
-                        style={{
-                          padding: '0.35rem 0.6rem',
-                          borderRadius: '6px',
-                          backgroundColor: '#1e293b',
-                          color: '#94a3b8',
-                          border: '1px solid #334155',
-                          fontSize: '0.75rem',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Đăng xuất
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+                    {/* KARMA */}
+                    <td style={{ padding: '0.85rem 1rem', fontWeight: 600, color: '#12544F', fontFamily: 'var(--font-mono)' }}>
+                      {u.karmaScore}
+                    </td>
+
+                    {/* ACTIONS */}
+                    <td style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>
+                      <div style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }}>
+                        {/* ROLE SELECT */}
+                        <select
+                          disabled={isOperating}
+                          value={u.role}
+                          onChange={(e) => handleRoleChange(u.id, e.target.value as UserRole)}
+                          style={{
+                            padding: '0.3rem 0.5rem',
+                            backgroundColor: '#FAF7F2',
+                            border: '1px solid #E6DFD5',
+                            borderRadius: '4px',
+                            color: '#1E2328',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <option value="USER">USER</option>
+                          <option value="SPACE_MOD">SPACE_MOD</option>
+                          <option value="GLOBAL_MOD">GLOBAL_MOD</option>
+                          <option value="ADMIN">ADMIN</option>
+                        </select>
+
+                        {/* STATUS TOGGLE */}
+                        <button
+                          disabled={isOperating}
+                          onClick={() => handleStatusToggle(u.id, u.status)}
+                          style={{
+                            padding: '0.3rem 0.6rem',
+                            borderRadius: '4px',
+                            border: '1px solid',
+                            borderColor: u.status === 'ACTIVE' ? '#FAD1D4' : '#C8E6C9',
+                            backgroundColor: u.status === 'ACTIVE' ? '#FDEBEC' : '#EDF7ED',
+                            color: u.status === 'ACTIVE' ? '#9F2F2D' : '#1E4620',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {u.status === 'ACTIVE' ? 'Khóa' : 'Mở'}
+                        </button>
+
+                        {/* REVOKE SESSIONS */}
+                        <button
+                          disabled={isOperating}
+                          onClick={() => handleRevokeSessions(u.id, u.username)}
+                          title="Thu hồi toàn bộ phiên đăng nhập"
+                          style={{
+                            padding: '0.3rem 0.55rem',
+                            borderRadius: '4px',
+                            border: '1px solid #E6DFD5',
+                            backgroundColor: '#FAF7F2',
+                            color: '#787774',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Đăng xuất
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
 
-        {/* PAGINATION */}
+        {/* PAGINATION FOOTER */}
         <div
           style={{
-            padding: '1rem 1.25rem',
-            borderTop: '1px solid #1e293b',
+            padding: '0.85rem 1.25rem',
+            borderTop: '1px solid #E6DFD5',
+            backgroundColor: '#FAF7F2',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            fontSize: '0.85rem',
-            color: '#94a3b8',
+            fontSize: '0.82rem',
+            color: '#787774',
           }}
         >
           <div>
-            Hiển thị <strong>{users.length}</strong> trên tổng số <strong>{total}</strong> thành viên
+            Trang <strong>{page}</strong> / <strong>{totalPages}</strong> (Tổng cộng <strong>{total}</strong> tài khoản)
           </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button
-              onClick={() => loadData(page - 1)}
               disabled={page <= 1 || loading}
+              onClick={() => loadData(page - 1)}
               style={{
-                padding: '0.4rem 0.8rem',
-                backgroundColor: '#1e293b',
-                color: page <= 1 ? '#475569' : '#f8fafc',
-                border: '1px solid #334155',
-                borderRadius: '6px',
+                padding: '0.35rem 0.75rem',
+                borderRadius: '4px',
+                border: '1px solid #E6DFD5',
+                backgroundColor: '#FFFFFF',
+                color: page <= 1 ? '#D5CCC0' : '#4A4A4A',
                 cursor: page <= 1 ? 'not-allowed' : 'pointer',
+                fontSize: '0.8rem',
               }}
             >
               Trang trước
             </button>
-            <span>Trang {page} / {totalPages}</span>
             <button
-              onClick={() => loadData(page + 1)}
               disabled={page >= totalPages || loading}
+              onClick={() => loadData(page + 1)}
               style={{
-                padding: '0.4rem 0.8rem',
-                backgroundColor: '#1e293b',
-                color: page >= totalPages ? '#475569' : '#f8fafc',
-                border: '1px solid #334155',
-                borderRadius: '6px',
+                padding: '0.35rem 0.75rem',
+                borderRadius: '4px',
+                border: '1px solid #E6DFD5',
+                backgroundColor: '#FFFFFF',
+                color: page >= totalPages ? '#D5CCC0' : '#4A4A4A',
                 cursor: page >= totalPages ? 'not-allowed' : 'pointer',
+                fontSize: '0.8rem',
               }}
             >
               Trang sau
