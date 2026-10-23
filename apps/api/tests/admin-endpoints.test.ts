@@ -24,7 +24,7 @@ describe('Admin Endpoints HTTP Integration Tests', () => {
     const adminUser = await authModule.userRepo.create({
       username: 'admin_master',
       email: 'admin@acad.community',
-      passwordHash: 'hashed_password',
+      passwordHash: '$2a$12$x.o5SFdu7BsbmLbE5d2BE.bdT1uMgYNFXm3uwfzSTXbI9uX0PsvAq', // Admin@123
       role: 'ADMIN',
       status: 'ACTIVE',
       karmaScore: 9999,
@@ -45,7 +45,7 @@ describe('Admin Endpoints HTTP Integration Tests', () => {
     const normalUser = await authModule.userRepo.create({
       username: 'normal_coder',
       email: 'coder@acad.community',
-      passwordHash: 'hashed_password',
+      passwordHash: '$2a$12$t4dqqehnfJQhfd27WJuBEOr0E5kAZoQ3njq2bv6xja4ofJviyf7bS', // Coder@123
       role: 'USER',
       status: 'ACTIVE',
       karmaScore: 10,

@@ -60,6 +60,7 @@ export interface IUserRepository {
   updateRole(id: string, role: UserRole): Promise<UserRecord>;
   updateStatus(id: string, status: UserStatus): Promise<UserRecord>;
   getStats(): Promise<UserStatsResult>;
+  updateKarma(id: string, delta: number): Promise<number>;
 }
 
 export class InMemoryUserRepository implements IUserRepository {
@@ -135,6 +136,15 @@ export class InMemoryUserRepository implements IUserRepository {
     user.updatedAt = new Date();
     this.users.set(id, user);
     return { ...user };
+  }
+
+  public async updateKarma(id: string, delta: number): Promise<number> {
+    const user = this.users.get(id);
+    if (!user) throw new Error(`Người dùng ID ${id} không tồn tại`);
+    user.karmaScore = (user.karmaScore || 0) + delta;
+    user.updatedAt = new Date();
+    this.users.set(id, user);
+    return user.karmaScore;
   }
 
   public async getStats(): Promise<UserStatsResult> {

@@ -38,10 +38,12 @@ export class RedisSessionStore implements ISessionStore {
       this.client = clientOrUrlOrOptions;
     } else if (typeof clientOrUrlOrOptions === 'string') {
       const sanitized = sanitizeRedisUrl(clientOrUrlOrOptions);
+      const isTls = sanitized.startsWith('rediss://');
       this.client = new Redis(sanitized, {
         lazyConnect: true,
         enableOfflineQueue: true,
         maxRetriesPerRequest: 3,
+        ...(isTls ? { tls: { rejectUnauthorized: false } } : {}),
       });
     } else if (clientOrUrlOrOptions) {
       this.client = new Redis({
@@ -52,10 +54,12 @@ export class RedisSessionStore implements ISessionStore {
       });
     } else {
       const sanitized = sanitizeRedisUrl(process.env.REDIS_URL || 'redis://localhost:6379');
+      const isTls = sanitized.startsWith('rediss://');
       this.client = new Redis(sanitized, {
         lazyConnect: true,
         enableOfflineQueue: true,
         maxRetriesPerRequest: 3,
+        ...(isTls ? { tls: { rejectUnauthorized: false } } : {}),
       });
     }
 
