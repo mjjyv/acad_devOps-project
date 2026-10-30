@@ -3,6 +3,7 @@ dist/
 build/
 .turbo/
 .next/
+.next_stale_docker/
 *.log
 .env
 .env.local

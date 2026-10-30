@@ -1,22 +1,29 @@
 import { createServer, IncomingMessage, ServerResponse } from 'node:http';
 import { AuthModule, createAuthModule } from '@acad/auth-service';
+import { CommunityService, createCommunityService } from '@acad/community-service';
 import { createAuthRouter } from './routes/auth-router.js';
 import { createAdminRouter } from './routes/admin-router.js';
+import { createCommunityRouter } from './routes/community-router.js';
 
 export interface ServerInstance {
   server: ReturnType<typeof createServer>;
   port: number;
   authModule: AuthModule;
+  communityService: CommunityService;
 }
 
 export interface ApiServerOptions {
   authModule?: AuthModule;
+  communityService?: CommunityService;
 }
 
 export function createApiServer(options: ApiServerOptions = {}) {
   const authModule = options.authModule || createAuthModule();
+  const communityService = options.communityService || createCommunityService();
+
   const authRouter = createAuthRouter(authModule);
   const adminRouter = createAdminRouter(authModule);
+  const communityRouter = createCommunityRouter(communityService, authModule);
 
   const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
     const origin = req.headers.origin;
@@ -45,7 +52,12 @@ export function createApiServer(options: ApiServerOptions = {}) {
     // ENDPOINT HEALTHCHECK PHỤC VỤ DOCKER HEALTHCHECK VÀ RENDER KEEP-ALIVE
     // =========================================================================
     if (url.pathname === '/healthz' || url.pathname === '/api/v1/health') {
-      const dbHealth = (authModule.userRepo as any).getHealthStatus?.() || { type: 'unknown', isFallback: false };
+      const authDbHealth = (authModule.userRepo as any).getHealthStatus?.() || {
+        type: 'unknown',
+        isFallback: false,
+      };
+      const communityDbHealth = communityService.getHealthStatus();
+
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(
         JSON.stringify({
@@ -54,7 +66,8 @@ export function createApiServer(options: ApiServerOptions = {}) {
           version: '1.0.0',
           uptime: process.uptime(),
           timestamp: new Date().toISOString(),
-          database: dbHealth,
+          database: authDbHealth,
+          communityDatabase: communityDbHealth,
         }),
       );
       return;
@@ -76,6 +89,18 @@ export function createApiServer(options: ApiServerOptions = {}) {
       if (handled) return;
     }
 
+    // =========================================================================
+    // XỬ LÝ CÁC ROUTE CỘNG ĐỒNG (/api/v1/spaces, /api/v1/threads, /api/v1/comments)
+    // =========================================================================
+    if (
+      url.pathname.startsWith('/api/v1/spaces') ||
+      url.pathname.startsWith('/api/v1/threads') ||
+      url.pathname.startsWith('/api/v1/comments')
+    ) {
+      const handled = await communityRouter(req, res, url);
+      if (handled) return;
+    }
+
     // Default route
     if (url.pathname === '/') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -94,7 +119,7 @@ export function createApiServer(options: ApiServerOptions = {}) {
     res.end(JSON.stringify({ error: 'Endpoint không tồn tại' }));
   });
 
-  return Object.assign(server, { authModule });
+  return Object.assign(server, { authModule, communityService });
 }
 
 // Khởi chạy khi gọi trực tiếp tệp

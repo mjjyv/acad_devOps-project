@@ -42,37 +42,38 @@ export default function RegisterPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#F5EFE3',
-        color: '#4A4A4A',
+        backgroundColor: '#222831',
+        color: '#DFD0B8',
         padding: '1.5rem',
       }}
     >
       <div
         style={{
-          maxWidth: '420px',
+          maxWidth: '440px',
           width: '100%',
-          backgroundColor: '#FFFFFF',
+          backgroundColor: '#393E46',
           padding: '2.5rem 2rem',
-          borderRadius: '8px',
-          border: '1px solid #E6DFD5',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+          borderRadius: '0px',
+          border: '2px solid #948979',
+          boxShadow: '4px 4px 0px #DFD0B8',
         }}
       >
         {/* LOGO */}
-        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
           <div
             style={{
-              width: '36px',
-              height: '36px',
-              backgroundColor: '#12544F',
-              color: '#F5EFE3',
-              borderRadius: '6px',
+              width: '38px',
+              height: '38px',
+              backgroundColor: '#DFD0B8',
+              color: '#222831',
+              borderRadius: '0px',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontWeight: 800,
-              fontSize: '1.1rem',
-              letterSpacing: '-0.03em',
+              fontWeight: 900,
+              fontSize: '1.2rem',
+              border: '2px solid #948979',
+              boxShadow: '2px 2px 0px #948979',
               marginBottom: '0.75rem',
             }}
           >
@@ -81,16 +82,17 @@ export default function RegisterPage() {
           <h1
             style={{
               fontSize: '1.5rem',
-              fontWeight: 800,
+              fontWeight: 900,
               margin: '0 0 0.35rem 0',
-              color: '#1E2328',
+              color: '#DFD0B8',
               letterSpacing: '-0.02em',
+              textTransform: 'uppercase',
             }}
           >
-            Gia Nhập Cộng Đồng
+            // TẠO TÀI KHOẢN
           </h1>
-          <p style={{ color: '#787774', fontSize: '0.82rem', margin: 0 }}>
-            Khởi tạo hồ sơ kỹ sư và tham gia thảo luận chuyên sâu
+          <p style={{ color: '#948979', fontSize: '0.82rem', margin: 0 }}>
+            Gia nhập cộng đồng kỹ sư DevOps & Hạ tầng đám mây
           </p>
         </div>
 
@@ -98,59 +100,60 @@ export default function RegisterPage() {
           <div
             style={{
               padding: '0.65rem 0.85rem',
-              backgroundColor: '#FDEBEC',
-              color: '#9F2F2D',
-              borderRadius: '6px',
-              border: '1px solid #FAD1D4',
+              backgroundColor: '#222831',
+              color: '#D96B6B',
+              border: '2px solid #D96B6B',
               fontSize: '0.8rem',
               marginBottom: '1rem',
+              fontFamily: 'var(--font-mono)',
             }}
           >
-            {localError || authError}
+            [LỖI]: {localError || authError}
           </div>
         )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem', color: '#1E2328' }}>
-              Tên người dùng (Username)
+            <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, marginBottom: '0.35rem', color: '#948979', textTransform: 'uppercase' }}>
+              Tên người dùng (Username):
             </label>
             <input
               type="text"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="dung_devops"
+              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+              placeholder="devops_ninja"
               style={{
                 width: '100%',
-                padding: '0.55rem 0.75rem',
-                borderRadius: '6px',
-                border: '1px solid #E6DFD5',
-                backgroundColor: '#FAF7F2',
-                color: '#1E2328',
-                fontSize: '0.85rem',
+                padding: '0.6rem 0.75rem',
+                borderRadius: '0px',
+                border: '2px solid #948979',
+                backgroundColor: '#222831',
+                color: '#DFD0B8',
+                fontSize: '0.88rem',
                 outline: 'none',
               }}
               required
             />
+            <span style={{ fontSize: '0.7rem', color: '#948979' }}>Chỉ gồm chữ thường không dấu, số và gạch dưới.</span>
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem', color: '#1E2328' }}>
-              Địa chỉ Email
+            <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, marginBottom: '0.35rem', color: '#948979', textTransform: 'uppercase' }}>
+              Địa chỉ Email:
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="engineer@domain.com"
+              placeholder="ky-su@domain.com"
               style={{
                 width: '100%',
-                padding: '0.55rem 0.75rem',
-                borderRadius: '6px',
-                border: '1px solid #E6DFD5',
-                backgroundColor: '#FAF7F2',
-                color: '#1E2328',
-                fontSize: '0.85rem',
+                padding: '0.6rem 0.75rem',
+                borderRadius: '0px',
+                border: '2px solid #948979',
+                backgroundColor: '#222831',
+                color: '#DFD0B8',
+                fontSize: '0.88rem',
                 outline: 'none',
               }}
               required
@@ -158,8 +161,8 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem', color: '#1E2328' }}>
-              Mật khẩu bảo mật
+            <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, marginBottom: '0.35rem', color: '#948979', textTransform: 'uppercase' }}>
+              Mật khẩu:
             </label>
             <input
               type="password"
@@ -168,12 +171,12 @@ export default function RegisterPage() {
               placeholder="Tối thiểu 8 ký tự (hoa, thường, số)"
               style={{
                 width: '100%',
-                padding: '0.55rem 0.75rem',
-                borderRadius: '6px',
-                border: '1px solid #E6DFD5',
-                backgroundColor: '#FAF7F2',
-                color: '#1E2328',
-                fontSize: '0.85rem',
+                padding: '0.6rem 0.75rem',
+                borderRadius: '0px',
+                border: '2px solid #948979',
+                backgroundColor: '#222831',
+                color: '#DFD0B8',
+                fontSize: '0.88rem',
                 outline: 'none',
               }}
               required
@@ -184,25 +187,27 @@ export default function RegisterPage() {
             type="submit"
             disabled={isLoading}
             style={{
-              padding: '0.65rem',
-              backgroundColor: isLoading ? '#787774' : '#12544F',
-              color: '#FFFFFF',
-              border: 'none',
-              borderRadius: '6px',
-              fontWeight: 600,
-              fontSize: '0.85rem',
+              padding: '0.7rem',
+              backgroundColor: isLoading ? '#948979' : '#DFD0B8',
+              color: '#222831',
+              border: '2px solid #DFD0B8',
+              borderRadius: '0px',
+              fontWeight: 900,
+              fontSize: '0.88rem',
               cursor: isLoading ? 'not-allowed' : 'pointer',
-              marginTop: '0.35rem',
+              marginTop: '0.5rem',
+              textTransform: 'uppercase',
+              boxShadow: '3px 3px 0px #948979',
             }}
           >
-            {isLoading ? 'Đang tạo tài khoản...' : 'Đăng ký ngay'}
+            {isLoading ? 'ĐANG TẠO TÀI KHOẢN...' : 'XÁC NHẬN ĐĂNG KÝ'}
           </button>
         </form>
 
-        <p style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.82rem', color: '#787774', margin: '1.5rem 0 0 0' }}>
+        <p style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.82rem', color: '#948979', margin: '1.5rem 0 0 0' }}>
           Đã có tài khoản?{' '}
-          <Link href="/login" style={{ color: '#12544F', fontWeight: 600, textDecoration: 'none' }}>
-            Đăng nhập
+          <Link href="/login" style={{ color: '#DFD0B8', fontWeight: 800, textDecoration: 'underline' }}>
+            Đăng nhập ngay
           </Link>
         </p>
       </div>

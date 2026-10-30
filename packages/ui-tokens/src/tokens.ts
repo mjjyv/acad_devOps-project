@@ -98,3 +98,15 @@ export const TAILWIND_PRESET = {
     },
   },
 };
+
+export const BRUTALIST_DARK_THEME = {
+  canvas: '#222831',         // 40% - Canvas / Body background
+  surface: '#393E46',        // 25% - Surfaces / Containers / Cards / Nav
+  border: '#948979',         // 15% - Brutalist Borders & Metadata / Timestamps
+  highlight: '#DFD0B8',      // 15% - High-Contrast Parchment Text & Primary CTA Buttons
+  surfaceHover: '#444A53',
+  shadowBrutal: '3px 3px 0px #948979',
+  shadowBrutalHighlight: '3px 3px 0px #DFD0B8',
+} as const;
+
+

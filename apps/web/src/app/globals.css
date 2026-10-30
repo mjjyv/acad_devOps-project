@@ -1,37 +1,44 @@
 :root {
-  --color-canvas: #F5EFE3;
-  --color-surface: #FFFFFF;
-  --color-surface-subtle: #FAF7F2;
-  --color-surface-hover: #F2ECE0;
-  
-  --color-primary: #12544F;
-  --color-primary-hover: #0E3F3B;
-  --color-primary-active: #0A2F2C;
-  --color-primary-soft: #EAF2F1;
-  
-  --color-neutral-dark: #1E2328;
-  --color-neutral: #4A4A4A;
-  --color-neutral-muted: #787774;
-  --color-neutral-light: #9EA3A8;
-  
-  --color-border: #E6DFD5;
-  --color-border-subtle: rgba(74, 74, 74, 0.08);
-  --color-border-strong: #D5CCC0;
+  /* =========================================================================
+     MINIMALIST BRUTALISM DARK MODE COLOR SYSTEM
+     - #222831 (40%): Canvas / Body Background
+     - #393E46 (25%): Surfaces / Containers / Cards / Nav
+     - #948979 (15%): Brutalist Borders & Metadata / Timestamps
+     - #DFD0B8 (15%): High-Contrast Parchment Text & Primary CTA Buttons
+     ========================================================================= */
+  --color-canvas: #222831;
+  --color-surface: #393E46;
+  --color-surface-subtle: #2C323B;
+  --color-surface-hover: #444A54;
+  --color-surface-active: #4F5662;
 
-  --color-pastel-teal: #EAF2F1;
-  --color-pastel-teal-text: #12544F;
-  --color-pastel-red: #FDEBEC;
-  --color-pastel-red-text: #9F2F2D;
-  --color-pastel-green: #EDF7ED;
-  --color-pastel-green-text: #1E4620;
-  --color-pastel-amber: #FDF6E2;
-  --color-pastel-amber-text: #8C6514;
-  --color-pastel-blue: #EBF4FC;
-  --color-pastel-blue-text: #1B4F72;
+  --color-primary: #DFD0B8;
+  --color-primary-text: #222831;
+  --color-primary-hover: #ECE3D2;
+  --color-primary-active: #C9B89D;
+  --color-primary-soft: rgba(223, 208, 184, 0.12);
 
-  --font-sans: 'SF Pro Display', 'Geist Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-  --font-mono: 'Geist Mono', 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
-  --font-serif: 'Lyon Text', 'Newsreader', 'Playfair Display', Georgia, serif;
+  --color-neutral-dark: #DFD0B8;
+  --color-neutral: #E0D7C7;
+  --color-neutral-muted: #948979;
+  --color-neutral-light: #736B5E;
+
+  --color-border: #948979;
+  --color-border-subtle: rgba(148, 137, 121, 0.25);
+  --color-border-strong: #DFD0B8;
+
+  --color-accent-amber: #DFD0B8;
+  --color-accent-red: #D96B6B;
+  --color-accent-green: #7BB38E;
+  --color-accent-blue: #7EAED9;
+
+  --shadow-brutal: 3px 3px 0px #948979;
+  --shadow-brutal-highlight: 3px 3px 0px #DFD0B8;
+  --shadow-brutal-sm: 2px 2px 0px #948979;
+  --shadow-brutal-inset: inset 2px 2px 0px #222831;
+
+  --font-sans: 'Geist Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Geist Mono', 'JetBrains Mono', 'Fira Code', monospace;
 }
 
 * {
@@ -58,29 +65,101 @@ a {
 button {
   font-family: inherit;
   cursor: pointer;
+  border-radius: 0px;
 }
 
 input, textarea, select {
   font-family: inherit;
+  border-radius: 0px;
 }
 
 ::selection {
-  background-color: #D3E7E5;
-  color: #12544F;
+  background-color: #DFD0B8;
+  color: #222831;
 }
 
-/* Custom minimal scrollbar */
+/* Brutalist geometric borders and shadows */
+.brutal-border {
+  border: 2px solid var(--color-border);
+}
+
+.brutal-border-strong {
+  border: 2px solid var(--color-border-strong);
+}
+
+.brutal-card {
+  background-color: var(--color-surface);
+  border: 2px solid var(--color-border);
+  box-shadow: var(--shadow-brutal);
+}
+
+.brutal-card:hover {
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-brutal-highlight);
+}
+
+.brutal-btn-primary {
+  background-color: var(--color-primary);
+  color: var(--color-primary-text);
+  border: 2px solid var(--color-primary);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  box-shadow: 3px 3px 0px #948979;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.brutal-btn-primary:hover {
+  background-color: var(--color-primary-hover);
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px #DFD0B8;
+}
+
+.brutal-btn-primary:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #948979;
+}
+
+.brutal-btn-secondary {
+  background-color: var(--color-surface);
+  color: var(--color-neutral);
+  border: 2px solid var(--color-border);
+  font-weight: 600;
+  box-shadow: 2px 2px 0px #948979;
+}
+
+.brutal-btn-secondary:hover {
+  background-color: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+  color: var(--color-primary);
+}
+
+.brutal-input {
+  background-color: var(--color-canvas);
+  color: var(--color-neutral-dark);
+  border: 2px solid var(--color-border);
+  padding: 8px 12px;
+  outline: none;
+}
+
+.brutal-input:focus {
+  border-color: var(--color-border-strong);
+  box-shadow: 0 0 0 1px var(--color-border-strong);
+}
+
+/* Custom Brutalist Dark Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #222831;
+  border-left: 1px solid #393E46;
 }
 ::-webkit-scrollbar-thumb {
-  background: #D8D0C4;
-  border-radius: 3px;
+  background: #948979;
+  border-radius: 0px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #BFB5A5;
+  background: #DFD0B8;
 }

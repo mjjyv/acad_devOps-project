@@ -11,8 +11,8 @@ export function Navbar() {
     <header
       style={{
         width: '100%',
-        backgroundColor: '#FFFFFF',
-        borderBottom: '1px solid #E6DFD5',
+        backgroundColor: '#393E46',
+        borderBottom: '2px solid #948979',
         position: 'sticky',
         top: 0,
         zIndex: 50,
@@ -29,7 +29,7 @@ export function Navbar() {
           gap: '1.5rem',
         }}
       >
-        {/* BRAND LOGO */}
+        {/* BRAND LOGO BRUTALIST */}
         <Link
           href="/"
           style={{
@@ -43,15 +43,16 @@ export function Navbar() {
             style={{
               width: '32px',
               height: '32px',
-              backgroundColor: '#12544F',
-              color: '#F5EFE3',
-              borderRadius: '6px',
+              backgroundColor: '#DFD0B8',
+              color: '#222831',
+              border: '2px solid #948979',
+              borderRadius: '0px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontWeight: 800,
-              fontSize: '1rem',
-              letterSpacing: '-0.03em',
+              fontWeight: 900,
+              fontSize: '1.05rem',
+              boxShadow: '2px 2px 0px #948979',
             }}
           >
             A
@@ -60,47 +61,48 @@ export function Navbar() {
             <div
               style={{
                 fontSize: '1.05rem',
-                fontWeight: 800,
-                color: '#12544F',
+                fontWeight: 900,
+                color: '#DFD0B8',
                 letterSpacing: '-0.02em',
                 lineHeight: 1.1,
+                fontFamily: 'var(--font-mono)',
               }}
             >
-              ACAD
+              ACAD.DEVOPS //
             </div>
             <div
               style={{
                 fontSize: '0.68rem',
-                fontWeight: 600,
-                color: '#787774',
-                letterSpacing: '0.08em',
+                fontWeight: 700,
+                color: '#948979',
+                letterSpacing: '0.1em',
                 textTransform: 'uppercase',
               }}
             >
-              DevOps Community
+              Core Community Platform
             </div>
           </div>
         </Link>
 
-        {/* SEARCH BAR (EDITORIAL MINIMALIST) */}
+        {/* SEARCH BAR (MINIMALIST BRUTALISM DARK) */}
         <div
           style={{
             flex: '1',
-            maxWidth: '480px',
+            maxWidth: '460px',
             position: 'relative',
             display: 'flex',
             alignItems: 'center',
           }}
         >
           <svg
-            width="15"
-            height="15"
+            width="14"
+            height="14"
             viewBox="0 0 24 24"
             fill="none"
-            stroke="#787774"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            stroke="#948979"
+            strokeWidth="2.5"
+            strokeLinecap="square"
+            strokeLinejoin="miter"
             style={{ position: 'absolute', left: '12px', pointerEvents: 'none' }}
           >
             <circle cx="11" cy="11" r="8" />
@@ -108,17 +110,17 @@ export function Navbar() {
           </svg>
           <input
             type="text"
-            placeholder="Tìm kiếm kiến trúc, kỹ nghệ DevOps, thảo luận..."
+            placeholder="Tìm kiếm kiến trúc, DevOps, thảo luận..."
             style={{
               width: '100%',
               padding: '0.45rem 2.2rem 0.45rem 2.2rem',
-              borderRadius: '6px',
-              border: '1px solid #E6DFD5',
-              backgroundColor: '#FAF7F2',
-              color: '#4A4A4A',
+              borderRadius: '0px',
+              border: '2px solid #948979',
+              backgroundColor: '#222831',
+              color: '#DFD0B8',
               fontSize: '0.85rem',
               outline: 'none',
-              transition: 'border-color 0.2s',
+              boxShadow: 'inset 1px 1px 0px rgba(0,0,0,0.4)',
             }}
           />
           <span
@@ -126,12 +128,12 @@ export function Navbar() {
               position: 'absolute',
               right: '10px',
               fontSize: '0.7rem',
-              padding: '0.1rem 0.35rem',
-              borderRadius: '4px',
-              backgroundColor: '#EAE6DF',
-              color: '#787774',
+              padding: '0.1rem 0.4rem',
+              borderRadius: '0px',
+              backgroundColor: '#393E46',
+              color: '#DFD0B8',
               fontFamily: 'var(--font-mono)',
-              border: '1px solid #DDD6CB',
+              border: '1px solid #948979',
             }}
           >
             /
@@ -144,23 +146,24 @@ export function Navbar() {
             href="/docs"
             style={{
               padding: '0.4rem 0.8rem',
-              borderRadius: '6px',
-              backgroundColor: '#FAF7F2',
-              color: '#4A4A4A',
-              fontWeight: 500,
+              borderRadius: '0px',
+              backgroundColor: '#393E46',
+              color: '#DFD0B8',
+              fontWeight: 600,
               textDecoration: 'none',
-              fontSize: '0.85rem',
-              border: '1px solid #E6DFD5',
+              fontSize: '0.82rem',
+              border: '2px solid #948979',
               display: 'flex',
               alignItems: 'center',
               gap: '0.4rem',
+              boxShadow: '2px 2px 0px #948979',
             }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
               <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
             </svg>
-            <span>Tài Liệu</span>
+            <span>TÀI LIỆU</span>
           </Link>
 
           {!isLoading && user ? (
@@ -171,22 +174,23 @@ export function Navbar() {
                   href="/admin/users"
                   style={{
                     padding: '0.4rem 0.8rem',
-                    borderRadius: '6px',
-                    backgroundColor: '#EAF2F1',
-                    color: '#12544F',
-                    fontWeight: 600,
+                    borderRadius: '0px',
+                    backgroundColor: '#222831',
+                    color: '#DFD0B8',
+                    fontWeight: 700,
                     textDecoration: 'none',
-                    fontSize: '0.85rem',
-                    border: '1px solid rgba(18, 84, 79, 0.25)',
+                    fontSize: '0.82rem',
+                    border: '2px solid #DFD0B8',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.4rem',
+                    boxShadow: '2px 2px 0px #DFD0B8',
                   }}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                   </svg>
-                  <span>Quản trị Admin</span>
+                  <span>ADMIN // HUB</span>
                 </Link>
               )}
 
@@ -195,24 +199,25 @@ export function Navbar() {
                 href="/settings/sessions"
                 style={{
                   padding: '0.4rem 0.8rem',
-                  borderRadius: '6px',
-                  backgroundColor: '#FFFFFF',
-                  color: '#4A4A4A',
-                  fontWeight: 500,
+                  borderRadius: '0px',
+                  backgroundColor: '#393E46',
+                  color: '#DFD0B8',
+                  fontWeight: 600,
                   textDecoration: 'none',
-                  fontSize: '0.85rem',
-                  border: '1px solid #E6DFD5',
+                  fontSize: '0.82rem',
+                  border: '2px solid #948979',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.4rem',
+                  boxShadow: '2px 2px 0px #948979',
                 }}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                  <rect x="2" y="3" width="20" height="14" rx="0" ry="0" />
                   <line x1="8" y1="21" x2="16" y2="21" />
                   <line x1="12" y1="17" x2="12" y2="21" />
                 </svg>
-                <span>Phiên thiết bị</span>
+                <span>PHIÊN</span>
               </Link>
 
               {/* USER PROFILE INFO */}
@@ -222,37 +227,39 @@ export function Navbar() {
                   alignItems: 'center',
                   gap: '0.5rem',
                   padding: '0.3rem 0.65rem',
-                  backgroundColor: '#FAF7F2',
-                  borderRadius: '6px',
-                  border: '1px solid #E6DFD5',
+                  backgroundColor: '#222831',
+                  borderRadius: '0px',
+                  border: '2px solid #948979',
+                  boxShadow: '2px 2px 0px #948979',
                 }}
               >
                 <div
                   style={{
-                    width: '24px',
-                    height: '24px',
-                    borderRadius: '4px',
-                    backgroundColor: user.role === 'ADMIN' ? '#12544F' : '#4A4A4A',
-                    color: '#FFFFFF',
+                    width: '22px',
+                    height: '22px',
+                    borderRadius: '0px',
+                    backgroundColor: user.role === 'ADMIN' ? '#DFD0B8' : '#948979',
+                    color: '#222831',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: '0.75rem',
-                    fontWeight: 700,
+                    fontWeight: 900,
                   }}
                 >
                   {user.username.charAt(0).toUpperCase()}
                 </div>
-                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1E2328' }}>{user.username}</span>
+                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#DFD0B8' }}>{user.username}</span>
                 <span
                   style={{
-                    fontSize: '0.72rem',
-                    padding: '0.1rem 0.4rem',
-                    backgroundColor: '#EAF2F1',
-                    color: '#12544F',
-                    borderRadius: '4px',
-                    fontWeight: 600,
+                    fontSize: '0.7rem',
+                    padding: '0.1rem 0.35rem',
+                    backgroundColor: '#393E46',
+                    color: '#DFD0B8',
+                    borderRadius: '0px',
+                    fontWeight: 700,
                     fontFamily: 'var(--font-mono)',
+                    border: '1px solid #948979',
                   }}
                 >
                   {user.karmaScore} pts
@@ -264,17 +271,17 @@ export function Navbar() {
                 onClick={() => logout()}
                 style={{
                   padding: '0.4rem 0.8rem',
-                  borderRadius: '6px',
-                  backgroundColor: 'transparent',
-                  color: '#9F2F2D',
-                  border: '1px solid #FDEBEC',
-                  fontWeight: 500,
-                  fontSize: '0.85rem',
+                  borderRadius: '0px',
+                  backgroundColor: '#222831',
+                  color: '#D96B6B',
+                  border: '2px solid #D96B6B',
+                  fontWeight: 700,
+                  fontSize: '0.82rem',
                   cursor: 'pointer',
-                  transition: 'background-color 0.2s',
+                  boxShadow: '2px 2px 0px #D96B6B',
                 }}
               >
-                Đăng xuất
+                THOÁT
               </button>
             </>
           ) : !isLoading ? (
@@ -283,13 +290,15 @@ export function Navbar() {
                 href="/login"
                 style={{
                   padding: '0.45rem 1rem',
-                  borderRadius: '6px',
-                  backgroundColor: '#FFFFFF',
-                  color: '#4A4A4A',
-                  fontWeight: 600,
+                  borderRadius: '0px',
+                  backgroundColor: '#393E46',
+                  color: '#DFD0B8',
+                  fontWeight: 700,
                   textDecoration: 'none',
                   fontSize: '0.85rem',
-                  border: '1px solid #E6DFD5',
+                  border: '2px solid #948979',
+                  boxShadow: '2px 2px 0px #948979',
+                  textTransform: 'uppercase',
                 }}
               >
                 Đăng nhập
@@ -297,21 +306,23 @@ export function Navbar() {
               <Link
                 href="/register"
                 style={{
-                  padding: '0.45rem 1rem',
-                  borderRadius: '6px',
-                  backgroundColor: '#12544F',
-                  color: '#FFFFFF',
-                  fontWeight: 600,
+                  padding: '0.45rem 1.1rem',
+                  borderRadius: '0px',
+                  backgroundColor: '#DFD0B8',
+                  color: '#222831',
+                  fontWeight: 800,
                   textDecoration: 'none',
                   fontSize: '0.85rem',
-                  border: '1px solid #0E3F3B',
+                  border: '2px solid #DFD0B8',
+                  boxShadow: '3px 3px 0px #948979',
+                  textTransform: 'uppercase',
                 }}
               >
                 Tham gia
               </Link>
             </>
           ) : (
-            <div style={{ color: '#787774', fontSize: '0.85rem' }}>Đang nạp...</div>
+            <div style={{ color: '#948979', fontSize: '0.85rem', fontFamily: 'var(--font-mono)' }}>LOADING...</div>
           )}
         </div>
       </div>

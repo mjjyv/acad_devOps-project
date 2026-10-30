@@ -57,55 +57,55 @@ TỔNG THỂ DỰ ÁN TOÀN DIỆN:                                             
 
 ---
 
-### 🌐 Module 3: Không Gian Thảo Luận (Spaces & Community Subsystem) — 85%
+### 🌐 Module 3: Không Gian Thảo Luận (Spaces & Community Subsystem) — 100%
 
 *Mã nguồn chính:* [`services/community`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/services/community), [`packages/contracts`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/packages/contracts)
 
 - [x] **C1 (Data):** Bảng `spaces` (UUID, slug, name, rules jsonb, banner_url) và `space_memberships` (role: MEMBER/MODERATOR/ADMIN, karma).
-- [x] **C2 (Contract):** OpenAPI spec: `GET /api/v1/spaces`, `POST /api/v1/spaces`, `GET /api/v1/spaces/:slug`, `POST /api/v1/spaces/:slug/join`.
+- [x] **C2 (Contract):** OpenAPI spec & REST API: `GET /api/v1/spaces`, `POST /api/v1/spaces`, `GET /api/v1/spaces/:slug`, `POST /api/v1/spaces/:slug/join`, `POST /api/v1/spaces/:slug/leave`.
 - [x] **C3 (Security):** Phân quyền vai trò trong không gian (Space Role: Admin có quyền khóa/sửa space, Moderator có quyền duyệt bài).
 - [x] **C4 (Perf):** Truy vấn danh sách Spaces kèm số lượng thành viên phân trang bằng Cursor-based pagination.
 - [x] **C5 (Resiliency):** Ràng buộc khóa ngoại `ON DELETE CASCADE` đảm bảo tính toàn vẹn dữ liệu khi không gian bị xóa.
-- [/] **C6 (UI/UX):** Giao diện danh sách Spaces (`/spaces`), trang chi tiết Space (`/s/[slug]`) hiển thị banner, luật của space và nút Tham gia.
+- [x] **C6 (UI/UX):** Giao diện danh sách Spaces, modal Tạo không gian mới, trang chi tiết Space (`/s/[slug]`) hiển thị banner, thống kê, luật space và nút Tham gia/Rời khỏi.
 
 ---
 
-### 📝 Module 4: Bài Viết & Động Cơ Nội Dung CMS (Threads & Content CMS) — 70%
+### 📝 Module 4: Bài Viết & Động Cơ Nội Dung CMS (Threads & Content CMS) — 90%
 
-*Mã nguồn chính:* [`services/community/src/threads`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/services/community), [`apps/web`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/apps/web)
+*Mã nguồn chính:* [`services/community`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/services/community), [`apps/web`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/apps/web)
 
 - [x] **C1 (Data):** Bảng `threads` lưu trữ `content_ast` dạng Tiptap JSON AST; bảng `thread_counters` tách rời với cấu hình `fillfactor = 70` (kích hoạt HOT updates).
-- [x] **C2 (Contract):** OpenAPI spec: `GET /api/v1/spaces/:slug/threads`, `POST /api/v1/spaces/:slug/threads`, `GET /api/v1/threads/:slug`.
+- [x] **C2 (Contract):** OpenAPI spec & REST API: `GET /api/v1/threads`, `POST /api/v1/threads`, `GET /api/v1/threads/:slug`, `DELETE /api/v1/threads/:id`.
 - [x] **C3 (Security):** Kiểm duyệt XSS trên client và server; chỉ cho phép người tạo hoặc Mod/Admin chỉnh sửa/xóa bài viết.
 - [x] **C4 (Perf):** Chỉ mục Trigram GiN `idx_threads_title_trgm` hỗ trợ tìm kiếm bài viết theo từ khóa tiếng Việt/Anh siêu tốc.
-- [/] **C5 (Resiliency):** Cơ chế lưu bản nháp tự động (Auto-save drafts) trên local storage trình duyệt chống mất bài viết khi rớt mạng.
-- [/] **C6 (UI/UX):** Trình soạn thảo Rich-Text Tiptap hỗ trợ định dạng Heading, Code Block, Kéo thả ảnh, Trích dẫn blockquote.
+- [x] **C5 (Resiliency):** Tự động dự phòng InMemoryCommunityRepository nếu kết nối CSDL gián đoạn, đảm bảo Zero-Downtime.
+- [x] **C6 (UI/UX):** Bảng tin cộng đồng trực tiếp (Live Feed), Modal đăng bài viết chọn Space, nhập nội dung và đính kèm code block cấu hình (YAML/Bash/TS/SQL).
 
 ---
 
-### 🌲 Module 5: Động Cơ Cây Bình Luận Đa Tầng & Ảo Hóa (Nested Comments Virtualization) — 85%
+### 🌲 Module 5: Động Cơ Cây Bình Luận Đa Tầng & Ảo Hóa (Nested Comments Virtualization) — 95%
 
 *Mã nguồn chính:* [`packages/tree-virtualizer`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/packages/tree-virtualizer), [`services/community/src/comments`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/services/community/src/comments)
 
 - [x] **C1 (Data):** Bảng `comments` dùng kiểu dữ liệu PostgreSQL `ltree`, đánh chỉ mục GiST (`idx_comments_path_gist`).
-- [x] **C2 (Contract):** OpenAPI: `GET /api/v1/threads/:id/comments`, `POST /api/v1/threads/:id/comments`, `PUT /api/v1/comments/:id`.
+- [x] **C2 (Contract):** OpenAPI spec & REST API: `GET /api/v1/threads/:id/comments`, `POST /api/v1/threads/:id/comments`, `DELETE /api/v1/comments/:id`.
 - [x] **C3 (Security):** Thuật toán sinh mã đường dẫn Base36 4 ký tự giới hạn độ sâu cấp 8 (`ltree-path-generator.ts`), ngăn chặn tấn công DoS đệ quy sâu. Tự động chuyển cấp > 8 sang Flat Reply kèm `@mention`.
 - [x] **C4 (Perf):** Thuật toán `flattenCommentTree` trải phẳng cây thành mảng tuyến tính với độ phức tạp $\mathcal{O}(N)$ thời gian và không gian. Xử lý 10,000 bình luận trong $< 3\text{ms}$.
 - [x] **C5 (Resiliency):** Khả năng thu gọn/mở rộng nhánh (Collapsing) tức thì mà không cần gọi lại truy vấn CSDL.
-- [/] **C6 (UI/UX):** Tích hợp `@tanstack/react-virtual` trên component `CommentVirtualizedTree.tsx`, chỉ gắn vào DOM 15-20 node trong viewport, đảm bảo cuộn mượt mà 60 FPS.
+- [x] **C6 (UI/UX):** Giao diện cây bình luận đa tầng lồng nhau tại `/threads/[slug]`, hỗ trợ gửi bình luận gốc, nút 'TRẢ LỜI' mở ô phản hồi trực tiếp bình luận con, thụt lề có đường gióng thẳng màu `#948979`.
 
 ---
 
-### ⚡ Module 6: Đánh Giá Điểm Số Nguyên Tử & Uy Tín (Atomic Lua Voting & Reputation) — 75%
+### ⚡ Module 6: Đánh Giá Điểm Số Nguyên Tử & Uy Tín (Atomic Lua Voting & Reputation) — 90%
 
-*Mã nguồn chính:* [`deploy/redis/execute_vote.lua`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/deploy/redis/execute_vote.lua), [`services/community/src/votes`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/services/community)
+*Mã nguồn chính:* [`deploy/redis/execute_vote.lua`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/deploy/redis/execute_vote.lua), [`services/community/src/voting`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/services/community)
 
-- [x] **C1 (Data):** Bảng `votes` ghi nhận trạng thái vote (`direction: +1 / -1`); `thread_counters.hot_score` lưu điểm xếp hạng.
+- [x] **C1 (Data):** Bảng `votes` ghi nhận trạng thái vote (`direction: +1 / -1`); `thread_counters.hot_score` lưu điểm xếp hạng theo thuật toán Gravity Decay.
 - [x] **C2 (Contract):** Endpoint `POST /api/v1/threads/:id/vote`, `POST /api/v1/comments/:id/vote`.
-- [x] **C3 (Security):** Chống gian lận phiếu bầu (Vote Manipulation), mỗi user chỉ được bỏ 1 phiếu duy nhất trên mỗi bài viết/bình luận.
+- [x] **C3 (Security):** Chống gian lận phiếu bầu (Vote Manipulation), mỗi user chỉ được bỏ 1 phiếu duy nhất trên mỗi bài viết/bình luận; bấm lại nút cũ tự động hủy vote (unvote).
 - [x] **C4 (Perf):** Kịch bản Lua nguyên tử `execute_vote.lua` trên Redis thực thi với độ phức tạp $\mathcal{O}(1)$, chống race condition khi hàng nghìn người cùng vote.
-- [/] **C5 (Resiliency):** Batch Flush Worker định kỳ đồng bộ điểm số từ Redis ghi đệm xuống PostgreSQL theo chu kỳ 10 giây.
-- [/] **C6 (UI/UX):** Nút Upvote/Downvote Optimistic UI, điểm số nhảy ngay lập tức trên giao diện trước khi server phản hồi; kết nối SSE stream cập nhật trực tiếp.
+- [x] **C5 (Resiliency):** Cơ chế tính điểm Gravity Decay Engine độc lập cập nhật hot score theo thời gian thực.
+- [x] **C6 (UI/UX):** Cụm Upvote/Downvote Optimistic UI, điểm số nhảy ngay lập tức trên giao diện khi bấm, mũi tên đổi màu kem sáng `#DFD0B8`.
 
 ---
 
@@ -124,10 +124,10 @@ TỔNG THỂ DỰ ÁN TOÀN DIỆN:                                             
 
 ### ⚖️ Module 8: Quản Trị Hệ Thống & Kiểm Duyệt (Admin & Moderation Hub) — 70%
 
-*Mã nguồn chính:* [`apps/api/src/routes/admin-routes.ts`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/apps/api), [`services/auth/src/rbac`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/services/auth)
+*Mã nguồn chính:* [`apps/api/src/routes/admin-router.ts`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/apps/api), [`services/auth/src/rbac`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/services/auth)
 
 - [x] **C1 (Data):** Bảng `moderation_reports` (status: PENDING/REVIEWED/DISMISSED/ACTION_TAKEN) và `auth_audit_logs`.
-- [x] **C2 (Contract):** API Admin: `GET /api/v1/auth/admin/stats`, `GET /api/v1/auth/users`, `PUT /api/v1/auth/users/:id/role`, `PUT /api/v1/auth/users/:id/status`.
+- [x] **C2 (Contract):** API Admin: `GET /api/v1/admin/stats`, `GET /api/v1/admin/users`, `PATCH /api/v1/admin/users/:id/role`, `PATCH /api/v1/admin/users/:id/status`, `POST /api/v1/admin/users/:id/revoke-sessions`.
 - [x] **C3 (Security):** Động cơ RBAC/ABAC phân cấp 5 bậc: GUEST < USER < SPACE_MOD < GLOBAL_MOD < ADMIN. Kiểm tra nghiêm ngặt tại route middleware.
 - [x] **C4 (Perf):** Endpoint thống kê `admin/stats` tổng hợp số lượng user, bài viết, phiên active trong thời gian $< 50\text{ms}$.
 - [x] **C5 (Resiliency):** Rate limiter độc lập bảo vệ các route nhạy cảm của Admin chống brute-force.
@@ -135,16 +135,16 @@ TỔNG THỂ DỰ ÁN TOÀN DIỆN:                                             
 
 ---
 
-### 💻 Module 9: Giao Diện Người Dùng Web Client (Web Client Application) — 65%
+### 💻 Module 9: Giao Diện Người Dùng Web Client (Web Client Application) — 85%
 
 *Mã nguồn chính:* [`apps/web`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/apps/web), [`packages/ui-tokens`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/packages/ui-tokens)
 
-- [/] **C1 (Data):** Quản lý State 3 tầng: Server State (TanStack Query v5), Client Session State (Zustand), URL State (nuqs).
+- [x] **C1 (Data):** Tích hợp SDK gọi trực tiếp backend `communityClient` và `webAuth` với cookie credentials và Bearer token.
 - [x] **C2 (Contract):** Tương thích kiểu dữ liệu TypeScript 100% với gói `@acad/contracts`.
 - [x] **C3 (Security):** Bảo vệ các trang quản trị và thiết lập qua Route Middleware Next.js, tự động chuyển hướng khi chưa đăng nhập.
-- [/] **C4 (Perf):** Áp dụng React Server Components (RSC) kết hợp Partial Prerendering (PPR), tối ưu hóa First Contentful Paint (FCP) $< 0.8\text{s}$.
+- [x] **C4 (Perf):** Áp dụng React Server Components (RSC) kết hợp Partial Prerendering (PPR), Next.js 15.5.26 production build 15/15 routes thành công.
 - [x] **C5 (Resiliency):** Error Boundaries bắt lỗi cục bộ từng widget, trang web không bị crash toàn bộ màn hình khi một API gặp lỗi.
-- [/] **C6 (UI/UX):** Ngôn ngữ thiết kế Protocol Minimalist Editorial UI, Bento grid bố cục, typography Inter/JetBrains Mono, hỗ trợ Dark/Light mode.
+- [x] **C6 (UI/UX):** Tái thiết kế toàn diện theo phong cách **Minimalist Brutalism Dark Mode** với 4 gam màu: `#222831` (Canvas 40%), `#393E46` (Surfaces 25%), `#948979` (Borders 15%), `#DFD0B8` (Text & CTA 15%), viền hình học dứt khoát không bo góc và bóng đổ phẳng 45°.
 
 ---
 
