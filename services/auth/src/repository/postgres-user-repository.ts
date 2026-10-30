@@ -120,6 +120,20 @@ export class PostgresUserRepository implements IUserRepository {
     return this.isUsingFallback;
   }
 
+  public getHealthStatus(): { type: string; isFallback: boolean; target?: string } {
+    let target = 'local_postgres';
+    if (typeof this.rawConfig === 'string') {
+      if (this.rawConfig.includes('supabase')) target = 'supabase';
+      else if (this.rawConfig.includes('render')) target = 'render';
+      else if (this.rawConfig.includes('neon')) target = 'neon';
+    }
+    return {
+      type: this.isUsingFallback ? 'in_memory_fallback' : 'postgres',
+      isFallback: this.isUsingFallback,
+      target,
+    };
+  }
+
   /**
    * Tự động khởi tạo lược đồ dữ liệu cơ bản (CREATE TABLE IF NOT EXISTS)
    * nếu kết nối tới cơ sở dữ liệu trống mới tinh trên đám mây.

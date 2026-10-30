@@ -45,6 +45,7 @@ export function createApiServer(options: ApiServerOptions = {}) {
     // ENDPOINT HEALTHCHECK PHỤC VỤ DOCKER HEALTHCHECK VÀ RENDER KEEP-ALIVE
     // =========================================================================
     if (url.pathname === '/healthz' || url.pathname === '/api/v1/health') {
+      const dbHealth = (authModule.userRepo as any).getHealthStatus?.() || { type: 'unknown', isFallback: false };
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(
         JSON.stringify({
@@ -53,6 +54,7 @@ export function createApiServer(options: ApiServerOptions = {}) {
           version: '1.0.0',
           uptime: process.uptime(),
           timestamp: new Date().toISOString(),
+          database: dbHealth,
         }),
       );
       return;

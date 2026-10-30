@@ -30,6 +30,8 @@ describe('Kiểm thử API Gateway & Healthcheck Probe (/healthz)', () => {
     expect(data.service).toBe('acad-community-api');
     expect(typeof data.uptime).toBe('number');
     expect(typeof data.timestamp).toBe('string');
+    expect(data.database).toBeDefined();
+    expect(typeof data.database.type).toBe('string');
   });
 
   it('GET /api/v1/health cũng trả về status "ok"', async () => {

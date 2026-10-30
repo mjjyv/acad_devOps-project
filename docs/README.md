@@ -32,6 +32,7 @@ docs/
 │   ├── phases-overview.md             # Tổng quan 7 giai đoạn, KPIs và tiêu chí nghiệm thu
 │   └── progress-checklist.md          # Bảng theo dõi tiến độ chi tiết từng hạng mục
 ├── plan/                              # Kế hoạch hành động & nâng cấp hạ tầng
+│   ├── brutalist-ui-redesign-plan.md  # Kế hoạch cải tạo UI sang Minimalist Brutalism Dark Mode
 │   ├── supabase-migration-plan.md     # Kế hoạch chuyển đổi DB Supabase, bỏ DB Render cũ
 │   └── phase4-next-steps.md           # Lộ trình hoàn thiện các tính năng còn lại của Phase 4
 ├── guides/                            # Hướng dẫn thực hành dành cho người dùng & lập trình viên
@@ -67,6 +68,7 @@ docs/
 - [Multi-Dimensional Plan](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/roadmap/multi-dimensional-plan.md): Kế hoạch triển khai đa chiều theo 4 làn sóng ưu tiên (Waves), phân bổ theo đồ thị phụ thuộc DAG.
 - [Phases Overview](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/roadmap/phases-overview.md): Tổng quan 7 giai đoạn của dự án, KPIs, tiêu chí bàn giao và ma trận chấp thuận.
 - [Progress Checklist](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/roadmap/progress-checklist.md): Bảng kiểm checklist chi tiết 7 giai đoạn, liên tục được cập nhật theo tiến độ hoàn thành thực tế (~70%).
+- [Brutalist UI Redesign Plan](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/plan/brutalist-ui-redesign-plan.md): Kế hoạch chuyển đổi toàn diện giao diện sang Minimalist Brutalism Dark Mode với 4 tông màu chính (#222831 40%, #393E46 25%, #948979 15%, #DFD0B8 15%).
 - [Supabase Migration Plan](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/plan/supabase-migration-plan.md): Kế hoạch loại bỏ hẳn database Render cũ (hết hạn/suspended) và chuyển sang Supabase Managed PostgreSQL.
 - [Phase 4 Next Steps](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/plan/phase4-next-steps.md): Kế hoạch chi tiết hoàn thiện các phần còn lại của Giai đoạn 4 (CMS Presigned URL R2, UI Virtualized Comment Tree, SSE Realtime Hub).
 

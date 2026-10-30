@@ -330,7 +330,10 @@ VALUES
     ('a0000000-0000-0000-0000-000000000003', 'devops_lead', 'devops_lead@acad.internal', 
      '$scrypt$N=16384,r=8,p=1$da0a2d643614dbd6589c29f1bf53f72e$09cef2695ff7d7210f57b983102c8ea619f429573ca6fc15eb7fa4f39a7b69a1aa847d32f92eaf799ab43c816ab4ecbb3b1381c89dcfb50814c2a47adca0eadc', 
      'USER', 'ACTIVE', 250, 'Senior Site Reliability & Cloud Infrastructure Engineer')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET
+    password_hash = EXCLUDED.password_hash,
+    role = EXCLUDED.role,
+    status = EXCLUDED.status;
 
 -- 6.2. Không gian Thảo luận Mẫu (Spaces)
 INSERT INTO spaces (id, slug, name, description, creator_id, is_private)

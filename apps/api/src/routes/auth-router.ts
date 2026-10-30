@@ -109,7 +109,10 @@ export function createAuthRouter(authModule: AuthModule) {
           }
         }
 
-        const body = await readJsonBody(req);
+        const body = (await readJsonBody(req)) as any;
+        if (!body.login && (body.email || body.username)) {
+          body.login = body.email || body.username;
+        }
         const result = await controller.login(body, clientIp, userAgent);
 
         if (rateLimiter) {

@@ -61,6 +61,7 @@ export interface IUserRepository {
   updateStatus(id: string, status: UserStatus): Promise<UserRecord>;
   getStats(): Promise<UserStatsResult>;
   updateKarma(id: string, delta: number): Promise<number>;
+  getHealthStatus?(): { type: string; isFallback: boolean; target?: string };
 }
 
 export class InMemoryUserRepository implements IUserRepository {
@@ -155,6 +156,14 @@ export class InMemoryUserRepository implements IUserRepository {
       suspendedUsers: all.filter((u) => u.status === 'SUSPENDED').length,
       adminUsers: all.filter((u) => u.role === 'ADMIN').length,
       moderatorUsers: all.filter((u) => u.role === 'SPACE_MOD' || u.role === 'GLOBAL_MOD').length,
+    };
+  }
+
+  public getHealthStatus(): { type: string; isFallback: boolean; target?: string } {
+    return {
+      type: 'in_memory',
+      isFallback: false,
+      target: 'local_ram',
     };
   }
 }
