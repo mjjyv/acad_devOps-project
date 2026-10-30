@@ -97,9 +97,12 @@ export function createAdminRouter(authModule: AuthModule, communityService?: Com
             limit,
             offset,
           }),
-          communityService ? communityService.getUserThreadCounts() : Promise.resolve({}),
+          communityService
+            ? communityService.getUserThreadCounts()
+            : Promise.resolve<Record<string, number>>({}),
         ]);
 
+        const threadCounts = userThreadCounts as Record<string, number>;
         const sanitizedUsers = result.users.map((u) => ({
           id: u.id,
           username: u.username,
@@ -107,7 +110,7 @@ export function createAdminRouter(authModule: AuthModule, communityService?: Com
           role: u.role,
           status: u.status,
           karmaScore: u.karmaScore,
-          threadsCount: userThreadCounts[u.id] || 0,
+          threadsCount: threadCounts[u.id] || 0,
           avatarUrl: u.avatarUrl ?? null,
           bio: u.bio ?? null,
           createdAt: u.createdAt.toISOString(),

@@ -74,3 +74,14 @@
 - [x] Giao diện `/docs/` hiển thị chuẩn Brutalist Dark Mode, không còn tông màu be sáng cũ hay màu neon chói mắt.
 - [x] Tính năng Tìm kiếm hoạt động trơn tru: gõ từ khóa trên Navbar/Feed bài viết hiển thị đúng kết quả liên quan; tabs Sort (Hot/New/Top) hoạt động độc lập và kết hợp tốt với bộ lọc.
 - [x] Sẵn sàng đẩy mã nguồn lên GitHub `main` để kích hoạt Render CI/CD.
+
+---
+
+## 4. BẢN VÁ CI GATE 2 (HOTFIX TYPECHECK)
+
+- **Lỗi phát hiện:** `TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{}'`.
+- **Vị trí:** `apps/api/src/routes/admin-router.ts:110:25` trong Cổng 2 (TypeScript & OpenAPI Validation) của GitHub Actions.
+- **Nguyên nhân:** Fallback `Promise.resolve({})` trong `Promise.all` tạo union type không có index signature rõ ràng với `u.id: string`.
+- **Biện pháp xử lý:** Khai báo kiểu tường minh `Promise.resolve<Record<string, number>>({})` và ép kiểu an toàn `(userThreadCounts as Record<string, number>)[u.id] || 0`.
+- **Trạng thái:** Đã khắc phục, sẵn sàng push deploy tự động.
+
