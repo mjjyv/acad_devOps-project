@@ -27,6 +27,8 @@ docs/
 │   ├── ui-design-tokens.md            # Thiết kế Minimalist Editorial UI, Bento grid
 │   └── api-contracts.md               # OpenAPI 3.1 RESTful conventions, Base64 Cursor
 ├── roadmap/                           # Lộ trình phát triển & Checklist tiến độ
+│   ├── modules-matrix-checklist.md    # Bảng kiểm ma trận đa chiều 10 phân hệ × 6 tiêu chí
+│   ├── multi-dimensional-plan.md      # Kế hoạch triển khai đa chiều theo 4 làn sóng (Waves)
 │   ├── phases-overview.md             # Tổng quan 7 giai đoạn, KPIs và tiêu chí nghiệm thu
 │   └── progress-checklist.md          # Bảng theo dõi tiến độ chi tiết từng hạng mục
 ├── plan/                              # Kế hoạch hành động & nâng cấp hạ tầng
@@ -61,6 +63,8 @@ docs/
 - [API Contracts](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/standards/api-contracts.md): Quy ước OpenAPI 3.1, cấu trúc RESTful chuẩn, định dạng lỗi RFC 7807, Cursor-based pagination Base64.
 
 ### 4. Lộ Trình & Tiến Độ (Roadmap & Plans)
+- [Modules Matrix Checklist](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/roadmap/modules-matrix-checklist.md): Bảng kiểm ma trận đa chiều phân rã 10 phân hệ nghiệp vụ theo 6 tiêu chí kỹ thuật chuẩn doanh nghiệp.
+- [Multi-Dimensional Plan](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/roadmap/multi-dimensional-plan.md): Kế hoạch triển khai đa chiều theo 4 làn sóng ưu tiên (Waves), phân bổ theo đồ thị phụ thuộc DAG.
 - [Phases Overview](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/roadmap/phases-overview.md): Tổng quan 7 giai đoạn của dự án, KPIs, tiêu chí bàn giao và ma trận chấp thuận.
 - [Progress Checklist](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/roadmap/progress-checklist.md): Bảng kiểm checklist chi tiết 7 giai đoạn, liên tục được cập nhật theo tiến độ hoàn thành thực tế (~70%).
 - [Supabase Migration Plan](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/plan/supabase-migration-plan.md): Kế hoạch loại bỏ hẳn database Render cũ (hết hạn/suspended) và chuyển sang Supabase Managed PostgreSQL.

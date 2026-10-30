@@ -52,6 +52,8 @@ export function sanitizePostgresConfig(poolOrConfig: pg.Pool | pg.PoolConfig | s
       connectionString.includes('.render.com') ||
       connectionString.includes('.neon.tech') ||
       connectionString.includes('.supabase.co') ||
+      connectionString.includes('.supabase.com') ||
+      connectionString.includes('pooler.supabase.com') ||
       connectionString.includes('.supabase.in') ||
       connectionString.includes('.aivencloud.com') ||
       connectionString.includes('amazonaws.com') ||

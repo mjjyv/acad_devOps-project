@@ -47,7 +47,14 @@ describe('Postgres SSL Configuration & Resilient Fallback Tests', () => {
     expect((config.ssl as any).rejectUnauthorized).toBe(false);
   });
 
-  it('7. PostgresUserRepository tự động kích hoạt InMemory fallback khi kết nối CSDL lỗi mà không crash', async () => {
+  it('7. Tự động bật SSL/TLS khi phát hiện host Supabase IPv4 Pooler (aws-0-ap-southeast-1.pooler.supabase.com)', () => {
+    const poolerUrl = 'postgresql://postgres.asdasdasdasdasdasd:secret_pwd@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?sslmode=require';
+    const config = sanitizePostgresConfig(poolerUrl);
+    expect(config.ssl).toBeDefined();
+    expect((config.ssl as any).rejectUnauthorized).toBe(false);
+  });
+
+  it('8. PostgresUserRepository tự động kích hoạt InMemory fallback khi kết nối CSDL lỗi mà không crash', async () => {
     // Cung cấp một host giả lập không thể kết nối tới
     const unreachableRepo = new PostgresUserRepository('postgresql://unreachable_user:dummy@127.0.0.1:59999/dummy_db');
 

@@ -70,16 +70,29 @@ CREATE EXTENSION IF NOT EXISTS "ltree";
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 ```
 
-### Bước 2: Thực Thi DDL Migrations
-Sử dụng công cụ `psql` trên Debian 13 hoặc Supabase SQL Editor để áp dụng lần lượt 2 bản migration có sẵn trong repo:
+### Bước 2: Thực Thi DDL Migrations & Seed Dữ Liệu Bàn Giao
+Toàn bộ DDL, Extensions, Enums, Bảng, Triggers và Dữ liệu mẫu ban đầu đã được đóng gói thành **1 tệp duy nhất**:
+[`deploy/migrations/supabase_bootstrap.sql`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/deploy/migrations/supabase_bootstrap.sql).
 
-1. **Migration 000001 - Auth & Users Schema:**
-   - File: [deploy/migrations/000001_init_schema.up.sql](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/deploy/migrations/000001_init_schema.up.sql)
-   - Nội dung: Tạo bảng `users`, `user_credentials`, `user_profiles`, `user_roles`, `user_sessions`, indexes, trigger `update_updated_at_column`.
+Người dùng có thể chọn **1 trong 2 phương thức**:
 
-2. **Migration 000002 - Community & Nested Comments Schema:**
-   - File: [deploy/migrations/000002_community_schema.up.sql](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/deploy/migrations/000002_community_schema.up.sql)
-   - Nội dung: Tạo bảng `communities`, `community_memberships`, `posts`, `post_votes`, `comments`, `comment_votes`, `thread_counters`, indexes GIST trên `ltree_path`, trigger tự động sinh mã `ltree_path` Base36.
+#### Phương thức 1: Thực thi trực tiếp trên Supabase Studio SQL Editor (Khuyên Dùng)
+1. Mở [Supabase Dashboard](https://supabase.com/dashboard) $\rightarrow$ Chọn Project của bạn.
+2. Vào mục **SQL Editor** ở thanh menu bên trái $\rightarrow$ Nhấn **New query**.
+3. Sao chép toàn bộ nội dung từ file [`deploy/migrations/supabase_bootstrap.sql`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/deploy/migrations/supabase_bootstrap.sql) và dán vào.
+4. Nhấn nút **Run** (Ctrl + Enter).
+5. Kiểm tra mục **Table Editor**: xuất hiện đầy đủ 12 bảng (`users`, `user_sessions`, `spaces`, `threads`, `thread_counters`, `comments`, ...).
+
+#### Phương thức 2: Chạy Script Tự Động Trên Debian 13 Terminal
+Sử dụng script đã được tối ưu hóa cho Debian 13 bash:
+```bash
+cd ~/Documents/100_academy/acad_it_devOps/acad_devOps_project
+./deploy/scripts/migrate-supabase.sh
+```
+*Script sẽ kiểm tra `psql`, xác minh kết nối và áp dụng migration an toàn mà không in mật khẩu ra màn hình.*
+
+> [!CAUTION]
+> **Bảo mật tuyệt đối:** Bạn **KHÔNG CẦN VÀ KHÔNG NÊN** cung cấp mật khẩu CSDL thật trong đoạn chat với AI Agent. Thông tin này chỉ cần điền trực tiếp vào script cục bộ hoặc bảng Environment Variables trên Render Dashboard.
 
 ### Bước 3: Cấu Hình Biến Môi Trường Trên Render Cloud
 1. Truy cập [Render Dashboard](https://dashboard.render.com).

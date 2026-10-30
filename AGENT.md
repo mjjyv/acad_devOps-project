@@ -59,7 +59,9 @@ Trước mỗi lần push git, Agent phải:
 ## 5. Đối Chiếu & Cập Nhật Tiến Độ Dự Án (Roadmap & Checklist Protocol)
 
 - Agent phải liên tục nhận diện và đối chiếu tiến độ phát triển thực tế với tài liệu:
-  - [`docs/roadmap/progress-checklist.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/roadmap/progress-checklist.md)
+  - [`docs/roadmap/modules-matrix-checklist.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/roadmap/modules-matrix-checklist.md) (Ma trận 10 Phân hệ × 6 Chiều Kỹ thuật)
+  - [`docs/roadmap/multi-dimensional-plan.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/roadmap/multi-dimensional-plan.md) (Kế hoạch Triển khai Đa chiều theo 4 Waves)
+  - [`docs/roadmap/progress-checklist.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/roadmap/progress-checklist.md) (Tiến độ 7 Giai đoạn)
   - [`reference-docs/acad_devOps-project-docs-checklist.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/reference-docs/acad_devOps-project-docs-checklist.md)
 - Mỗi khi một tính năng hoặc tài liệu hoàn thành, Agent phải **tick `[x]` vào ô tương ứng** và cập nhật tỷ lệ phần trăm hoàn thành của phase đó cũng như toàn bộ dự án.
 
@@ -71,8 +73,10 @@ Trước mỗi lần push git, Agent phải:
   - Database Render PostgreSQL cũ (`dpg-yyy-a.singapore-postgres.render.com`) đã hết hạn dùng thử (suspended) và sẽ bị xóa vĩnh viễn.
 - **Yêu cầu hành động:**
   - **Bỏ hẳn** database Render cũ, không sử dụng lại.
+  - Cung cấp giải pháp nạp CSDL & Dữ liệu mẫu 1-click: [`deploy/migrations/supabase_bootstrap.sql`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/deploy/migrations/supabase_bootstrap.sql) và script bash tự động [`deploy/scripts/migrate-supabase.sh`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/deploy/scripts/migrate-supabase.sh).
   - Triển khai 100% kế hoạch chuyển đổi sang Supabase Managed PostgreSQL theo tài liệu [`docs/plan/supabase-migration-plan.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/plan/supabase-migration-plan.md).
-  - Tận dụng cơ chế nhận diện tự động SSL `rejectUnauthorized: false` trong `postgres-user-repository.ts` và cơ chế tự phục hồi `InMemoryUserRepository` để đảm bảo hệ thống không bị gián đoạn hoạt động.
+  - Tận dụng cơ chế nhận diện tự động SSL `rejectUnauthorized: false` trong `postgres-user-repository.ts` (hỗ trợ cả `.supabase.co` và `pooler.supabase.com`) và cơ chế tự phục hồi `InMemoryUserRepository` để đảm bảo hệ thống không bị gián đoạn hoạt động.
+  - **Nguyên tắc an toàn:** Tuyệt đối không yêu cầu người dùng gửi mật khẩu CSDL hoặc JWT secret thật vào chat.
 
 ---
 

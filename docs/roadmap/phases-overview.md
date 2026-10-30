@@ -3,6 +3,10 @@
 > **Dự án:** Acad DevOps Fullstack Monorepo  
 > **Kiến trúc:** High-throughput Social/Discussion Engine với Cây bình luận đa tầng ảo hóa, Realtime Voting & Kiến trúc bảo mật Multi-tier.
 
+> **Lưu ý Kiến trúc:** Tài liệu này biểu diễn góc nhìn theo dòng thời gian (Phases). Để xem góc nhìn chi tiết đa chiều theo 10 phân hệ chức năng và 6 tiêu chí kỹ thuật, vui lòng tham khảo:
+> - **[Bảng Kiểm Ma Trận Đa Chiều 10 Phân Hệ](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/roadmap/modules-matrix-checklist.md)**
+> - **[Kế Hoạch Triển Khai Đa Chiều (4 Waves)](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/roadmap/multi-dimensional-plan.md)**
+
 ---
 
 ## 1. Bản Đồ Tổng Quan Tiến Độ Dự Án (Project Milestone Map)

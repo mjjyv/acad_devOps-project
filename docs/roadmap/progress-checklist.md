@@ -5,6 +5,8 @@
 **Ngày cập nhật:** 30/10/2026  
 **Tổng số mục kiểm tra:** 120+ tiêu chí chi tiết  
 
+> 💡 **Xem Ma trận Đa chiều:** Bên cạnh góc nhìn tuần tự 7 giai đoạn dưới đây, bạn có thể xem **[Bảng Kiểm Ma Trận Đa Chiều 10 Phân Hệ × 6 Chiều Kỹ Thuật](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/roadmap/modules-matrix-checklist.md)** và **[Kế Hoạch Triển Khai Đa Chiều Theo 4 Waves](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/roadmap/multi-dimensional-plan.md)**.
+
 ---
 
 ## TỔNG QUAN TIẾN ĐỘ THỰC HIỆN
