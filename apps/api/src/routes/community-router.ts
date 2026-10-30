@@ -164,13 +164,15 @@ export function createCommunityRouter(
       if (pathname === '/api/v1/threads' && method === 'GET') {
         const optUser = getOptionalUser(req);
         const sort = (url.searchParams.get('sort') || 'hot') as 'hot' | 'new' | 'top';
-        const spaceSlug = url.searchParams.get('spaceSlug') || undefined;
+        const spaceSlug = url.searchParams.get('spaceSlug') || url.searchParams.get('space') || undefined;
+        const q = url.searchParams.get('q') || undefined;
         const limit = parseInt(url.searchParams.get('limit') || '20', 10);
         const cursor = url.searchParams.get('cursor') || undefined;
 
         const result = await communityService.listThreads({
           sort: ['hot', 'new', 'top'].includes(sort) ? sort : 'hot',
           spaceSlug,
+          q,
           limit: Math.min(Math.max(1, limit), 50),
           cursor,
           userId: optUser?.userId,

@@ -1,11 +1,46 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../contexts/auth-context';
 
 export function Navbar() {
   const { user, logout, isLoading } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialQ = searchParams?.get('q') || '';
+  const [searchValue, setSearchValue] = useState(initialQ);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setSearchValue(searchParams?.get('q') || '');
+  }, [searchParams]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.key === '/' &&
+        document.activeElement?.tagName !== 'INPUT' &&
+        document.activeElement?.tagName !== 'TEXTAREA'
+      ) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const query = searchValue.trim();
+    if (query) {
+      router.push(`/?q=${encodeURIComponent(query)}`);
+    } else {
+      router.push('/');
+    }
+  };
 
   return (
     <header
@@ -85,7 +120,8 @@ export function Navbar() {
         </Link>
 
         {/* SEARCH BAR (MINIMALIST BRUTALISM DARK) */}
-        <div
+        <form
+          onSubmit={handleSearchSubmit}
           style={{
             flex: '1',
             maxWidth: '460px',
@@ -109,8 +145,11 @@ export function Navbar() {
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
           <input
+            ref={searchInputRef}
             type="text"
             placeholder="Tìm kiếm kiến trúc, DevOps, thảo luận..."
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
             style={{
               width: '100%',
               padding: '0.45rem 2.2rem 0.45rem 2.2rem',
@@ -123,22 +162,45 @@ export function Navbar() {
               boxShadow: 'inset 1px 1px 0px rgba(0,0,0,0.4)',
             }}
           />
-          <span
-            style={{
-              position: 'absolute',
-              right: '10px',
-              fontSize: '0.7rem',
-              padding: '0.1rem 0.4rem',
-              borderRadius: '0px',
-              backgroundColor: '#393E46',
-              color: '#DFD0B8',
-              fontFamily: 'var(--font-mono)',
-              border: '1px solid #948979',
-            }}
-          >
-            /
-          </span>
-        </div>
+          {searchValue ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchValue('');
+                router.push('/');
+              }}
+              style={{
+                position: 'absolute',
+                right: '8px',
+                background: 'transparent',
+                border: 'none',
+                color: '#948979',
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+                fontWeight: 800,
+                fontFamily: 'var(--font-mono)',
+              }}
+            >
+              ✕
+            </button>
+          ) : (
+            <span
+              style={{
+                position: 'absolute',
+                right: '10px',
+                fontSize: '0.7rem',
+                padding: '0.1rem 0.4rem',
+                borderRadius: '0px',
+                backgroundColor: '#393E46',
+                color: '#DFD0B8',
+                fontFamily: 'var(--font-mono)',
+                border: '1px solid #948979',
+              }}
+            >
+              /
+            </span>
+          )}
+        </form>
 
         {/* NAVIGATION ACTIONS */}
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>

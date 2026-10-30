@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Navbar } from '../components/navbar';
 import { useAuth } from '../contexts/auth-context';
 import { communityClient } from '../lib/community-client';
@@ -9,6 +10,9 @@ import { Space, ThreadSummary, ContentAST } from '@acad/contracts';
 
 export default function HomePage() {
   const { user } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const searchQ = searchParams?.get('q') || '';
 
   // State
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
@@ -48,6 +52,7 @@ export default function HomePage() {
         communityClient.fetchThreads({
           sort: selectedSort,
           spaceSlug: selectedSpaceSlug || undefined,
+          q: searchQ || undefined,
         }),
       ]);
       setSpaces(spacesData);
@@ -65,7 +70,7 @@ export default function HomePage() {
 
   useEffect(() => {
     loadData();
-  }, [selectedSort, selectedSpaceSlug]);
+  }, [selectedSort, selectedSpaceSlug, searchQ]);
 
   // Handle Vote
   const handleVote = async (threadId: string, direction: 1 | -1) => {
@@ -456,6 +461,47 @@ export default function HomePage() {
               {threads.length} BÀI VIẾT
             </div>
           </div>
+
+          {/* Search Query Banner */}
+          {searchQ && (
+            <div
+              style={{
+                backgroundColor: '#393E46',
+                border: '2px solid #DFD0B8',
+                padding: '0.85rem 1.25rem',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                boxShadow: '3px 3px 0px #948979',
+                fontFamily: 'var(--font-mono)',
+              }}
+            >
+              <div>
+                <span style={{ fontSize: '0.72rem', color: '#948979', fontWeight: 800 }}>
+                  KẾT QUẢ TÌM KIẾM CHO:
+                </span>
+                <div style={{ fontSize: '1rem', fontWeight: 900, color: '#DFD0B8' }}>
+                  &quot;{searchQ}&quot; ({threads.length} bài viết tìm thấy)
+                </div>
+              </div>
+
+              <button
+                onClick={() => router.push('/')}
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  backgroundColor: '#222831',
+                  color: '#DFD0B8',
+                  border: '1px solid #948979',
+                  fontSize: '0.75rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  boxShadow: '2px 2px 0px #948979',
+                }}
+              >
+                [XÓA BỘ LỌC]
+              </button>
+            </div>
+          )}
 
           {/* Loading / Error States */}
           {isLoading && (

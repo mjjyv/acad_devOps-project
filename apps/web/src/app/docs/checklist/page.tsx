@@ -27,29 +27,47 @@ export default function ChecklistPage() {
   const getStatusBadge = (status: ChecklistTaskStatus) => {
     switch (status) {
       case 'COMPLETED':
-        return { text: '✓ ĐÃ HOÀN THÀNH', bg: '#064e3b', color: '#6ee7b7' };
+        return { text: '[✓ HOÀN THÀNH]', bg: '#222831', color: '#DFD0B8' };
       case 'IN_PROGRESS':
-        return { text: '⏳ ĐANG THỰC HIỆN', bg: '#451a03', color: '#fde68a' };
+        return { text: '[⏳ ĐANG LÀM]', bg: '#222831', color: '#f59e0b' };
       case 'PLANNED':
-        return { text: '📋 DỰ KIẾN', bg: '#1e293b', color: '#94a3b8' };
+        return { text: '[📋 DỰ KIẾN]', bg: '#222831', color: '#948979' };
     }
   };
 
   return (
-    <main style={{ padding: '2rem 3rem', maxWidth: '1100px', margin: '0 auto' }}>
+    <main style={{ padding: '2rem 3rem', maxWidth: '1100px', margin: '0 auto', color: '#DFD0B8' }}>
       {/* HEADER */}
       <div style={{ marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.5rem' }}>
-          <Link href="/docs" style={{ color: '#94a3b8', textDecoration: 'none' }}>
-            Docs
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            fontSize: '0.8rem',
+            color: '#948979',
+            marginBottom: '0.5rem',
+            fontFamily: 'var(--font-mono)',
+          }}
+        >
+          <Link href="/docs" style={{ color: '#948979', textDecoration: 'none' }}>
+            ACAD.DOCS
           </Link>
-          <span>/</span>
-          <span style={{ color: '#38bdf8' }}>Checklist 7 Giai đoạn</span>
+          <span>//</span>
+          <span style={{ color: '#DFD0B8', fontWeight: 800 }}>CHECKLIST 7 GIAI ĐOẠN</span>
         </div>
-        <h1 style={{ fontSize: '2.25rem', fontWeight: 800, color: '#f8fafc', margin: '0 0 0.5rem 0', letterSpacing: '-0.02em' }}>
-          Checklist Tiến Độ 7 Giai Đoạn Dự Án
+        <h1
+          style={{
+            fontSize: '1.85rem',
+            fontWeight: 900,
+            color: '#DFD0B8',
+            margin: '0 0 0.5rem 0',
+            fontFamily: 'var(--font-mono)',
+          }}
+        >
+          TIẾN ĐỘ THI CÔNG DỰ ÁN (7 STAGES)
         </h1>
-        <p style={{ color: '#94a3b8', fontSize: '1rem', lineHeight: '1.6', margin: 0 }}>
+        <p style={{ color: '#948979', fontSize: '0.92rem', lineHeight: '1.6', margin: 0 }}>
           Số hóa toàn bộ 2050 dòng đặc tả quy chuẩn từ tài liệu gốc. Theo dõi thời gian thực tiến độ từng hạng mục kỹ thuật,
           tập tin bàn giao (deliverables) và tiêu chuẩn nghiệm thu (verification criteria).
         </p>
@@ -57,53 +75,67 @@ export default function ChecklistPage() {
 
       {/* BẢNG TIẾN ĐỘ TỪNG GIAI ĐOẠN */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '2.5rem' }}>
-        {STAGES_PROGRESS.map((stage) => (
-          <div
-            key={stage.stageNumber}
-            onClick={() => setSelectedStage(stage.stageNumber === selectedStage ? 'ALL' : stage.stageNumber)}
-            style={{
-              padding: '1.25rem',
-              backgroundColor: '#131926',
-              borderRadius: '8px',
-              border: `1px solid ${selectedStage === stage.stageNumber ? '#38bdf8' : '#1e293b'}`,
-              cursor: 'pointer',
-              transition: 'border-color 0.2s',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#38bdf8' }}>
-                {stage.stageName.toUpperCase()}
-              </span>
-              <span
-                style={{
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  padding: '0.1rem 0.4rem',
-                  borderRadius: '4px',
-                  backgroundColor: stage.completedPercent === 100 ? '#064e3b' : stage.completedPercent > 0 ? '#451a03' : '#1e293b',
-                  color: stage.completedPercent === 100 ? '#6ee7b7' : stage.completedPercent > 0 ? '#fde68a' : '#94a3b8',
-                }}
-              >
-                {stage.completedPercent}%
-              </span>
-            </div>
-            <div style={{ color: '#f8fafc', fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.5rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {stage.title}
-            </div>
-
-            {/* PROGRESS BAR */}
-            <div style={{ width: '100%', height: '6px', backgroundColor: '#1e293b', borderRadius: '3px', overflow: 'hidden' }}>
+        {STAGES_PROGRESS.map((stage) => {
+          const isSelected = selectedStage === stage.stageNumber;
+          return (
+            <div
+              key={stage.stageNumber}
+              onClick={() => setSelectedStage(isSelected ? 'ALL' : stage.stageNumber)}
+              style={{
+                padding: '1.25rem',
+                backgroundColor: isSelected ? '#DFD0B8' : '#393E46',
+                color: isSelected ? '#222831' : '#DFD0B8',
+                border: '2px solid #948979',
+                boxShadow: isSelected ? '3px 3px 0px #DFD0B8' : '3px 3px 0px #948979',
+                cursor: 'pointer',
+                transition: 'all 0.1s ease',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 900, fontFamily: 'var(--font-mono)' }}>
+                  {stage.stageName.toUpperCase()}
+                </span>
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 900,
+                    padding: '0.1rem 0.4rem',
+                    backgroundColor: isSelected ? '#222831' : '#222831',
+                    color: isSelected ? '#DFD0B8' : '#DFD0B8',
+                    border: '1px solid #948979',
+                    fontFamily: 'var(--font-mono)',
+                  }}
+                >
+                  {stage.completedPercent}%
+                </span>
+              </div>
               <div
                 style={{
-                  width: `${stage.completedPercent}%`,
-                  height: '100%',
-                  backgroundColor: stage.completedPercent === 100 ? '#10b981' : '#38bdf8',
-                  borderRadius: '3px',
+                  fontWeight: 800,
+                  fontSize: '0.9rem',
+                  marginBottom: '0.5rem',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  fontFamily: 'var(--font-mono)',
                 }}
-              />
+              >
+                {stage.title}
+              </div>
+
+              {/* PROGRESS BAR */}
+              <div style={{ width: '100%', height: '6px', backgroundColor: isSelected ? '#393E46' : '#222831', border: '1px solid #948979' }}>
+                <div
+                  style={{
+                    width: `${stage.completedPercent}%`,
+                    height: '100%',
+                    backgroundColor: isSelected ? '#222831' : '#DFD0B8',
+                  }}
+                />
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* THANH BỘ LỌC VÀ TÌM KIẾM */}
@@ -115,18 +147,18 @@ export default function ChecklistPage() {
           justifyContent: 'space-between',
           alignItems: 'center',
           padding: '1rem',
-          backgroundColor: '#131926',
-          borderRadius: '8px',
-          border: '1px solid #1e293b',
+          backgroundColor: '#393E46',
+          border: '2px solid #948979',
+          boxShadow: '3px 3px 0px #948979',
           marginBottom: '1.5rem',
         }}
       >
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           {[
-            { label: 'Tất cả', value: 'ALL' },
-            { label: '✓ Hoàn thành', value: 'COMPLETED' },
-            { label: '⏳ Đang làm', value: 'IN_PROGRESS' },
-            { label: '📋 Dự kiến', value: 'PLANNED' },
+            { label: 'TẤT CẢ', value: 'ALL' },
+            { label: '✓ HOÀN THÀNH', value: 'COMPLETED' },
+            { label: '⏳ ĐANG LÀM', value: 'IN_PROGRESS' },
+            { label: '📋 DỰ KIẾN', value: 'PLANNED' },
           ].map((btn) => (
             <button
               key={btn.value}
@@ -134,13 +166,14 @@ export default function ChecklistPage() {
               type="button"
               style={{
                 padding: '0.4rem 0.8rem',
-                borderRadius: '6px',
-                border: '1px solid #334155',
-                backgroundColor: selectedStatus === btn.value ? '#2563eb' : '#0f172a',
-                color: selectedStatus === btn.value ? '#ffffff' : '#cbd5e1',
-                fontSize: '0.85rem',
-                fontWeight: 500,
+                border: '2px solid #948979',
+                backgroundColor: selectedStatus === btn.value ? '#DFD0B8' : '#222831',
+                color: selectedStatus === btn.value ? '#222831' : '#DFD0B8',
+                fontSize: '0.78rem',
+                fontFamily: 'var(--font-mono)',
+                fontWeight: 800,
                 cursor: 'pointer',
+                boxShadow: selectedStatus === btn.value ? '2px 2px 0px #DFD0B8' : 'none',
               }}
             >
               {btn.label}
@@ -150,26 +183,36 @@ export default function ChecklistPage() {
 
         <input
           type="text"
+          placeholder="Tìm task, deliverable, tiêu chí..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Lọc theo tên tác vụ, tag..."
           style={{
-            padding: '0.4rem 0.8rem',
-            borderRadius: '6px',
-            border: '1px solid #334155',
-            backgroundColor: '#0f172a',
-            color: '#f8fafc',
-            fontSize: '0.85rem',
-            minWidth: '240px',
+            padding: '0.45rem 0.85rem',
+            backgroundColor: '#222831',
+            border: '2px solid #948979',
+            color: '#DFD0B8',
+            fontSize: '0.82rem',
+            fontFamily: 'var(--font-mono)',
+            outline: 'none',
+            minWidth: '260px',
           }}
         />
       </div>
 
-      {/* DANH SÁCH TÁC VỤ */}
+      {/* DANH SÁCH CHECKLIST TASKS */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {filteredTasks.length === 0 ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8', backgroundColor: '#131926', borderRadius: '8px' }}>
-            Không tìm thấy tác vụ nào phù hợp với bộ lọc hiện tại.
+          <div
+            style={{
+              padding: '3rem',
+              backgroundColor: '#393E46',
+              border: '2px solid #948979',
+              textAlign: 'center',
+              color: '#948979',
+              fontFamily: 'var(--font-mono)',
+            }}
+          >
+            [!] Không tìm thấy tác vụ nào khớp với bộ lọc.
           </div>
         ) : (
           filteredTasks.map((task) => {
@@ -178,54 +221,85 @@ export default function ChecklistPage() {
               <div
                 key={task.id}
                 style={{
-                  padding: '1.25rem 1.5rem',
-                  backgroundColor: '#131926',
-                  borderRadius: '8px',
-                  border: '1px solid #1e293b',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.75rem',
+                  padding: '1.25rem',
+                  backgroundColor: '#393E46',
+                  border: '2px solid #948979',
+                  boxShadow: '3px 3px 0px #948979',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '0.15rem 0.4rem', borderRadius: '4px', backgroundColor: '#1e3a5f', color: '#38bdf8' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span
+                      style={{
+                        padding: '0.15rem 0.5rem',
+                        backgroundColor: '#222831',
+                        border: '1px solid #948979',
+                        color: '#DFD0B8',
+                        fontSize: '0.7rem',
+                        fontFamily: 'var(--font-mono)',
+                        fontWeight: 800,
+                      }}
+                    >
                       GĐ {task.stageNumber}
                     </span>
-                    <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#f8fafc', margin: 0 }}>
+                    <span
+                      style={{
+                        padding: '0.15rem 0.5rem',
+                        backgroundColor: '#222831',
+                        border: '1px solid #948979',
+                        color: '#948979',
+                        fontSize: '0.7rem',
+                        fontFamily: 'var(--font-mono)',
+                      }}
+                    >
+                      #{task.tag}
+                    </span>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#DFD0B8', margin: 0, fontFamily: 'var(--font-mono)' }}>
                       {task.title}
                     </h3>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.75rem', padding: '0.15rem 0.5rem', borderRadius: '4px', backgroundColor: '#1e293b', color: '#cbd5e1' }}>
-                      #{task.tag}
-                    </span>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '4px', backgroundColor: badge.bg, color: badge.color }}>
-                      {badge.text}
-                    </span>
-                  </div>
+                  <span
+                    style={{
+                      padding: '0.2rem 0.55rem',
+                      backgroundColor: badge.bg,
+                      color: badge.color,
+                      border: '1px solid #948979',
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                      fontFamily: 'var(--font-mono)',
+                    }}
+                  >
+                    {badge.text}
+                  </span>
                 </div>
 
-                <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: '1.5', margin: 0 }}>
+                <p style={{ color: '#948979', fontSize: '0.88rem', lineHeight: '1.6', margin: '0 0 0.85rem 0' }}>
                   {task.description}
                 </p>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid #1e293b', fontSize: '0.85rem' }}>
-                  <div>
-                    <span style={{ color: '#64748b', fontWeight: 600 }}>Tập tin bàn giao:</span>{' '}
-                    <span style={{ color: '#38bdf8', fontFamily: 'monospace' }}>
-                      {task.deliverables.join(', ')}
+                {task.deliverables && task.deliverables.length > 0 && (
+                  <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.72rem', color: '#948979', fontWeight: 800, fontFamily: 'var(--font-mono)' }}>
+                      DELIVERABLES:
                     </span>
+                    {task.deliverables.map((del, dIdx) => (
+                      <span
+                        key={dIdx}
+                        style={{
+                          padding: '0.15rem 0.45rem',
+                          backgroundColor: '#222831',
+                          border: '1px solid #948979',
+                          color: '#DFD0B8',
+                          fontSize: '0.72rem',
+                          fontFamily: 'var(--font-mono)',
+                        }}
+                      >
+                        {del}
+                      </span>
+                    ))}
                   </div>
-
-                  <div>
-                    <span style={{ color: '#64748b', fontWeight: 600 }}>Tiêu chuẩn nghiệm thu:</span>{' '}
-                    <span style={{ color: '#a7f3d0' }}>
-                      {task.verificationCriteria}
-                    </span>
-                  </div>
-                </div>
+                )}
               </div>
             );
           })

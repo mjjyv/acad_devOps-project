@@ -108,6 +108,7 @@ export const UserProfileSchema = z.object({
   role: UserRoleSchema,
   status: UserStatusSchema,
   karmaScore: z.number().int(),
+  threadsCount: z.number().int().optional(),
   avatarUrl: z.string().nullable().optional(),
   bio: z.string().nullable().optional(),
   createdAt: z.string().datetime(),

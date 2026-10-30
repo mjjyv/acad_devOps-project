@@ -12,6 +12,9 @@ import {
   ICommunityRepository,
   ThreadListFilter,
   ThreadListResult,
+  AdminThreadListFilter,
+  AdminThreadListResult,
+  CommunityStats,
 } from '../repository/community-repository.js';
 
 export class CommunityService {
@@ -132,5 +135,38 @@ export class CommunityService {
     direction: 1 | -1,
   ): Promise<{ upvotes: number; downvotes: number; netScore: number; userVote: 1 | -1 | null }> {
     return this.repository.voteComment(commentId, userId, direction);
+  }
+
+  // --- ADMIN OPERATIONS ---
+  public async adminListSpaces(): Promise<Space[]> {
+    return this.repository.adminListSpaces();
+  }
+
+  public async adminDeleteSpace(id: string): Promise<boolean> {
+    return this.repository.adminDeleteSpace(id);
+  }
+
+  public async adminListThreads(filter: AdminThreadListFilter): Promise<AdminThreadListResult> {
+    return this.repository.adminListThreads(filter);
+  }
+
+  public async adminSetThreadPinned(threadId: string, isPinned: boolean): Promise<boolean> {
+    return this.repository.adminSetThreadPinned(threadId, isPinned);
+  }
+
+  public async adminSetThreadLocked(threadId: string, isLocked: boolean): Promise<boolean> {
+    return this.repository.adminSetThreadLocked(threadId, isLocked);
+  }
+
+  public async adminDeleteThread(threadId: string): Promise<boolean> {
+    return this.repository.adminDeleteThread(threadId);
+  }
+
+  public async getUserThreadCounts(): Promise<Record<string, number>> {
+    return this.repository.getUserThreadCounts();
+  }
+
+  public async getCommunityStats(): Promise<CommunityStats> {
+    return this.repository.getCommunityStats();
   }
 }

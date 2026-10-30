@@ -21,7 +21,7 @@ const SIDEBAR_GROUPS: SidebarGroup[] = [
     groupTitle: 'BẮT ĐẦU',
     items: [
       { title: 'Tổng quan Hệ thống', href: '/docs' },
-      { title: 'Checklist 7 Giai đoạn', href: '/docs/checklist', badge: '7 Stages', badgeColor: '#38bdf8' },
+      { title: 'Checklist 7 Giai đoạn', href: '/docs/checklist', badge: '7 Stages' },
     ],
   },
   {
@@ -31,7 +31,6 @@ const SIDEBAR_GROUPS: SidebarGroup[] = [
         title: 'Hồ sơ Yêu cầu PRD & Personas',
         href: '/docs/discovery/prd-discovery',
         badge: 'GĐ 1',
-        badgeColor: '#10b981',
       },
     ],
   },
@@ -42,7 +41,6 @@ const SIDEBAR_GROUPS: SidebarGroup[] = [
         title: 'An ninh, RBAC/ABAC & Token Rotation',
         href: '/docs/security/auth-security',
         badge: 'GĐ 1 & 4',
-        badgeColor: '#10b981',
       },
     ],
   },
@@ -53,7 +51,6 @@ const SIDEBAR_GROUPS: SidebarGroup[] = [
         title: 'CSDL PostgreSQL 16 & Redis Lua',
         href: '/docs/architecture/architecture-design',
         badge: 'GĐ 2',
-        badgeColor: '#10b981',
       },
     ],
   },
@@ -64,7 +61,6 @@ const SIDEBAR_GROUPS: SidebarGroup[] = [
         title: 'Cẩm nang Docker, CI/CD & Render',
         href: '/docs/devops/devops-guide',
         badge: 'GĐ 3',
-        badgeColor: '#10b981',
       },
     ],
   },
@@ -75,7 +71,6 @@ const SIDEBAR_GROUPS: SidebarGroup[] = [
         title: 'Biên niên sử & Báo cáo Nghiệm thu',
         href: '/docs/plans/plans-history',
         badge: 'GĐ 1-4',
-        badgeColor: '#a855f7',
       },
     ],
   },
@@ -87,14 +82,14 @@ export function DocsSidebar() {
   return (
     <aside
       style={{
-        width: '260px',
+        width: '270px',
         flexShrink: 0,
         height: 'calc(100vh - 60px)',
         position: 'sticky',
         top: '60px',
         overflowY: 'auto',
-        backgroundColor: '#0f172a',
-        borderRight: '1px solid #1e293b',
+        backgroundColor: '#222831',
+        borderRight: '2px solid #948979',
         padding: '1.5rem 1rem',
       }}
     >
@@ -103,17 +98,18 @@ export function DocsSidebar() {
           <div key={idx}>
             <div
               style={{
-                fontSize: '0.7rem',
-                fontWeight: 700,
-                color: '#64748b',
-                letterSpacing: '0.06em',
+                fontSize: '0.68rem',
+                fontWeight: 900,
+                color: '#948979',
+                letterSpacing: '0.08em',
                 marginBottom: '0.5rem',
                 paddingLeft: '0.5rem',
+                fontFamily: 'var(--font-mono)',
               }}
             >
-              {group.groupTitle}
+              // {group.groupTitle}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
               {group.items.map((item) => {
                 const isActive = pathname === item.href;
                 return (
@@ -125,13 +121,15 @@ export function DocsSidebar() {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       padding: '0.45rem 0.65rem',
-                      borderRadius: '6px',
+                      borderRadius: '0px',
                       textDecoration: 'none',
-                      fontSize: '0.85rem',
-                      fontWeight: isActive ? 600 : 400,
-                      color: isActive ? '#38bdf8' : '#cbd5e1',
-                      backgroundColor: isActive ? '#1e293b' : 'transparent',
-                      transition: 'all 0.15s ease-in-out',
+                      fontSize: '0.82rem',
+                      fontWeight: isActive ? 800 : 600,
+                      color: isActive ? '#222831' : '#DFD0B8',
+                      backgroundColor: isActive ? '#DFD0B8' : 'transparent',
+                      border: isActive ? '1px solid #DFD0B8' : '1px solid transparent',
+                      boxShadow: isActive ? '2px 2px 0px #948979' : 'none',
+                      transition: 'all 0.1s ease-in-out',
                     }}
                   >
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -141,11 +139,13 @@ export function DocsSidebar() {
                       <span
                         style={{
                           fontSize: '0.65rem',
-                          fontWeight: 600,
+                          fontWeight: 800,
                           padding: '0.1rem 0.35rem',
-                          borderRadius: '4px',
-                          backgroundColor: '#1e3a5f',
-                          color: item.badgeColor || '#38bdf8',
+                          borderRadius: '0px',
+                          backgroundColor: isActive ? '#222831' : '#393E46',
+                          color: isActive ? '#DFD0B8' : '#948979',
+                          border: '1px solid #948979',
+                          fontFamily: 'var(--font-mono)',
                         }}
                       >
                         {item.badge}

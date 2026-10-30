@@ -34,40 +34,69 @@ export default async function DocDetailPage({ params }: DocPageProps) {
   const nextDoc = currentIndex < allDocs.length - 1 ? allDocs[currentIndex + 1] : null;
 
   return (
-    <div style={{ display: 'flex', width: '100%' }}>
+    <div style={{ display: 'flex', width: '100%', color: '#DFD0B8' }}>
       {/* KHU VỰC NỘI DUNG CHÍNH */}
       <article style={{ flex: 1, padding: '2rem 3rem', maxWidth: '840px', minWidth: 0 }}>
         {/* BREADCRUMBS */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>
-          <Link href="/docs" style={{ color: '#94a3b8', textDecoration: 'none' }}>
-            Docs
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            fontSize: '0.8rem',
+            color: '#948979',
+            marginBottom: '1rem',
+            fontFamily: 'var(--font-mono)',
+          }}
+        >
+          <Link href="/docs" style={{ color: '#948979', textDecoration: 'none' }}>
+            ACAD.DOCS
           </Link>
-          <span>/</span>
-          <span style={{ color: '#94a3b8' }}>{doc.categoryTitle}</span>
-          <span>/</span>
-          <span style={{ color: '#38bdf8' }}>{doc.title}</span>
+          <span>//</span>
+          <span style={{ color: '#948979' }}>{doc.categoryTitle.toUpperCase()}</span>
+          <span>//</span>
+          <span style={{ color: '#DFD0B8', fontWeight: 800 }}>{doc.title}</span>
         </div>
 
         {/* TIÊU ĐỀ BÀI VIẾT */}
-        <h1 style={{ fontSize: '2.25rem', fontWeight: 800, color: '#f8fafc', margin: '0 0 0.75rem 0', letterSpacing: '-0.02em', lineHeight: '1.3' }}>
+        <h1
+          style={{
+            fontSize: '2rem',
+            fontWeight: 900,
+            color: '#DFD0B8',
+            margin: '0 0 0.75rem 0',
+            fontFamily: 'var(--font-mono)',
+            lineHeight: '1.3',
+          }}
+        >
           {doc.title}
         </h1>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
           {doc.stageBadge && (
-            <span style={{ backgroundColor: '#064e3b', color: '#6ee7b7', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
+            <span
+              style={{
+                backgroundColor: '#222831',
+                color: '#DFD0B8',
+                border: '1px solid #948979',
+                padding: '0.2rem 0.6rem',
+                fontSize: '0.72rem',
+                fontWeight: 800,
+                fontFamily: 'var(--font-mono)',
+              }}
+            >
               {doc.stageBadge}
             </span>
           )}
-          <span style={{ color: '#64748b', fontSize: '0.8rem' }}>
+          <span style={{ color: '#948979', fontSize: '0.78rem', fontFamily: 'var(--font-mono)' }}>
             Cập nhật: {doc.updatedAt}
           </span>
-          <span style={{ color: '#64748b', fontSize: '0.8rem' }}>
+          <span style={{ color: '#948979', fontSize: '0.78rem', fontFamily: 'var(--font-mono)' }}>
             • Thời gian đọc: ~{doc.readingTimeMinutes} phút
           </span>
         </div>
 
-        <p style={{ fontSize: '1.05rem', color: '#94a3b8', lineHeight: '1.6', marginBottom: '1.5rem' }}>
+        <p style={{ fontSize: '1rem', color: '#948979', lineHeight: '1.6', marginBottom: '1.5rem' }}>
           {doc.description}
         </p>
 
@@ -75,7 +104,7 @@ export default async function DocDetailPage({ params }: DocPageProps) {
         <CalloutNote type="important" title="Ghi Chú Kỹ Thuật Trọng Điểm (Key Takeaways)">
           <ul style={{ margin: 0, paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
             {doc.keyTakeaways.map((point, idx) => (
-              <li key={idx} style={{ color: '#f1f5f9' }}>
+              <li key={idx} style={{ color: '#DFD0B8' }}>
                 {point}
               </li>
             ))}
@@ -83,7 +112,7 @@ export default async function DocDetailPage({ params }: DocPageProps) {
         </CalloutNote>
 
         {/* NỘI DUNG CHI TIẾT */}
-        <div style={{ marginTop: '2rem', color: '#e2e8f0', lineHeight: '1.7', fontSize: '0.95rem' }}>
+        <div style={{ marginTop: '2rem', color: '#DFD0B8', lineHeight: '1.7', fontSize: '0.92rem' }}>
           {doc.content.split('\n\n').map((paragraph, idx) => {
             const trimmed = paragraph.trim();
             if (!trimmed) return null;
@@ -97,16 +126,17 @@ export default async function DocDetailPage({ params }: DocPageProps) {
                   key={idx}
                   id={id}
                   style={{
-                    fontSize: '1.5rem',
-                    fontWeight: 700,
-                    color: '#f8fafc',
+                    fontSize: '1.35rem',
+                    fontWeight: 900,
+                    color: '#DFD0B8',
+                    fontFamily: 'var(--font-mono)',
                     marginTop: '2.5rem',
                     marginBottom: '1rem',
-                    borderBottom: '1px solid #1e293b',
+                    borderBottom: '2px solid #948979',
                     paddingBottom: '0.5rem',
                   }}
                 >
-                  {title}
+                  // {title}
                 </h2>
               );
             }
@@ -116,7 +146,7 @@ export default async function DocDetailPage({ params }: DocPageProps) {
               return (
                 <ul key={idx} style={{ margin: '0.75rem 0', paddingLeft: '1.25rem' }}>
                   {items.map((it, itIdx) => (
-                    <li key={itIdx} style={{ marginBottom: '0.35rem', color: '#cbd5e1' }}>
+                    <li key={itIdx} style={{ marginBottom: '0.35rem', color: '#DFD0B8' }}>
                       {it.replace('- ', '')}
                     </li>
                   ))}
@@ -132,15 +162,15 @@ export default async function DocDetailPage({ params }: DocPageProps) {
                 <pre
                   key={idx}
                   style={{
-                    backgroundColor: '#090d16',
+                    backgroundColor: '#222831',
                     padding: '1rem',
-                    borderRadius: '8px',
-                    border: '1px solid #1e293b',
+                    border: '2px solid #948979',
+                    boxShadow: '3px 3px 0px #948979',
                     overflowX: 'auto',
-                    fontFamily: 'monospace',
-                    fontSize: '0.85rem',
-                    color: '#38bdf8',
-                    margin: '1rem 0',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '0.82rem',
+                    color: '#DFD0B8',
+                    margin: '1.25rem 0',
                   }}
                 >
                   <code>{codeContent}</code>
@@ -149,7 +179,7 @@ export default async function DocDetailPage({ params }: DocPageProps) {
             }
 
             return (
-              <p key={idx} style={{ marginBottom: '1rem', color: '#cbd5e1' }}>
+              <p key={idx} style={{ marginBottom: '1rem', color: '#DFD0B8' }}>
                 {trimmed}
               </p>
             );
@@ -164,7 +194,7 @@ export default async function DocDetailPage({ params }: DocPageProps) {
             alignItems: 'center',
             marginTop: '3.5rem',
             paddingTop: '1.5rem',
-            borderTop: '1px solid #1e293b',
+            borderTop: '2px solid #948979',
           }}
         >
           {prevDoc ? (
@@ -174,13 +204,17 @@ export default async function DocDetailPage({ params }: DocPageProps) {
                 display: 'flex',
                 flexDirection: 'column',
                 textDecoration: 'none',
-                color: '#94a3b8',
+                color: '#948979',
+                backgroundColor: '#393E46',
+                border: '1px solid #948979',
+                padding: '0.75rem 1rem',
+                boxShadow: '2px 2px 0px #948979',
               }}
             >
-              <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b' }}>
-                ← Bài trước
+              <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#948979', fontFamily: 'var(--font-mono)' }}>
+                &larr; BÀI TRƯỚC
               </span>
-              <span style={{ fontWeight: 600, color: '#38bdf8', fontSize: '0.95rem' }}>
+              <span style={{ fontWeight: 800, color: '#DFD0B8', fontSize: '0.88rem', fontFamily: 'var(--font-mono)' }}>
                 {prevDoc.title}
               </span>
             </Link>
@@ -196,13 +230,17 @@ export default async function DocDetailPage({ params }: DocPageProps) {
                 flexDirection: 'column',
                 alignItems: 'flex-end',
                 textDecoration: 'none',
-                color: '#94a3b8',
+                color: '#948979',
+                backgroundColor: '#393E46',
+                border: '1px solid #948979',
+                padding: '0.75rem 1rem',
+                boxShadow: '2px 2px 0px #948979',
               }}
             >
-              <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b' }}>
-                Bài tiếp theo →
+              <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#948979', fontFamily: 'var(--font-mono)' }}>
+                BÀI TIẾP THEO &rarr;
               </span>
-              <span style={{ fontWeight: 600, color: '#38bdf8', fontSize: '0.95rem' }}>
+              <span style={{ fontWeight: 800, color: '#DFD0B8', fontSize: '0.88rem', fontFamily: 'var(--font-mono)' }}>
                 {nextDoc.title}
               </span>
             </Link>

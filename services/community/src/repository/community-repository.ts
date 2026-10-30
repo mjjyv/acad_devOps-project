@@ -22,11 +22,30 @@ export interface ThreadListFilter {
   limit?: number;
   cursor?: string;
   userId?: string;
+  q?: string;
 }
 
 export interface ThreadListResult {
   items: ThreadSummary[];
   nextCursor: string | null;
+}
+
+export interface AdminThreadListFilter {
+  page?: number;
+  limit?: number;
+  spaceId?: string;
+  search?: string;
+}
+
+export interface AdminThreadListResult {
+  threads: ThreadDetail[];
+  total: number;
+}
+
+export interface CommunityStats {
+  spacesCount: number;
+  threadsCount: number;
+  commentsCount: number;
 }
 
 export interface ICommunityRepository {
@@ -70,6 +89,16 @@ export interface ICommunityRepository {
     userId: string,
     direction: 1 | -1,
   ): Promise<{ upvotes: number; downvotes: number; netScore: number; userVote: 1 | -1 | null }>;
+
+  // Admin operations
+  adminListSpaces(): Promise<Space[]>;
+  adminDeleteSpace(id: string): Promise<boolean>;
+  adminListThreads(filter: AdminThreadListFilter): Promise<AdminThreadListResult>;
+  adminSetThreadPinned(threadId: string, isPinned: boolean): Promise<boolean>;
+  adminSetThreadLocked(threadId: string, isLocked: boolean): Promise<boolean>;
+  adminDeleteThread(threadId: string): Promise<boolean>;
+  getUserThreadCounts(): Promise<Record<string, number>>;
+  getCommunityStats(): Promise<CommunityStats>;
 
   getHealthStatus(): {
     type: 'postgres' | 'in_memory_fallback';
@@ -476,6 +505,16 @@ export class InMemoryCommunityRepository implements ICommunityRepository {
       );
     }
 
+    if (filter.q && filter.q.trim()) {
+      const q = filter.q.trim().toLowerCase();
+      items = items.filter(
+        (t) =>
+          t.title.toLowerCase().includes(q) ||
+          t.snippet.toLowerCase().includes(q) ||
+          t.authorUsername.toLowerCase().includes(q),
+      );
+    }
+
     const sort = filter.sort || 'hot';
     if (sort === 'hot') {
       items.sort((a, b) => b.counters.hotScore - a.counters.hotScore);
@@ -771,6 +810,98 @@ export class InMemoryCommunityRepository implements ICommunityRepository {
       userVote: (voteRes.finalDirection === 1 || voteRes.finalDirection === -1
         ? voteRes.finalDirection
         : null) as 1 | -1 | null,
+    };
+  }
+
+  // --- ADMIN OPERATIONS (IN-MEMORY) ---
+  public async adminListSpaces(): Promise<Space[]> {
+    return Array.from(this.spaces.values()).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  }
+
+  public async adminDeleteSpace(id: string): Promise<boolean> {
+    const space = this.spaces.get(id);
+    if (!space) return false;
+    this.spaces.delete(id);
+
+    // Xóa tất cả các bài viết thuộc không gian này
+    for (const [threadId, thread] of this.threads.entries()) {
+      if (thread.spaceId === id) {
+        this.threads.delete(threadId);
+      }
+    }
+    return true;
+  }
+
+  public async adminListThreads(filter: AdminThreadListFilter): Promise<AdminThreadListResult> {
+    let list = Array.from(this.threads.values());
+
+    if (filter.spaceId) {
+      list = list.filter((t) => t.spaceId === filter.spaceId);
+    }
+
+    if (filter.search && filter.search.trim()) {
+      const q = filter.search.trim().toLowerCase();
+      list = list.filter(
+        (t) =>
+          t.title.toLowerCase().includes(q) ||
+          t.authorUsername.toLowerCase().includes(q) ||
+          t.snippet.toLowerCase().includes(q),
+      );
+    }
+
+    list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    const total = list.length;
+    const page = Math.max(1, filter.page || 1);
+    const limit = Math.max(1, filter.limit || 20);
+    const offset = (page - 1) * limit;
+    const threads = list.slice(offset, offset + limit);
+
+    return { threads, total };
+  }
+
+  public async adminSetThreadPinned(threadId: string, isPinned: boolean): Promise<boolean> {
+    const thread = this.threads.get(threadId);
+    if (!thread) return false;
+    thread.isPinned = isPinned;
+    thread.updatedAt = new Date().toISOString();
+    return true;
+  }
+
+  public async adminSetThreadLocked(threadId: string, isLocked: boolean): Promise<boolean> {
+    const thread = this.threads.get(threadId);
+    if (!thread) return false;
+    thread.isLocked = isLocked;
+    thread.updatedAt = new Date().toISOString();
+    return true;
+  }
+
+  public async adminDeleteThread(threadId: string): Promise<boolean> {
+    const thread = this.threads.get(threadId);
+    if (!thread) return false;
+    this.threads.delete(threadId);
+    const space = this.spaces.get(thread.spaceId);
+    if (space && space.threadCount > 0) {
+      space.threadCount -= 1;
+    }
+    return true;
+  }
+
+  public async getUserThreadCounts(): Promise<Record<string, number>> {
+    const counts: Record<string, number> = {};
+    for (const thread of this.threads.values()) {
+      counts[thread.authorId] = (counts[thread.authorId] || 0) + 1;
+    }
+    return counts;
+  }
+
+  public async getCommunityStats(): Promise<CommunityStats> {
+    return {
+      spacesCount: this.spaces.size,
+      threadsCount: this.threads.size,
+      commentsCount: this.comments.size,
     };
   }
 }
@@ -1074,6 +1205,11 @@ export class PostgresCommunityRepository implements ICommunityRepository {
         if (filter.spaceSlug) {
           params.push(filter.spaceSlug.toLowerCase());
           whereClause += ` AND LOWER(s.slug) = $${params.length}`;
+        }
+
+        if (filter.q && filter.q.trim()) {
+          params.push(`%${filter.q.trim()}%`);
+          whereClause += ` AND (t.title ILIKE $${params.length} OR t.content_ast::text ILIKE $${params.length} OR u.username ILIKE $${params.length})`;
         }
 
         const limit = filter.limit || 20;
@@ -1721,6 +1857,216 @@ export class PostgresCommunityRepository implements ICommunityRepository {
         };
       },
       () => this.fallbackStore.voteComment(commentId, userId, direction),
+    );
+  }
+
+  // --- ADMIN OPERATIONS (POSTGRESQL WITH FALLBACK) ---
+  public async adminListSpaces(): Promise<Space[]> {
+    return this.executeWithFallback(
+      async (client) => {
+        const query = `
+          SELECT 
+            id, slug, name, description, rules, banner_url AS "bannerUrl", avatar_url AS "avatarUrl",
+            creator_id AS "creatorId", is_private AS "isPrivate", member_count AS "memberCount",
+            thread_count AS "threadCount", created_at AS "createdAt"
+          FROM spaces
+          ORDER BY created_at DESC
+        `;
+        const res = await client.query(query);
+        return res.rows.map((r) => ({
+          ...r,
+          rules: typeof r.rules === 'string' ? JSON.parse(r.rules) : r.rules || [],
+          memberCount: Number(r.memberCount || 0),
+          threadCount: Number(r.threadCount || 0),
+          createdAt: new Date(r.createdAt).toISOString(),
+        }));
+      },
+      () => this.fallbackStore.adminListSpaces(),
+    );
+  }
+
+  public async adminDeleteSpace(id: string): Promise<boolean> {
+    return this.executeWithFallback(
+      async (client) => {
+        // Xóa threads trước
+        await client.query(`UPDATE threads SET is_deleted = TRUE, updated_at = NOW() WHERE space_id = $1`, [id]);
+        const res = await client.query(`DELETE FROM spaces WHERE id = $1`, [id]);
+        return (res.rowCount ?? 0) > 0;
+      },
+      () => this.fallbackStore.adminDeleteSpace(id),
+    );
+  }
+
+  public async adminListThreads(filter: AdminThreadListFilter): Promise<AdminThreadListResult> {
+    return this.executeWithFallback(
+      async (client) => {
+        const params: any[] = [];
+        let whereClause = 'WHERE t.is_deleted = FALSE';
+
+        if (filter.spaceId) {
+          params.push(filter.spaceId);
+          whereClause += ` AND t.space_id = $${params.length}`;
+        }
+
+        if (filter.search && filter.search.trim()) {
+          params.push(`%${filter.search.trim()}%`);
+          whereClause += ` AND (t.title ILIKE $${params.length} OR u.username ILIKE $${params.length})`;
+        }
+
+        const countQuery = `
+          SELECT COUNT(*)::int AS total
+          FROM threads t
+          INNER JOIN users u ON u.id = t.author_id
+          ${whereClause}
+        `;
+        const countRes = await client.query(countQuery, params);
+        const total = Number(countRes.rows[0]?.total || 0);
+
+        const page = Math.max(1, filter.page || 1);
+        const limit = Math.max(1, filter.limit || 20);
+        const offset = (page - 1) * limit;
+
+        params.push(limit);
+        const limitIdx = params.length;
+        params.push(offset);
+        const offsetIdx = params.length;
+
+        const selectQuery = `
+          SELECT 
+            t.id, t.space_id AS "spaceId", s.slug AS "spaceSlug", s.name AS "spaceName",
+            t.author_id AS "authorId", u.username AS "authorUsername", u.avatar_url AS "authorAvatarUrl",
+            t.slug, t.title, t.content_ast AS "contentAst",
+            t.is_pinned AS "isPinned", t.is_locked AS "isLocked",
+            t.created_at AS "createdAt",
+            COALESCE(tc.upvotes, 0) AS upvotes,
+            COALESCE(tc.downvotes, 0) AS downvotes,
+            COALESCE(tc.net_score, 0) AS "netScore",
+            COALESCE(tc.comment_count, 0) AS "commentCount",
+            COALESCE(tc.view_count, 0) AS "viewCount",
+            COALESCE(tc.hot_score, 0) AS "hotScore"
+          FROM threads t
+          INNER JOIN spaces s ON s.id = t.space_id
+          INNER JOIN users u ON u.id = t.author_id
+          LEFT JOIN thread_counters tc ON tc.thread_id = t.id
+          ${whereClause}
+          ORDER BY t.created_at DESC
+          LIMIT $${limitIdx} OFFSET $${offsetIdx}
+        `;
+
+        const res = await client.query(selectQuery, params);
+        const threads: ThreadDetail[] = res.rows.map((r) => {
+          const contentAst = typeof r.contentAst === 'string' ? JSON.parse(r.contentAst) : r.contentAst;
+          const snippet = extractSnippetFromAst(contentAst);
+          return {
+            id: r.id,
+            spaceId: r.spaceId,
+            spaceSlug: r.spaceSlug,
+            spaceName: r.spaceName,
+            authorId: r.authorId,
+            authorUsername: r.authorUsername,
+            authorAvatarUrl: r.authorAvatarUrl || null,
+            slug: r.slug,
+            title: r.title,
+            snippet,
+            counters: {
+              upvotes: Number(r.upvotes),
+              downvotes: Number(r.downvotes),
+              netScore: Number(r.netScore),
+              commentCount: Number(r.commentCount),
+              viewCount: Number(r.viewCount),
+              hotScore: Number(r.hotScore),
+            },
+            userVoteDirection: null,
+            isPinned: Boolean(r.isPinned),
+            isLocked: Boolean(r.isLocked),
+            contentAst,
+            createdAt: new Date(r.createdAt).toISOString(),
+            updatedAt: new Date(r.createdAt).toISOString(),
+          };
+        });
+
+        return { threads, total };
+      },
+      () => this.fallbackStore.adminListThreads(filter),
+    );
+  }
+
+  public async adminSetThreadPinned(threadId: string, isPinned: boolean): Promise<boolean> {
+    return this.executeWithFallback(
+      async (client) => {
+        const res = await client.query(
+          `UPDATE threads SET is_pinned = $2, updated_at = NOW() WHERE id = $1`,
+          [threadId, isPinned],
+        );
+        return (res.rowCount ?? 0) > 0;
+      },
+      () => this.fallbackStore.adminSetThreadPinned(threadId, isPinned),
+    );
+  }
+
+  public async adminSetThreadLocked(threadId: string, isLocked: boolean): Promise<boolean> {
+    return this.executeWithFallback(
+      async (client) => {
+        const res = await client.query(
+          `UPDATE threads SET is_locked = $2, updated_at = NOW() WHERE id = $1`,
+          [threadId, isLocked],
+        );
+        return (res.rowCount ?? 0) > 0;
+      },
+      () => this.fallbackStore.adminSetThreadLocked(threadId, isLocked),
+    );
+  }
+
+  public async adminDeleteThread(threadId: string): Promise<boolean> {
+    return this.executeWithFallback(
+      async (client) => {
+        const res = await client.query(
+          `UPDATE threads SET is_deleted = TRUE, updated_at = NOW() WHERE id = $1 RETURNING space_id AS "spaceId"`,
+          [threadId],
+        );
+        if (res.rows.length > 0) {
+          const spaceId = res.rows[0].spaceId;
+          await client.query(
+            `UPDATE spaces SET thread_count = GREATEST(0, thread_count - 1), updated_at = NOW() WHERE id = $1`,
+            [spaceId],
+          );
+          return true;
+        }
+        return false;
+      },
+      () => this.fallbackStore.adminDeleteThread(threadId),
+    );
+  }
+
+  public async getUserThreadCounts(): Promise<Record<string, number>> {
+    return this.executeWithFallback(
+      async (client) => {
+        const res = await client.query(
+          `SELECT author_id AS "authorId", COUNT(*)::int AS count FROM threads WHERE is_deleted = FALSE GROUP BY author_id`,
+        );
+        const map: Record<string, number> = {};
+        for (const row of res.rows) {
+          map[row.authorId] = Number(row.count);
+        }
+        return map;
+      },
+      () => this.fallbackStore.getUserThreadCounts(),
+    );
+  }
+
+  public async getCommunityStats(): Promise<CommunityStats> {
+    return this.executeWithFallback(
+      async (client) => {
+        const sRes = await client.query(`SELECT COUNT(*)::int AS total FROM spaces`);
+        const tRes = await client.query(`SELECT COUNT(*)::int AS total FROM threads WHERE is_deleted = FALSE`);
+        const cRes = await client.query(`SELECT COUNT(*)::int AS total FROM comments WHERE is_deleted = FALSE`);
+        return {
+          spacesCount: Number(sRes.rows[0]?.total || 0),
+          threadsCount: Number(tRes.rows[0]?.total || 0),
+          commentsCount: Number(cRes.rows[0]?.total || 0),
+        };
+      },
+      () => this.fallbackStore.getCommunityStats(),
     );
   }
 }

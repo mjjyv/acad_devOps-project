@@ -9,7 +9,15 @@ export const metadata = {
 
 export default function DocsLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#0b0f17', color: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+    <div
+      style={{
+        minHeight: '100vh',
+        backgroundColor: '#222831',
+        color: '#DFD0B8',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <DocsHeader />
       <div style={{ display: 'flex', flex: 1, width: '100%', maxWidth: '1600px', margin: '0 auto' }}>
         <DocsSidebar />

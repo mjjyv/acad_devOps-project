@@ -1,5 +1,6 @@
 import { IncomingMessage, ServerResponse } from 'node:http';
 import { AuthModule, TokenManager } from '@acad/auth-service';
+import { CommunityService } from '@acad/community-service';
 import {
   AdminUpdateRoleSchema,
   AdminUpdateStatusSchema,
@@ -9,7 +10,7 @@ import {
 } from '@acad/contracts';
 import { parseCookies, readJsonBody, sendJson } from './auth-router.js';
 
-export function createAdminRouter(authModule: AuthModule) {
+export function createAdminRouter(authModule: AuthModule, communityService?: CommunityService) {
   const { sessionStore, userRepo } = authModule;
 
   return async (req: IncomingMessage, res: ServerResponse, url: URL): Promise<boolean> => {
@@ -61,7 +62,14 @@ export function createAdminRouter(authModule: AuthModule) {
     if (method === 'GET' && pathname === '/api/v1/admin/stats') {
       try {
         const stats = await userRepo.getStats();
-        sendJson(res, 200, stats);
+        const commStats = communityService
+          ? await communityService.getCommunityStats()
+          : { spacesCount: 0, threadsCount: 0, commentsCount: 0 };
+
+        sendJson(res, 200, {
+          ...stats,
+          ...commStats,
+        });
         return true;
       } catch (err: any) {
         sendJson(res, 500, { error: err.message || 'Không thể lấy dữ liệu thống kê' });
@@ -81,13 +89,16 @@ export function createAdminRouter(authModule: AuthModule) {
         const search = url.searchParams.get('search') || undefined;
 
         const offset = (page - 1) * limit;
-        const result = await userRepo.listUsers({
-          role,
-          status,
-          search,
-          limit,
-          offset,
-        });
+        const [result, userThreadCounts] = await Promise.all([
+          userRepo.listUsers({
+            role,
+            status,
+            search,
+            limit,
+            offset,
+          }),
+          communityService ? communityService.getUserThreadCounts() : Promise.resolve({}),
+        ]);
 
         const sanitizedUsers = result.users.map((u) => ({
           id: u.id,
@@ -96,6 +107,7 @@ export function createAdminRouter(authModule: AuthModule) {
           role: u.role,
           status: u.status,
           karmaScore: u.karmaScore,
+          threadsCount: userThreadCounts[u.id] || 0,
           avatarUrl: u.avatarUrl ?? null,
           bio: u.bio ?? null,
           createdAt: u.createdAt.toISOString(),
@@ -207,6 +219,154 @@ export function createAdminRouter(authModule: AuthModule) {
         return true;
       } catch (err: any) {
         sendJson(res, 500, { error: err.message || 'Thu hồi phiên thất bại' });
+        return true;
+      }
+    }
+
+    // =========================================================================
+    // 6. GET /api/v1/admin/spaces - Danh sách Không Gian Quản Trị
+    // =========================================================================
+    if (method === 'GET' && pathname === '/api/v1/admin/spaces') {
+      try {
+        const spaces = communityService ? await communityService.adminListSpaces() : [];
+        sendJson(res, 200, { spaces });
+        return true;
+      } catch (err: any) {
+        sendJson(res, 500, { error: err.message || 'Không thể tải danh sách không gian' });
+        return true;
+      }
+    }
+
+    // =========================================================================
+    // 7. DELETE /api/v1/admin/spaces/:id - Xóa Không Gian Thảo Luận
+    // =========================================================================
+    const spaceDeleteMatch = pathname.match(/^\/api\/v1\/admin\/spaces\/([0-9a-fA-F-]+)$/);
+    if (method === 'DELETE' && spaceDeleteMatch) {
+      try {
+        const targetSpaceId = spaceDeleteMatch[1];
+        if (!communityService) {
+          sendJson(res, 500, { error: 'Community service không khả dụng' });
+          return true;
+        }
+        const success = await communityService.adminDeleteSpace(targetSpaceId);
+        if (!success) {
+          sendJson(res, 404, { error: 'Không tìm thấy không gian hoặc không thể xóa' });
+          return true;
+        }
+        sendJson(res, 200, {
+          message: 'Đã xóa không gian thảo luận thành công',
+          spaceId: targetSpaceId,
+        });
+        return true;
+      } catch (err: any) {
+        sendJson(res, 500, { error: err.message || 'Xóa không gian thất bại' });
+        return true;
+      }
+    }
+
+    // =========================================================================
+    // 8. GET /api/v1/admin/threads - Danh Sách Bài Viết Quản Trị
+    // =========================================================================
+    if (method === 'GET' && pathname === '/api/v1/admin/threads') {
+      try {
+        const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
+        const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') || '20', 10)));
+        const spaceId = url.searchParams.get('spaceId') || undefined;
+        const search = url.searchParams.get('search') || undefined;
+
+        if (!communityService) {
+          sendJson(res, 200, { threads: [], total: 0, page, limit, totalPages: 0 });
+          return true;
+        }
+
+        const result = await communityService.adminListThreads({ page, limit, spaceId, search });
+        sendJson(res, 200, {
+          threads: result.threads,
+          total: result.total,
+          page,
+          limit,
+          totalPages: Math.ceil(result.total / limit),
+        });
+        return true;
+      } catch (err: any) {
+        sendJson(res, 500, { error: err.message || 'Không thể tải danh sách bài viết' });
+        return true;
+      }
+    }
+
+    // =========================================================================
+    // 9. PATCH /api/v1/admin/threads/:id/pin - Ghim / Bỏ Ghim Bài Viết
+    // =========================================================================
+    const pinMatch = pathname.match(/^\/api\/v1\/admin\/threads\/([0-9a-fA-F-]+)\/pin$/);
+    if (method === 'PATCH' && pinMatch) {
+      try {
+        const threadId = pinMatch[1];
+        const body = await readJsonBody(req);
+        const isPinned = Boolean(body?.isPinned);
+        if (!communityService) {
+          sendJson(res, 500, { error: 'Community service không khả dụng' });
+          return true;
+        }
+        await communityService.adminSetThreadPinned(threadId, isPinned);
+        sendJson(res, 200, {
+          message: isPinned ? 'Đã ghim bài viết lên đầu trang' : 'Đã bỏ ghim bài viết',
+          isPinned,
+        });
+        return true;
+      } catch (err: any) {
+        sendJson(res, 400, { error: err.message || 'Thao tác ghim bài thất bại' });
+        return true;
+      }
+    }
+
+    // =========================================================================
+    // 10. PATCH /api/v1/admin/threads/:id/lock - Khóa / Mở Khóa Bình Luận
+    // =========================================================================
+    const lockMatch = pathname.match(/^\/api\/v1\/admin\/threads\/([0-9a-fA-F-]+)\/lock$/);
+    if (method === 'PATCH' && lockMatch) {
+      try {
+        const threadId = lockMatch[1];
+        const body = await readJsonBody(req);
+        const isLocked = Boolean(body?.isLocked);
+        if (!communityService) {
+          sendJson(res, 500, { error: 'Community service không khả dụng' });
+          return true;
+        }
+        await communityService.adminSetThreadLocked(threadId, isLocked);
+        sendJson(res, 200, {
+          message: isLocked ? 'Đã khóa bình luận của bài viết' : 'Đã mở khóa bình luận',
+          isLocked,
+        });
+        return true;
+      } catch (err: any) {
+        sendJson(res, 400, { error: err.message || 'Thao tác khóa bài thất bại' });
+        return true;
+      }
+    }
+
+    // =========================================================================
+    // 11. DELETE /api/v1/admin/threads/:id - Xóa Bài Viết Quản Trị (Admin Override)
+    // =========================================================================
+    const threadDeleteMatch = pathname.match(/^\/api\/v1\/admin\/threads\/([0-9a-fA-F-]+)$/);
+    if (method === 'DELETE' && threadDeleteMatch) {
+      try {
+        const threadId = threadDeleteMatch[1];
+        if (!communityService) {
+          sendJson(res, 500, { error: 'Community service không khả dụng' });
+          return true;
+        }
+        const success = await communityService.adminDeleteThread(threadId);
+        if (!success) {
+          sendJson(res, 404, { error: 'Không tìm thấy bài viết hoặc bài viết đã bị xóa' });
+          return true;
+        }
+        sendJson(res, 200, {
+          message: 'Đã xóa bài viết vi phạm thành công',
+          threadId,
+        });
+        return true;
+      } catch (err: any) {
+        sendJson(res, 500, { error: err.message || 'Xóa bài viết thất bại' });
         return true;
       }
     }

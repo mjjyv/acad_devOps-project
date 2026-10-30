@@ -22,7 +22,7 @@ export function createApiServer(options: ApiServerOptions = {}) {
   const communityService = options.communityService || createCommunityService();
 
   const authRouter = createAuthRouter(authModule);
-  const adminRouter = createAdminRouter(authModule);
+  const adminRouter = createAdminRouter(authModule, communityService);
   const communityRouter = createCommunityRouter(communityService, authModule);
 
   const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {

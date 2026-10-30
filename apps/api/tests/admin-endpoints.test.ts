@@ -142,4 +142,36 @@ describe('Admin Endpoints HTTP Integration Tests', () => {
     const body = await res.json();
     expect(body.message).toContain('thu hồi thành công');
   });
+
+  it('8. GET /api/v1/admin/spaces - Quản trị viên lấy danh sách Spaces (200)', async () => {
+    const res = await fetch(`${baseUrl}/api/v1/admin/spaces`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.spaces).toBeInstanceOf(Array);
+    expect(body.spaces.length).toBeGreaterThanOrEqual(1);
+    expect(body.spaces[0]).toHaveProperty('memberCount');
+    expect(body.spaces[0]).toHaveProperty('threadCount');
+  });
+
+  it('9. GET /api/v1/admin/threads - Quản trị viên lấy danh sách Threads toàn hệ thống (200)', async () => {
+    const res = await fetch(`${baseUrl}/api/v1/admin/threads?page=1&limit=10`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.threads).toBeInstanceOf(Array);
+    expect(body).toHaveProperty('total');
+  });
+
+  it('10. GET /api/v1/admin/users - Kiểm tra trường threadsCount trong danh sách người dùng (200)', async () => {
+    const res = await fetch(`${baseUrl}/api/v1/admin/users`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.users[0]).toHaveProperty('threadsCount');
+    expect(typeof body.users[0].threadsCount).toBe('number');
+  });
 });

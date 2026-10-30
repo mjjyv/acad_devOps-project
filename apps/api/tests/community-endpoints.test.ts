@@ -270,4 +270,19 @@ describe('Kiểm thử Endpoints Cộng đồng (Core Community Subsystem)', () 
     expect(data.comments[0].depth).toBe(0);
     expect(data.comments[1].depth).toBe(1);
   });
+
+  it('12. GET /api/v1/threads?q=... - Lọc danh sách bài viết theo từ khóa tìm kiếm (Search Query)', async () => {
+    const res = await fetch(`${baseUrl}/api/v1/threads?q=Pipeline`);
+    expect(res.status).toBe(200);
+
+    const data = (await res.json()) as any;
+    expect(Array.isArray(data.items)).toBe(true);
+    expect(data.items.length).toBeGreaterThanOrEqual(1);
+    expect(data.items.some((item: any) => item.title.includes('Pipeline'))).toBe(true);
+
+    // Tìm kiếm với từ khóa không tồn tại
+    const emptyRes = await fetch(`${baseUrl}/api/v1/threads?q=nonexistent_xyz_keyword_9999`);
+    const emptyData = (await emptyRes.json()) as any;
+    expect(emptyData.items.length).toBe(0);
+  });
 });

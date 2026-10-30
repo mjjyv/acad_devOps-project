@@ -25,10 +25,11 @@ export function CodeBlock({ code, language = 'bash', filename }: CodeBlockProps)
     <div
       style={{
         margin: '1.25rem 0',
-        borderRadius: '8px',
+        borderRadius: '0px',
         overflow: 'hidden',
-        border: '1px solid #334155',
-        backgroundColor: '#090d16',
+        border: '2px solid #948979',
+        backgroundColor: '#222831',
+        boxShadow: '3px 3px 0px #948979',
       }}
     >
       <div
@@ -36,42 +37,45 @@ export function CodeBlock({ code, language = 'bash', filename }: CodeBlockProps)
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          padding: '0.5rem 1rem',
-          backgroundColor: '#131926',
-          borderBottom: '1px solid #1e293b',
-          fontSize: '0.8rem',
-          color: '#94a3b8',
+          padding: '0.45rem 1rem',
+          backgroundColor: '#393E46',
+          borderBottom: '2px solid #948979',
+          fontSize: '0.78rem',
+          color: '#DFD0B8',
+          fontFamily: 'var(--font-mono)',
         }}
       >
-        <span style={{ fontFamily: 'monospace', color: '#cbd5e1' }}>
+        <span style={{ fontWeight: 800, color: '#DFD0B8' }}>
           {filename || language.toUpperCase()}
         </span>
         <button
           onClick={handleCopy}
           type="button"
           style={{
-            background: copied ? '#059669' : '#1e293b',
-            color: copied ? '#ffffff' : '#cbd5e1',
-            border: '1px solid #475569',
-            borderRadius: '4px',
-            padding: '0.25rem 0.5rem',
-            fontSize: '0.75rem',
+            background: copied ? '#DFD0B8' : '#222831',
+            color: copied ? '#222831' : '#DFD0B8',
+            border: '1px solid #948979',
+            borderRadius: '0px',
+            padding: '0.2rem 0.55rem',
+            fontSize: '0.72rem',
+            fontFamily: 'var(--font-mono)',
+            fontWeight: 800,
             cursor: 'pointer',
-            transition: 'all 0.2s',
           }}
         >
-          {copied ? '✓ Đã chép' : 'Sao chép'}
+          {copied ? '[ ĐÃ SAO CHÉP ]' : '[ SAO CHÉP ]'}
         </button>
       </div>
+
       <pre
         style={{
           margin: 0,
           padding: '1rem',
           overflowX: 'auto',
-          fontSize: '0.875rem',
-          lineHeight: '1.6',
-          color: '#e2e8f0',
-          fontFamily: '"JetBrains Mono", Consolas, Monaco, monospace',
+          color: '#DFD0B8',
+          fontSize: '0.85rem',
+          fontFamily: 'var(--font-mono)',
+          lineHeight: '1.5',
         }}
       >
         <code>{code}</code>

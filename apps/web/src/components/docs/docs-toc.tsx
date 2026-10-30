@@ -41,19 +41,21 @@ export function DocsToc({ headings = [] }: DocsTocProps) {
         top: '60px',
         overflowY: 'auto',
         padding: '1.5rem 1rem',
+        borderLeft: '1px solid #393E46',
       }}
     >
       <div
         style={{
-          fontSize: '0.75rem',
-          fontWeight: 700,
-          color: '#64748b',
-          letterSpacing: '0.06em',
+          fontSize: '0.7rem',
+          fontWeight: 800,
+          color: '#948979',
+          letterSpacing: '0.08em',
           marginBottom: '0.75rem',
           textTransform: 'uppercase',
+          fontFamily: 'var(--font-mono)',
         }}
       >
-        Mục lục bài viết
+        // MỤC LỤC BÀI VIẾT
       </div>
       <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
         {headings.map((h) => {
@@ -63,15 +65,15 @@ export function DocsToc({ headings = [] }: DocsTocProps) {
               key={h.id}
               href={`#${h.id}`}
               style={{
-                display: 'block',
+                fontSize: '0.78rem',
                 textDecoration: 'none',
-                fontSize: '0.8rem',
-                lineHeight: '1.4',
-                paddingLeft: h.level === 3 ? '1rem' : '0.25rem',
-                color: isActive ? '#38bdf8' : '#94a3b8',
-                fontWeight: isActive ? 600 : 400,
-                borderLeft: isActive ? '2px solid #38bdf8' : '2px solid transparent',
-                transition: 'color 0.15s, border-color 0.15s',
+                color: isActive ? '#DFD0B8' : '#948979',
+                fontWeight: isActive ? 800 : 500,
+                borderLeft: `2px solid ${isActive ? '#DFD0B8' : 'transparent'}`,
+                paddingLeft: '0.6rem',
+                marginLeft: h.level === 3 ? '0.75rem' : '0',
+                fontFamily: 'var(--font-mono)',
+                transition: 'all 0.15s ease',
               }}
             >
               {h.title}

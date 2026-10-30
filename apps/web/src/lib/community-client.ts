@@ -126,12 +126,14 @@ class CommunityClient {
     sort?: 'hot' | 'new' | 'top';
     limit?: number;
     cursor?: string;
+    q?: string;
   }): Promise<{ items: ThreadSummary[]; nextCursor: string | null }> {
     const params = new URLSearchParams();
     if (options?.spaceSlug) params.set('spaceSlug', options.spaceSlug);
     if (options?.sort) params.set('sort', options.sort);
     if (options?.limit) params.set('limit', String(options.limit));
     if (options?.cursor) params.set('cursor', options.cursor);
+    if (options?.q) params.set('q', options.q);
 
     const res = await fetch(`${API_BASE_URL}/api/v1/threads?${params.toString()}`, {
       headers: this.getAuthHeaders(),
@@ -254,6 +256,92 @@ class CommunityClient {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Lỗi khi vote bình luận');
     return data;
+  }
+
+  // --- ADMIN OPERATIONS ---
+  public async adminFetchStats(): Promise<any> {
+    const res = await fetch(`${API_BASE_URL}/api/v1/admin/stats`, {
+      headers: this.getAuthHeaders(),
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error('Không thể tải dữ liệu thống kê');
+    return res.json();
+  }
+
+  public async adminFetchSpaces(): Promise<Space[]> {
+    const res = await fetch(`${API_BASE_URL}/api/v1/admin/spaces`, {
+      headers: this.getAuthHeaders(),
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error('Không thể tải danh sách không gian quản trị');
+    const data = await res.json();
+    return data.spaces || [];
+  }
+
+  public async adminDeleteSpace(id: string): Promise<boolean> {
+    const res = await fetch(`${API_BASE_URL}/api/v1/admin/spaces/${id}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders(),
+      credentials: 'include',
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Lỗi khi xóa không gian');
+    return true;
+  }
+
+  public async adminFetchThreads(params?: {
+    page?: number;
+    limit?: number;
+    spaceId?: string;
+    search?: string;
+  }): Promise<{ threads: ThreadDetail[]; total: number; page: number; limit: number; totalPages: number }> {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.set('page', String(params.page));
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.spaceId) searchParams.set('spaceId', params.spaceId);
+    if (params?.search) searchParams.set('search', params.search);
+
+    const res = await fetch(`${API_BASE_URL}/api/v1/admin/threads?${searchParams.toString()}`, {
+      headers: this.getAuthHeaders(),
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error('Không thể tải danh sách bài viết quản trị');
+    return res.json();
+  }
+
+  public async adminPinThread(threadId: string, isPinned: boolean): Promise<boolean> {
+    const res = await fetch(`${API_BASE_URL}/api/v1/admin/threads/${threadId}/pin`, {
+      method: 'PATCH',
+      headers: this.getAuthHeaders(),
+      credentials: 'include',
+      body: JSON.stringify({ isPinned }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Lỗi khi ghim bài viết');
+    return true;
+  }
+
+  public async adminLockThread(threadId: string, isLocked: boolean): Promise<boolean> {
+    const res = await fetch(`${API_BASE_URL}/api/v1/admin/threads/${threadId}/lock`, {
+      method: 'PATCH',
+      headers: this.getAuthHeaders(),
+      credentials: 'include',
+      body: JSON.stringify({ isLocked }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Lỗi khi khóa bài viết');
+    return true;
+  }
+
+  public async adminDeleteThread(threadId: string): Promise<boolean> {
+    const res = await fetch(`${API_BASE_URL}/api/v1/admin/threads/${threadId}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders(),
+      credentials: 'include',
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Lỗi khi xóa bài viết');
+    return true;
   }
 }
 
