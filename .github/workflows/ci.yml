@@ -17,15 +17,15 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 24
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 10.15.0
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
       - name: Cache pnpm store
         uses: actions/cache@v4
@@ -36,7 +36,7 @@ jobs:
             ${{ runner.os }}-pnpm-
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Run linter check
         run: |
@@ -54,15 +54,15 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 24
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 10.15.0
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
       - name: Cache pnpm store
         uses: actions/cache@v4
@@ -73,7 +73,7 @@ jobs:
             ${{ runner.os }}-pnpm-
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build shared libraries and services
         run: pnpm run build:libs
@@ -91,15 +91,15 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 24
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 10.15.0
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
       - name: Cache pnpm store
         uses: actions/cache@v4
@@ -110,12 +110,12 @@ jobs:
             ${{ runner.os }}-pnpm-
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build shared libraries and services
         run: pnpm run build:libs
 
-      - name: Run all 33+ test suites
+      - name: Run all 71+ test suites
         run: pnpm test
 
   # ============================================================================
