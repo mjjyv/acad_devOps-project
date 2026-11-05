@@ -6,6 +6,14 @@ import {
   TokenExpiredError,
   TokenReuseError,
 } from '@acad/auth-service';
+import {
+  CommentNotFoundError,
+  DuplicateFlairError,
+  DuplicateSlugError,
+  InsufficientSpacePermissionError,
+  SpaceNotFoundError,
+  ThreadNotFoundError,
+} from '@acad/community-service';
 import type { NextFunction, Request, Response } from 'express';
 import { ZodError } from 'zod';
 
@@ -48,18 +56,56 @@ export function errorHandler() {
       return;
     }
 
-    // 2. Conflict Errors (Duplicate username or email) -> 409 Conflict
-    if (err instanceof DuplicateUserError) {
+    // 2. Conflict Errors (Duplicate username, email, slug, flair) -> 409 Conflict
+    if (
+      err instanceof DuplicateUserError ||
+      err instanceof DuplicateSlugError ||
+      err instanceof DuplicateFlairError
+    ) {
       const problem: RFC7807Problem = {
         type: 'https://api.acad.vn/errors/conflict',
         title: 'Resource Conflict',
         status: 409,
-        detail: err.message,
+        detail: (err as Error).message,
         instance,
         correlationId,
       };
 
       res.status(409).json(problem);
+      return;
+    }
+
+    // 2.1. Not Found Errors (Space, Thread, Comment) -> 404 Not Found
+    if (
+      err instanceof SpaceNotFoundError ||
+      err instanceof ThreadNotFoundError ||
+      err instanceof CommentNotFoundError
+    ) {
+      const problem: RFC7807Problem = {
+        type: 'https://api.acad.vn/errors/not-found',
+        title: 'Resource Not Found',
+        status: 404,
+        detail: (err as Error).message,
+        instance,
+        correlationId,
+      };
+
+      res.status(404).json(problem);
+      return;
+    }
+
+    // 2.2. Forbidden Errors (e.g. Insufficient Space Permission) -> 403 Forbidden
+    if (err instanceof InsufficientSpacePermissionError) {
+      const problem: RFC7807Problem = {
+        type: 'https://api.acad.vn/errors/forbidden',
+        title: 'Forbidden',
+        status: 403,
+        detail: (err as Error).message,
+        instance,
+        correlationId,
+      };
+
+      res.status(403).json(problem);
       return;
     }
 

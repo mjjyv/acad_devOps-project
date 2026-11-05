@@ -5,6 +5,13 @@ import {
   RedisSessionStore,
   TokenManager,
 } from '@acad/auth-service';
+import {
+  CommentService,
+  PostgresCommunityRepository,
+  SpaceService,
+  ThreadService,
+  ZeroHopStorageService,
+} from '@acad/community-service';
 import { Redis } from 'ioredis';
 import pg from 'pg';
 import { createApp } from './app.js';
@@ -53,9 +60,22 @@ async function bootstrap() {
   const sessionStore = new RedisSessionStore(redis);
   const authService = new AuthService(userRepository, sessionStore, JWT_SECRET);
 
+  // 3.1. Khởi tạo Phân Hệ Cộng Đồng (Community Services)
+  const communityRepo = new PostgresCommunityRepository(pool);
+  const spaceService = new SpaceService(communityRepo);
+  const threadService = new ThreadService(communityRepo);
+  const commentService = new CommentService(communityRepo);
+  const storageService = new ZeroHopStorageService();
+
   // 4. Khởi tạo Express App & HTTP Server
   const app = createApp({
     authService,
+    communityServices: {
+      spaceService,
+      threadService,
+      commentService,
+      storageService,
+    },
     jwtSecret: JWT_SECRET,
     pool,
     redis,

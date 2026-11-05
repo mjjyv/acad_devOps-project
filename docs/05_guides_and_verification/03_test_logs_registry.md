@@ -20,10 +20,31 @@ Dự án áp dụng quy định bắt buộc tại [`AGENT.md`](file:///home/deb
 | **`LOG-006`** | 2026-10-30 | Nghiệm thu Admin Hub 4 tabs, Quản lý đa thiết bị Sessions, Cổng Docs Brutalist và Search Engine | **Nghiệm thu thành công** |
 | **`LOG-B0`** | 2026-11-05 | **Nghiệm thu Phase B0 (Clean Rebuild Monorepo Scaffolding & @acad/contracts)**: Khởi tạo monorepo, Biome 2.6.5, TypeScript 5.9 strict NodeNext ESM, Docker Compose Postgres 16 & Redis 7, 16/16 Vitest tests pass (100%), Biome lint 48ms pass, Typecheck pass | **100% Passed (4 CI Gates Đều Xanh)** |
 | **`LOG-B1`** | 2026-11-05 | **Nghiệm thu Phase B1 (Core Identity, Token Rotation & API Gateway)**: DDL PostgreSQL 16 & Redis Session Store, KDF Scrypt/Argon2id 64MB memory-hard, Dual Token Rotation (15m JWT + 7d CSPRNG), 30s Grace Period đa tab, Token Reuse Attack detection & auto-revocation, Client Mutex Lock (`@acad/auth-client`) chống Thundering Herd trên 20 luồng đồng thời, API Gateway Facade RFC 7807, 43/43 tests pass (100%), Biome lint 58ms pass, Typecheck pass | **100% Passed (43/43 Tests Xanh)** |
+| **`LOG-B2`** | 2026-11-05 | **Nghiệm thu Phase B2 (Không Gian Thảo Luận, CMS & Cây Bình Luận Đa Tầng `ltree` Base36)**: DDL PostgreSQL 16 migration `000002_create_community_schema`, GIN Trigram indexes, ltree GiST index, Dịch vụ `@acad/community-service` (LtreePathManager Base36 4-char $36^4=1,679,616$ child nodes, Capped Depth 8 Flat Reply & `@mention` injector, SpaceService, ThreadService SEO slug, CommentService Soft Delete bảo toàn cây, ZeroHopStorageService S3 Presigned PUT URL), API Gateway routes (`/spaces`, `/threads`, `/comments`, `/media`), 72/72 tests pass (100%), 17/17 Live cURL probes pass, RFC 7807 problem details 0 errors 500 | **100% Passed (72/72 Tests Xanh, 17/17 cURL Xanh)** |
 
 ---
 
-## 2. BIÊN BẢN NGHIỆM THU CHI TIẾT PHASE B1 (LOG-B1)
+## 2. BIÊN BẢN NGHIỆM THU CHI TIẾT PHASE B2 (LOG-B2)
+
+- **Mục tiêu:** Xây dựng hoàn chỉnh hạ tầng CSDL PostgreSQL 16 mở rộng (`ltree`, `pg_trgm`), Dịch vụ Không gian thảo luận & Nội dung `@acad/community-service`, và Tích hợp API Gateway `@acad/api-gateway`.
+- **Môi trường thực thi:** Debian GNU/Linux 13 (trixie) x86_64, Node.js v22.23.4 LTS, pnpm v10.15.0, Biome 2.6.5, bash 5.2.
+- **Kết quả 4 Cổng kiểm định CI:**
+  1. *Cổng 1 (Linting & Formatting):* `pnpm run lint` $\rightarrow$ Đạt 100% (63 files checked in 46ms, 0 errors, 0 warnings).
+  2. *Cổng 2 (TypeScript Strict Typecheck):* `pnpm run typecheck` $\rightarrow$ Đạt 100% trên cả 5 packages (`@acad/contracts`, `@acad/auth-client`, `@acad/auth-service`, `@acad/community-service`, `@acad/api-gateway`).
+  3. *Cổng 3 (Automated Unit QA):* `pnpm test` $\rightarrow$ 72/72 tests Passed (100%):
+     - `@acad/contracts`: 16/16 tests pass.
+     - `@acad/auth-client`: 3/3 tests pass.
+     - `@acad/auth-service`: 10/10 tests pass.
+     - `@acad/community-service`: 18/18 tests pass (LtreePathManager 7 tests, Space/Thread/Comment/Storage Services 11 tests).
+     - `@acad/api-gateway`: 25/25 tests pass (Healthz 1 test, Auth Endpoints 13 tests, Community Endpoints 11 tests).
+  4. *Cổng 4 (API Live Probes & DDL Migration):*
+     - `deploy/migrations/000002_create_community_schema.up.sql` và `.down.sql` sẵn sàng cho PostgreSQL 16.
+     - `scripts/verify-community-curl.sh`: 17/17 live cURL test steps passed trên HTTP test server (Port 3099).
+     - Biên bản live HTTP trace lưu tại: [`docs/05_guides_and_verification/logs/log_B2_spaces_and_content.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/05_guides_and_verification/logs/log_B2_spaces_and_content.md).
+
+---
+
+## 3. BIÊN BẢN NGHIỆM THU CHI TIẾT PHASE B1 (LOG-B1)
 
 - **Mục tiêu:** Xây dựng hoàn chỉnh hạ tầng CSDL PostgreSQL 16, Redis 7, Dịch vụ Định danh `@acad/auth-service`, Thư viện Client `@acad/auth-client` với Mutex Lock, và Cổng kết nối API Gateway `@acad/api-gateway`.
 - **Môi trường thực thi:** Debian GNU/Linux 13 (trixie) x86_64, Node.js v22.23.4 LTS, pnpm v10.15.0, Biome 2.6.5, bash 5.2.

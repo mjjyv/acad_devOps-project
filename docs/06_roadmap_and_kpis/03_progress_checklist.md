@@ -12,11 +12,11 @@
 
 | Luồng Phát Triển | Mục Tiêu Kỹ Thuật | Tỷ Lệ Hoàn Thành | Trạng Thái Thực Thi |
 | :--- | :--- | :---: | :---: |
-| **Stream B: Backend Engine** | Xây dựng hoàn chỉnh CSDL, Auth, Spaces, Ltree, Lua Voting, Chat, Admin | **35%** | 🔄 Đã xong B0 & B1, Sẵn sàng B2 (Spaces & Content) |
+| **Stream B: Backend Engine** | Xây dựng hoàn chỉnh CSDL, Auth, Spaces, Ltree, Lua Voting, Chat, Admin | **55%** | 🔄 Đã xong B0, B1, B2 (Spaces & Content Engine), Sẵn sàng B3 |
 | **Stream F: Frontend Client** | Next.js 15 Brutalist Dark Mode, DOM ảo hóa cây bình luận, Floating Chat | **0%** | ⏸️ Tạm hoãn đến khi Stream B hoàn tất |
-| **Stream Q: QA & Load Testing** | Vitest 100% test suites passed, k6 stress test 5,000 RPS | **30%** | 🔄 43/43 Monorepo tests pass (100%) |
-| **Stream D: DevOps & Cloud** | Multi-stage Docker, GitHub Actions 4 Gates, Render & Supabase Live | **15%** | 🔄 Docker dev compose & migration scripts ready |
-| **TỔNG THỂ DỰ ÁN** | **Nền tảng Diễn đàn & Mạng xã hội chuyên sâu tốc độ cao** | **25.0%** | 🚀 **Hoàn tất Phase B0 & B1 -> Bước vào Phase B2** |
+| **Stream Q: QA & Load Testing** | Vitest 100% test suites passed, k6 stress test 5,000 RPS | **50%** | 🔄 72/72 Monorepo tests pass (100%), 17/17 Live cURL probes pass |
+| **Stream D: DevOps & Cloud** | Multi-stage Docker, GitHub Actions 4 Gates, Render & Supabase Live | **20%** | 🔄 Docker dev compose, Dockerfile.api.prod, migrations 000001 & 000002 |
+| **TỔNG THỂ DỰ ÁN** | **Nền tảng Diễn đàn & Mạng xã hội chuyên sâu tốc độ cao** | **45.0%** | 🚀 **Hoàn tất Phase B0, B1, B2 -> Sẵn sàng bước vào Phase B3** |
 
 ---
 
@@ -39,9 +39,9 @@
 - [x] Thư viện `@acad/auth-client` với Mutex Lock chống hiện tượng Thundering Herd.
 - [x] Cổng API Gateway (`apps/api`) điều phối routing cho Auth, Admin, Community.
 - [x] Cơ chế xử lý mất kết nối CSDL: Fail-fast HTTP 503 RFC 7807 + Exponential Backoff Connection Pooler Retry.
-- [ ] Bảng `spaces` (`/s/[slug]`), `space_memberships`, và `space_flairs` (Post Flairs).
-- [ ] Cơ chế tải ảnh Zero-hop qua Presigned PUT URL Cloudflare R2 / AWS S3.
-- [ ] Thuật toán sinh mã đường dẫn `ltree` Base36 4 ký tự mỗi tầng và giới hạn Capped Depth 8 $\rightarrow$ Flat Reply kèm `@mention`.
+- [x] Bảng `spaces` (`/s/[slug]`), `space_memberships`, và `space_flairs` (Post Flairs).
+- [x] Cơ chế tải ảnh Zero-hop qua Presigned PUT URL Cloudflare R2 / AWS S3.
+- [x] Thuật toán sinh mã đường dẫn `ltree` Base36 4 ký tự mỗi tầng và giới hạn Capped Depth 8 $\rightarrow$ Flat Reply kèm `@mention`.
 - [ ] Kịch bản Redis Lua nguyên tử `execute_vote.lua` xử lý bầu chọn $\mathcal{O}(1)$ (+1, -1, +2, -2, unvote).
 - [ ] Worker chạy nền định kỳ 5 giây xả dữ liệu dồn `dirty:votes` từ Redis về `thread_counters` của PostgreSQL.
 - [ ] Thuật toán xếp hạng Hacker News Gravity Decay Engine ($G=1.8$).

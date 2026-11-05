@@ -135,3 +135,24 @@ curl -s -X POST "$API_URL/api/v1/threads/$THREAD_ID/vote" \
   -d '{ "direction": 1 }' | jq .
 ```
 *Kỳ vọng:* HTTP 200 OK, trả về `{ "success": true, "direction": 1, "netScore": 1 }`.
+
+---
+
+## 4. KỊCH BẢN THỰC THI KIỂM THỬ TỰ ĐỘNG QUA BASH SCRIPTS
+
+Dự án đã tích hợp sẵn các kịch bản kiểm thử API khép kín (End-to-End Test Runner) trong thư mục `scripts/`:
+
+1. **Kiểm thử Phân hệ B1 (Identity & Auth):**
+   ```bash
+   chmod +x scripts/verify-api-curl.sh
+   ./scripts/verify-api-curl.sh
+   # Kết quả tự động ghi vào docs/05_guides_and_verification/logs/log_B1_auth_subsystem.md
+   ```
+
+2. **Kiểm thử Phân hệ B2 (Spaces, Threads CMS & Nested Comments `ltree`):**
+   ```bash
+   chmod +x scripts/verify-community-curl.sh
+   ./scripts/verify-community-curl.sh
+   # Kết quả tự động ghi vào docs/05_guides_and_verification/logs/log_B2_spaces_and_content.md
+   ```
+

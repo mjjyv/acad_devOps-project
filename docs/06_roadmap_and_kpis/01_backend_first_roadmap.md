@@ -116,14 +116,15 @@ Tuân thủ nghiêm ngặt cẩm nang vận hành [`docs/guide.md`](file:///home
 
 ### 🔹 Phase B2: Không Gian Thảo Luận, CMS & Cây Bình Luận Đa Tầng (Spaces & Content Engine)
 *Mục tiêu:* Xây dựng mô hình Subreddit kỹ thuật (`/s/[slug]`), xuất bản bài viết đa định dạng và cây thảo luận `ltree`.
-- [ ] Bảng `spaces` (`/s/[slug]`), quản lý quy tắc `rules` (JSONB) và bảng thành viên `space_memberships`.
-- [ ] Bảng `space_flairs`: Danh mục Flairs kỹ thuật (`[DevOps]`, `[SecOps]`, `[SystemArch]`, `[Incident]`, `[Question]`).
-- [ ] Quản lý bài viết (Threads): Lưu trữ tiêu đề, slug, nội dung Markdown/JSON AST, link ngoài, chỉ mục GIN Trigram.
-- [ ] Cấp phát Presigned PUT URL kết nối Cloudflare R2 / AWS S3 phục vụ tải ảnh Zero-hop.
-- [ ] Động cơ bình luận Materialized Path `ltree` Base36 4 ký tự mỗi tầng (hỗ trợ $36^4 \approx 1.67$ triệu bình luận/nút).
-- [ ] Thuật toán Capped Depth 8: Khi đạt cấp 8, tự động chuyển sang Flat Reply kèm `@mention` tác giả.
-- [ ] Chỉ mục GiST trên trường `path`: Truy vấn toàn bộ một cây con trong một câu lệnh SQL duy nhất ($< 1.2\text{ms}$).
-- **Trạng thái:** ⏳ **Kế hoạch đã sẵn sàng.**
+- [x] Bảng `spaces` (`/s/[slug]`), quản lý quy tắc `rules` (JSONB) và bảng thành viên `space_memberships`.
+- [x] Bảng `space_flairs`: Danh mục Flairs kỹ thuật (`[DevOps]`, `[SecOps]`, `[SystemArch]`, `[Incident]`, `[Question]`).
+- [x] Quản lý bài viết (Threads): Lưu trữ tiêu đề, slug, nội dung Markdown/JSON AST, link ngoài, chỉ mục GIN Trigram.
+- [x] Cấp phát Presigned PUT URL kết nối Cloudflare R2 / AWS S3 phục vụ tải ảnh Zero-hop.
+- [x] Động cơ bình luận Materialized Path `ltree` Base36 4 ký tự mỗi tầng (hỗ trợ $36^4 \approx 1.67$ triệu bình luận/nút).
+- [x] Thuật toán Capped Depth 8: Khi đạt cấp 8, tự động chuyển sang Flat Reply kèm `@mention` tác giả.
+- [x] Chỉ mục GiST trên trường `path`: Truy vấn toàn bộ một cây con trong một câu lệnh SQL duy nhất ($< 1.2\text{ms}$).
+- [x] Kiểm định CI & API Probes toàn diện: 72/72 tests pass (100%), Biome lint pass (46ms), Typecheck pass, 17/17 live cURL probes pass.
+- **Trạng thái:** ✅ **100% Hoàn thành & Đã nghiệm thu (LOG-B2).**
 
 ---
 
