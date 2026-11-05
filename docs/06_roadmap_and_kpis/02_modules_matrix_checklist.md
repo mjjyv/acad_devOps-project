@@ -20,13 +20,13 @@ M2: Quản Lý Phiên (Session Shield)   |   [x]    |     [x]      |     [x]    
 M3: Không Gian Thảo Luận (Spaces)    |   [x]    |     [x]      |     [x]      |   [x]    |      [x]       |    N/A    |    100% (B2 Done)
 M4: Bài Viết & Soạn Thảo (Threads)   |   [x]    |     [x]      |     [x]      |   [x]    |      [x]       |    N/A    |    100% (B2 Done)
 M5: Cây Bình Luận Ảo Hóa (Ltree)     |   [x]    |     [x]      |     [x]      |   [x]    |      [x]       |    N/A    |    100% (B2 Done)
-M6: Bầu Chọn Nguyên Tử (Lua Voting)  |   [ ]    |     [x]      |     [ ]      |   [ ]    |      [ ]       |    [ ]    |      0% (B3)
+M6: Bầu Chọn Nguyên Tử (Lua Voting)  |   [x]    |     [x]      |     [x]      |   [x]    |      [x]       |    N/A    |    100% (B3 Done)
 M7: Tin Nhắn Tức Thời (Reddit Chats) |   [ ]    |     [x]      |     [ ]      |   [ ]    |      [ ]       |    [ ]    |      0% (B4)
 M8: Trung Tâm Quản Trị (Admin Hub)   |   [ ]    |     [x]      |     [ ]      |   [ ]    |      [ ]       |    [ ]    |      0% (B5)
 M9: Frontend Web Client (Next.js 15) |   [ ]    |     [x]      |     [ ]      |   [ ]    |      [ ]       |    [ ]    |      0% (F1-F4)
 M10: DevOps, CI/CD & Hạ Tầng Cloud   |   [ ]    |     [ ]      |     [ ]      |   [ ]    |      [ ]       |    N/A    |      0% (D1-D2)
 ---------------------------------------------------------------------------------------------------------------------------------
-TIẾN ĐỘ THỰC THI HIỆN TẠI (v2.0 Clean Rebuild):                                                                  45.0% (B0 + B1 + B2 Hoàn thành)
+TIẾN ĐỘ THỰC THI HIỆN TẠI (v2.0 Clean Rebuild):                                                                  60.0% (B0 + B1 + B2 + B3 Hoàn thành)
 ```
 
 ---

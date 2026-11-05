@@ -130,14 +130,16 @@ Tuân thủ nghiêm ngặt cẩm nang vận hành [`docs/guide.md`](file:///home
 
 ### 🔹 Phase B3: Bầu Chọn Nguyên Tử, Danh Tiếng & Bảng Tin Thông Minh (Interaction & Feeds)
 *Mục tiêu:* Triệt tiêu race condition khi hàng ngàn người cùng vote, tính điểm Karma và phân phối tin tức.
-- [ ] Kịch bản Redis Lua nguyên tử $\mathcal{O}(1)$ (`execute_vote.lua`): Xử lý vote mới, hủy vote, đảo chiều.
-- [ ] Quản lý tập hợp `dirty:votes` trên Redis và tiến trình Background Worker 5 giây bulk upsert vào PostgreSQL.
-- [ ] Tối ưu hóa ghi đĩa PostgreSQL Heap-Only Tuples (HOT) trên bảng `thread_counters` với `fillfactor = 70`.
-- [ ] Thuật toán Hacker News Gravity Decay Engine: $HotScore = \frac{NetScore}{(AgeHours + 2.0)^{1.8}}$.
-- [ ] Thuật toán Wilson Score Confidence Interval ("Best"): Phân tích cận dưới tỷ lệ đồng thuận với $z = 1.96$.
-- [ ] Phân tầng nguồn cấp tin: `/api/v1/feed/home` (các Spaces đã tham gia) và `/api/v1/feed/popular` (toàn cầu).
-- [ ] Phân trang danh sách bài viết bằng con trỏ Base64 tổng hợp $\text{base64}(\text{sort\_score} : \text{timestamp} : \text{item\_id})$.
-- [ ] Bộ máy tìm kiếm toàn văn bản trong không gian (In-Space Scoped Search) qua `pg_trgm`.
+- [x] Kịch bản Redis Lua nguyên tử $\mathcal{O}(1)$ (`execute_vote.lua`): Xử lý vote mới, hủy vote, đảo chiều ($\pm 2$).
+- [x] Quản lý tập hợp `dirty:votes` trên Redis và tiến trình Background Worker 5 giây bulk upsert vào PostgreSQL.
+- [x] Tối ưu hóa ghi đĩa PostgreSQL Heap-Only Tuples (HOT) trên bảng `thread_counters` với `fillfactor = 70`.
+- [x] Thuật toán Hacker News Gravity Decay Engine: $HotScore = \frac{NetScore}{(AgeHours + 2.0)^{1.8}}$.
+- [x] Thuật toán Wilson Score Confidence Interval ("Best"): Phân tích cận dưới tỷ lệ đồng thuận với $z = 1.96$.
+- [x] Phân tầng nguồn cấp tin: `/api/v1/feed/home` (các Spaces đã tham gia) và `/api/v1/feed/popular` (toàn cầu).
+- [x] Phân trang danh sách bài viết bằng con trỏ Base64 tổng hợp $\text{base64}(\text{sort\_score} : \text{timestamp} : \text{item\_id})$.
+- [x] Bộ máy tìm kiếm toàn văn bản trong không gian (In-Space Scoped Search) qua `pg_trgm`.
+- [x] Kiểm định CI & API Probes toàn diện: 100/100 tests pass (100%), Biome lint pass (0 errors), Typecheck pass, 16/16 live cURL probes pass.
+- **Trạng thái:** ✅ **100% Hoàn thành & Đã nghiệm thu (LOG-B3).**
 - **Trạng thái:** ⏳ **Kế hoạch đã sẵn sàng.**
 
 ---

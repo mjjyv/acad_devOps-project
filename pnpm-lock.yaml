@@ -135,6 +135,9 @@ importers:
       '@acad/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      ioredis:
+        specifier: ^5.5.0
+        version: 5.11.1
       pg:
         specifier: ^8.13.3
         version: 8.23.1

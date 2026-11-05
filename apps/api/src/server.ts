@@ -7,9 +7,13 @@ import {
 } from '@acad/auth-service';
 import {
   CommentService,
+  FeedService,
   PostgresCommunityRepository,
+  RedisVoteEngine,
   SpaceService,
   ThreadService,
+  VoteFlushWorker,
+  VoteService,
   ZeroHopStorageService,
 } from '@acad/community-service';
 import { Redis } from 'ioredis';
@@ -67,6 +71,13 @@ async function bootstrap() {
   const commentService = new CommentService(communityRepo);
   const storageService = new ZeroHopStorageService();
 
+  // 3.2. Khởi tạo Phân Hệ Bầu Chọn & Nguồn Cấp Tin (Phase B3)
+  const voteEngine = new RedisVoteEngine(redis);
+  const voteService = new VoteService(communityRepo, voteEngine);
+  const feedService = new FeedService(communityRepo, voteEngine);
+  const flushWorker = new VoteFlushWorker(voteEngine, communityRepo, { intervalMs: 5000 });
+  flushWorker.start();
+
   // 4. Khởi tạo Express App & HTTP Server
   const app = createApp({
     authService,
@@ -75,6 +86,9 @@ async function bootstrap() {
       threadService,
       commentService,
       storageService,
+      voteService,
+      feedService,
+      flushWorker,
     },
     jwtSecret: JWT_SECRET,
     pool,
@@ -98,6 +112,8 @@ async function bootstrap() {
     server.close(async () => {
       console.log('[HTTP SERVER] Máy chủ HTTP đã đóng tiếp nhận kết nối mới.');
       try {
+        await flushWorker.stop();
+        console.log('[WORKER] Tiến trình VoteFlushWorker đã dừng an toàn.');
         await pool.end();
         console.log('[POSTGRES] Pool kết nối cơ sở dữ liệu đã giải phóng.');
         await redis.quit();

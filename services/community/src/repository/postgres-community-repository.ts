@@ -4,15 +4,20 @@
  */
 
 import pg from 'pg';
+import { CursorManager } from '../voting/cursor-manager.js';
+import { GravityDecayEngine } from '../voting/gravity-decay.js';
+import { WilsonScoreEngine } from '../voting/wilson-score.js';
 import {
   type CommentEntity,
   DatabaseConnectionError,
   DuplicateFlairError,
   DuplicateSlugError,
+  type FeedFilter,
   type ICommunityRepository,
   type SpaceEntity,
   type SpaceFlairEntity,
   type SpaceMembershipEntity,
+  type ThreadCountersEntity,
   type ThreadEntity,
 } from './community-repository.js';
 
@@ -519,6 +524,322 @@ export class PostgresCommunityRepository implements ICommunityRepository {
     } catch (err) {
       throw new DatabaseConnectionError('Lỗi xóa mềm bình luận', err);
     }
+  }
+
+  // Voting & Counters (Phase B3)
+  public async upsertThreadCounters(counters: ThreadCountersEntity[]): Promise<void> {
+    if (counters.length === 0) return;
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      for (const c of counters) {
+        await client.query(
+          `INSERT INTO thread_counters (thread_id, upvotes, downvotes, net_score, hot_score, wilson_score, comment_count, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+           ON CONFLICT (thread_id) DO UPDATE SET
+             upvotes = EXCLUDED.upvotes,
+             downvotes = EXCLUDED.downvotes,
+             net_score = EXCLUDED.net_score,
+             hot_score = EXCLUDED.hot_score,
+             wilson_score = EXCLUDED.wilson_score,
+             updated_at = NOW();`,
+          [
+            c.threadId,
+            c.upvotes,
+            c.downvotes,
+            c.netScore,
+            c.hotScore,
+            c.wilsonScore,
+            c.commentCount,
+          ],
+        );
+        await client.query(
+          'UPDATE threads SET upvotes_count = $1, downvotes_count = $2, updated_at = NOW() WHERE id = $3;',
+          [c.upvotes, c.downvotes, c.threadId],
+        );
+      }
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw new DatabaseConnectionError('Lỗi cập nhật bộ đếm thread_counters', err);
+    } finally {
+      client.release();
+    }
+  }
+
+  public async getThreadCounters(threadId: string): Promise<ThreadCountersEntity | null> {
+    try {
+      const res = await this.pool.query(
+        'SELECT * FROM thread_counters WHERE thread_id = $1 LIMIT 1;',
+        [threadId],
+      );
+      if (!res.rows[0]) return null;
+      const r = res.rows[0];
+      return {
+        threadId: String(r.thread_id),
+        upvotes: parseInt(String(r.upvotes), 10),
+        downvotes: parseInt(String(r.downvotes), 10),
+        netScore: parseInt(String(r.net_score), 10),
+        hotScore: parseFloat(String(r.hot_score)),
+        wilsonScore: parseFloat(String(r.wilson_score)),
+        commentCount: parseInt(String(r.comment_count), 10),
+        updatedAt: new Date(String(r.updated_at)),
+      };
+    } catch (err) {
+      throw new DatabaseConnectionError('Lỗi truy vấn bộ đếm thread_counters', err);
+    }
+  }
+
+  public async recordVote(
+    targetId: string,
+    targetType: 'THREAD' | 'COMMENT',
+    userId: string,
+    direction: number,
+  ): Promise<void> {
+    const table = targetType === 'THREAD' ? 'thread_votes' : 'comment_votes';
+    const idColumn = targetType === 'THREAD' ? 'thread_id' : 'comment_id';
+    try {
+      if (direction === 0) {
+        await this.pool.query(`DELETE FROM ${table} WHERE ${idColumn} = $1 AND user_id = $2;`, [
+          targetId,
+          userId,
+        ]);
+      } else {
+        await this.pool.query(
+          `INSERT INTO ${table} (${idColumn}, user_id, direction, updated_at)
+           VALUES ($1, $2, $3, NOW())
+           ON CONFLICT (${idColumn}, user_id) DO UPDATE SET direction = EXCLUDED.direction, updated_at = NOW();`,
+          [targetId, userId, direction],
+        );
+      }
+    } catch (err) {
+      throw new DatabaseConnectionError(`Lỗi ghi nhận biểu quyết trên ${table}`, err);
+    }
+  }
+
+  public async getUserVote(
+    targetId: string,
+    targetType: 'THREAD' | 'COMMENT',
+    userId: string,
+  ): Promise<number> {
+    const table = targetType === 'THREAD' ? 'thread_votes' : 'comment_votes';
+    const idColumn = targetType === 'THREAD' ? 'thread_id' : 'comment_id';
+    try {
+      const res = await this.pool.query(
+        `SELECT direction FROM ${table} WHERE ${idColumn} = $1 AND user_id = $2 LIMIT 1;`,
+        [targetId, userId],
+      );
+      return res.rows[0] ? parseInt(String(res.rows[0].direction), 10) : 0;
+    } catch (err) {
+      throw new DatabaseConnectionError(`Lỗi truy vấn biểu quyết từ ${table}`, err);
+    }
+  }
+
+  public async toggleSaveThread(userId: string, threadId: string): Promise<boolean> {
+    try {
+      const check = await this.pool.query(
+        'SELECT 1 FROM user_saved_threads WHERE user_id = $1 AND thread_id = $2 LIMIT 1;',
+        [userId, threadId],
+      );
+      if (check.rows.length > 0) {
+        await this.pool.query(
+          'DELETE FROM user_saved_threads WHERE user_id = $1 AND thread_id = $2;',
+          [userId, threadId],
+        );
+        return false;
+      }
+      await this.pool.query(
+        'INSERT INTO user_saved_threads (user_id, thread_id) VALUES ($1, $2) ON CONFLICT DO NOTHING;',
+        [userId, threadId],
+      );
+      return true;
+    } catch (err) {
+      throw new DatabaseConnectionError('Lỗi cập nhật đánh dấu lưu bài viết', err);
+    }
+  }
+
+  public async isThreadSaved(userId: string, threadId: string): Promise<boolean> {
+    try {
+      const res = await this.pool.query(
+        'SELECT 1 FROM user_saved_threads WHERE user_id = $1 AND thread_id = $2 LIMIT 1;',
+        [userId, threadId],
+      );
+      return (res.rowCount ?? 0) > 0;
+    } catch (err) {
+      throw new DatabaseConnectionError('Lỗi kiểm tra bài viết đã lưu', err);
+    }
+  }
+
+  public async listSavedThreads(
+    userId: string,
+    limit: number = 20,
+    offset: number = 0,
+  ): Promise<ThreadEntity[]> {
+    try {
+      const res = await this.pool.query(
+        `SELECT t.* FROM threads t
+         INNER JOIN user_saved_threads s ON s.thread_id = t.id
+         WHERE s.user_id = $1
+         ORDER BY s.created_at DESC
+         LIMIT $2 OFFSET $3;`,
+        [userId, limit, offset],
+      );
+      return res.rows.map((r) => this.mapThreadRow(r));
+    } catch (err) {
+      throw new DatabaseConnectionError('Lỗi lấy danh sách bài viết đã lưu', err);
+    }
+  }
+
+  public async updateUserKarma(userId: string, delta: number): Promise<void> {
+    try {
+      await this.pool.query(
+        'UPDATE users SET karma_score = karma_score + $1, updated_at = NOW() WHERE id = $2;',
+        [delta, userId],
+      );
+    } catch (err) {
+      throw new DatabaseConnectionError('Lỗi cập nhật karma_score người dùng', err);
+    }
+  }
+
+  // Feeds Implementation
+  public async listHomeFeedThreads(
+    userId: string,
+    options?: FeedFilter,
+  ): Promise<{ items: ThreadEntity[]; nextCursor: string | null }> {
+    try {
+      const memberships = await this.pool.query(
+        'SELECT space_id FROM space_memberships WHERE user_id = $1;',
+        [userId],
+      );
+      const joinedSpaceIds = memberships.rows.map((r) => String(r.space_id));
+      return this.fetchFeedsWithCursor(
+        options,
+        joinedSpaceIds.length > 0 ? joinedSpaceIds : undefined,
+      );
+    } catch (err) {
+      throw new DatabaseConnectionError('Lỗi truy vấn Home Feed', err);
+    }
+  }
+
+  public async listPopularFeedThreads(
+    options?: FeedFilter,
+  ): Promise<{ items: ThreadEntity[]; nextCursor: string | null }> {
+    try {
+      return this.fetchFeedsWithCursor(options);
+    } catch (err) {
+      throw new DatabaseConnectionError('Lỗi truy vấn Popular Feed', err);
+    }
+  }
+
+  public async listSpaceFeedThreads(
+    spaceId: string,
+    options?: FeedFilter,
+  ): Promise<{ items: ThreadEntity[]; nextCursor: string | null }> {
+    try {
+      return this.fetchFeedsWithCursor(options, [spaceId]);
+    } catch (err) {
+      throw new DatabaseConnectionError('Lỗi truy vấn Space Feed', err);
+    }
+  }
+
+  private async fetchFeedsWithCursor(
+    options?: FeedFilter,
+    spaceIds?: string[],
+  ): Promise<{ items: ThreadEntity[]; nextCursor: string | null }> {
+    const sort = options?.sort ?? 'hot';
+    const time = options?.time ?? 'all';
+    const limit = options?.limit ?? 20;
+
+    let sql = `
+      SELECT t.*,
+             COALESCE(tc.upvotes, t.upvotes_count) as c_upvotes,
+             COALESCE(tc.downvotes, t.downvotes_count) as c_downvotes,
+             COALESCE(tc.net_score, (t.upvotes_count - t.downvotes_count)) as c_net_score,
+             COALESCE(tc.hot_score, 0) as c_hot_score,
+             COALESCE(tc.wilson_score, 0) as c_wilson_score
+      FROM threads t
+      LEFT JOIN thread_counters tc ON tc.thread_id = t.id
+      WHERE 1=1
+    `;
+    const params: unknown[] = [];
+
+    if (spaceIds && spaceIds.length > 0) {
+      params.push(spaceIds);
+      sql += ` AND t.space_id = ANY($${params.length})`;
+    }
+
+    if (sort === 'top' && time !== 'all') {
+      const windowIntervals: Record<string, string> = {
+        day: '1 day',
+        week: '7 days',
+        month: '30 days',
+        year: '365 days',
+      };
+      const interval = windowIntervals[time] ?? '1 day';
+      sql += ` AND t.created_at >= NOW() - INTERVAL '${interval}'`;
+    }
+
+    const res = await this.pool.query(sql, params);
+    const threads = res.rows.map((r) => this.mapThreadRow(r));
+
+    const scoredList = threads.map((t) => {
+      const createdAtMs = new Date(t.createdAt).getTime();
+      let score = 0;
+      if (sort === 'hot') {
+        score = GravityDecayEngine.computeHotScore(
+          t.upvotesCount - t.downvotesCount,
+          new Date(t.createdAt),
+        );
+      } else if (sort === 'best') {
+        score = WilsonScoreEngine.computeWilsonScore(t.upvotesCount, t.downvotesCount);
+      } else if (sort === 'top') {
+        score = t.upvotesCount - t.downvotesCount;
+      } else {
+        score = createdAtMs;
+      }
+      return { thread: t, score, createdAtMs, id: t.id };
+    });
+
+    scoredList.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (b.createdAtMs !== a.createdAtMs) return b.createdAtMs - a.createdAtMs;
+      return b.id.localeCompare(a.id);
+    });
+
+    let startIndex = 0;
+    if (options?.cursor) {
+      const decoded = CursorManager.decode(options.cursor);
+      if (decoded) {
+        const found = scoredList.findIndex((item) => {
+          if (item.score < decoded.score) return true;
+          if (item.score === decoded.score && item.createdAtMs < decoded.createdAtMs) return true;
+          if (
+            item.score === decoded.score &&
+            item.createdAtMs === decoded.createdAtMs &&
+            item.id < decoded.id
+          ) {
+            return true;
+          }
+          return false;
+        });
+        startIndex = found !== -1 ? found : scoredList.length;
+      }
+    }
+
+    const pageItems = scoredList.slice(startIndex, startIndex + limit);
+    const hasMore = startIndex + limit < scoredList.length;
+    let nextCursor: string | null = null;
+    if (hasMore && pageItems.length > 0) {
+      const last = pageItems[pageItems.length - 1];
+      if (last) {
+        nextCursor = CursorManager.encode(last.score, last.createdAtMs, last.id);
+      }
+    }
+
+    return {
+      items: pageItems.map((p) => p.thread),
+      nextCursor,
+    };
   }
 
   public async checkHealth(): Promise<boolean> {

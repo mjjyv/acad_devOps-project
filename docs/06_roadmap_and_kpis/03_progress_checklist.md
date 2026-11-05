@@ -12,11 +12,11 @@
 
 | Luồng Phát Triển | Mục Tiêu Kỹ Thuật | Tỷ Lệ Hoàn Thành | Trạng Thái Thực Thi |
 | :--- | :--- | :---: | :---: |
-| **Stream B: Backend Engine** | Xây dựng hoàn chỉnh CSDL, Auth, Spaces, Ltree, Lua Voting, Chat, Admin | **55%** | 🔄 Đã xong B0, B1, B2 (Spaces & Content Engine), Sẵn sàng B3 |
+| **Stream B: Backend Engine** | Xây dựng hoàn chỉnh CSDL, Auth, Spaces, Ltree, Lua Voting, Chat, Admin | **75%** | 🔄 Đã xong B0, B1, B2, B3 (Voting & Feeds Engine), Sẵn sàng B4 |
 | **Stream F: Frontend Client** | Next.js 15 Brutalist Dark Mode, DOM ảo hóa cây bình luận, Floating Chat | **0%** | ⏸️ Tạm hoãn đến khi Stream B hoàn tất |
-| **Stream Q: QA & Load Testing** | Vitest 100% test suites passed, k6 stress test 5,000 RPS | **50%** | 🔄 72/72 Monorepo tests pass (100%), 17/17 Live cURL probes pass |
-| **Stream D: DevOps & Cloud** | Multi-stage Docker, GitHub Actions 4 Gates, Render & Supabase Live | **20%** | 🔄 Docker dev compose, Dockerfile.api.prod, migrations 000001 & 000002 |
-| **TỔNG THỂ DỰ ÁN** | **Nền tảng Diễn đàn & Mạng xã hội chuyên sâu tốc độ cao** | **45.0%** | 🚀 **Hoàn tất Phase B0, B1, B2 -> Sẵn sàng bước vào Phase B3** |
+| **Stream Q: QA & Load Testing** | Vitest 100% test suites passed, k6 stress test 5,000 RPS | **70%** | 🔄 100/100 Monorepo tests pass (100%), 16/16 Live cURL probes pass |
+| **Stream D: DevOps & Cloud** | Multi-stage Docker, GitHub Actions 4 Gates, Render & Supabase Live | **30%** | 🔄 Docker dev compose, Dockerfile.api.prod, migrations 000001, 000002, 000003 |
+| **TỔNG THỂ DỰ ÁN** | **Nền tảng Diễn đàn & Mạng xã hội chuyên sâu tốc độ cao** | **60.0%** | 🚀 **Hoàn tất Phase B0, B1, B2, B3 -> Sẵn sàng bước vào Phase B4** |
 
 ---
 
@@ -42,13 +42,13 @@
 - [x] Bảng `spaces` (`/s/[slug]`), `space_memberships`, và `space_flairs` (Post Flairs).
 - [x] Cơ chế tải ảnh Zero-hop qua Presigned PUT URL Cloudflare R2 / AWS S3.
 - [x] Thuật toán sinh mã đường dẫn `ltree` Base36 4 ký tự mỗi tầng và giới hạn Capped Depth 8 $\rightarrow$ Flat Reply kèm `@mention`.
-- [ ] Kịch bản Redis Lua nguyên tử `execute_vote.lua` xử lý bầu chọn $\mathcal{O}(1)$ (+1, -1, +2, -2, unvote).
-- [ ] Worker chạy nền định kỳ 5 giây xả dữ liệu dồn `dirty:votes` từ Redis về `thread_counters` của PostgreSQL.
-- [ ] Thuật toán xếp hạng Hacker News Gravity Decay Engine ($G=1.8$).
-- [ ] Thuật toán xếp hạng Wilson Score Confidence Interval ("Best", $z = 1.96$).
-- [ ] Bảng tin phân tầng: Home Feed (`/feed/home`), Popular Feed (`/feed/popular`), Custom Feeds.
-- [ ] Phân trang danh sách bằng con trỏ Base64 tổng hợp $\text{base64}(\text{sort\_score}:\text{timestamp}:\text{item\_id})$.
-- [ ] Bộ máy tìm kiếm toàn văn bản trong không gian (In-Space Scoped Search) qua `pg_trgm`.
+- [x] Kịch bản Redis Lua nguyên tử `execute_vote.lua` xử lý bầu chọn $\mathcal{O}(1)$ (+1, -1, +2, -2, unvote).
+- [x] Worker chạy nền định kỳ 5 giây xả dữ liệu dồn `dirty:votes` từ Redis về `thread_counters` của PostgreSQL.
+- [x] Thuật toán xếp hạng Hacker News Gravity Decay Engine ($G=1.8$).
+- [x] Thuật toán xếp hạng Wilson Score Confidence Interval ("Best", $z = 1.96$).
+- [x] Bảng tin phân tầng: Home Feed (`/feed/home`), Popular Feed (`/feed/popular`), Custom Feeds.
+- [x] Phân trang danh sách bằng con trỏ Base64 tổng hợp $\text{base64}(\text{sort\_score}:\text{timestamp}:\text{item\_id})$.
+- [x] Bộ máy tìm kiếm toàn văn bản trong không gian (In-Space Scoped Search) qua `pg_trgm`.
 - [ ] Kiến trúc CSDL Nhắn Tin: Bảng `chat_channels`, `chat_members`, `chat_messages`.
 - [ ] Hàng đợi duyệt tin nhắn từ người lạ (Reddit Chat Requests Queue: PENDING, ACCEPTED, IGNORED, BLOCKED).
 - [ ] Phân nhánh đối thoại trong chat (Chat Threads qua `parent_message_id`).

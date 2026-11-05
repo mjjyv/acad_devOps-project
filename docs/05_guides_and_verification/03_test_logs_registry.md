@@ -21,10 +21,32 @@ Dự án áp dụng quy định bắt buộc tại [`AGENT.md`](file:///home/deb
 | **`LOG-B0`** | 2026-11-05 | **Nghiệm thu Phase B0 (Clean Rebuild Monorepo Scaffolding & @acad/contracts)**: Khởi tạo monorepo, Biome 2.6.5, TypeScript 5.9 strict NodeNext ESM, Docker Compose Postgres 16 & Redis 7, 16/16 Vitest tests pass (100%), Biome lint 48ms pass, Typecheck pass | **100% Passed (4 CI Gates Đều Xanh)** |
 | **`LOG-B1`** | 2026-11-05 | **Nghiệm thu Phase B1 (Core Identity, Token Rotation & API Gateway)**: DDL PostgreSQL 16 & Redis Session Store, KDF Scrypt/Argon2id 64MB memory-hard, Dual Token Rotation (15m JWT + 7d CSPRNG), 30s Grace Period đa tab, Token Reuse Attack detection & auto-revocation, Client Mutex Lock (`@acad/auth-client`) chống Thundering Herd trên 20 luồng đồng thời, API Gateway Facade RFC 7807, 43/43 tests pass (100%), Biome lint 58ms pass, Typecheck pass | **100% Passed (43/43 Tests Xanh)** |
 | **`LOG-B2`** | 2026-11-05 | **Nghiệm thu Phase B2 (Không Gian Thảo Luận, CMS & Cây Bình Luận Đa Tầng `ltree` Base36)**: DDL PostgreSQL 16 migration `000002_create_community_schema`, GIN Trigram indexes, ltree GiST index, Dịch vụ `@acad/community-service` (LtreePathManager Base36 4-char $36^4=1,679,616$ child nodes, Capped Depth 8 Flat Reply & `@mention` injector, SpaceService, ThreadService SEO slug, CommentService Soft Delete bảo toàn cây, ZeroHopStorageService S3 Presigned PUT URL), API Gateway routes (`/spaces`, `/threads`, `/comments`, `/media`), 72/72 tests pass (100%), 17/17 Live cURL probes pass, RFC 7807 problem details 0 errors 500 | **100% Passed (72/72 Tests Xanh, 17/17 cURL Xanh)** |
+| **`LOG-B3`** | 2026-11-06 | **Nghiệm thu Phase B3 (Bầu Chọn Nguyên Tử, Danh Tiếng & Bảng Tin Thông Minh)**: DDL PostgreSQL 16 migration `000003_create_voting_and_feed_schema` (bảng `thread_counters` với `fillfactor = 70` tối ưu HOT updates, bảng `thread_votes`, `comment_votes`, `user_saved_threads`), Kịch bản Redis Lua nguyên tử `execute_vote.lua` $\mathcal{O}(1)$ xử lý vote, hủy vote, đảo chiều $\pm 2$ và quản lý tập hợp `dirty:votes`, Tiến trình định kỳ `VoteFlushWorker` xả dữ liệu dồn về CSDL và cập nhật điểm Karma, Động cơ xếp hạng Hacker News `GravityDecayEngine` ($G=1.8$) & `WilsonScoreEngine` ($z=1.96$), Phân tầng nguồn cấp tin `/feed/home` (theo subscriptions) & `/feed/popular` (toàn cầu), Phân trang con trỏ `CursorManager` Base64URL tổng hợp, 100/100 Vitest tests pass (100%), Biome lint pass (114ms), Typecheck pass, 16/16 Live cURL probes pass, RFC 7807 problem details 0 errors 500 | **100% Passed (100/100 Tests Xanh, 16/16 cURL Xanh)** |
 
 ---
 
-## 2. BIÊN BẢN NGHIỆM THU CHI TIẾT PHASE B2 (LOG-B2)
+## 2. BIÊN BẢN NGHIỆM THU CHI TIẾT PHASE B3 (LOG-B3)
+
+- **Mục tiêu:** Xây dựng hệ thống biểu quyết nguyên tử $\mathcal{O}(1)$ triệt tiêu race condition, tối ưu hóa ghi đĩa PostgreSQL HOT updates, động cơ bảng tin Hacker News & Wilson Score, phân trang con trỏ Keyset Cursor Base64URL.
+- **Môi trường thực thi:** Debian GNU/Linux 13 (trixie) x86_64, Node.js v22.23.4 LTS, pnpm v10.15.0, Biome 2.6.5, bash 5.2.
+- **Kết quả 4 Cổng kiểm định CI:**
+  1. *Cổng 1 (Linting & Formatting):* `pnpm run lint` $\rightarrow$ Đạt 100% (74 files checked in 114ms, 0 errors, 0 warnings).
+  2. *Cổng 2 (TypeScript Strict Typecheck):* `pnpm run typecheck` $\rightarrow$ Đạt 100% trên cả 5 packages (`@acad/contracts`, `@acad/auth-client`, `@acad/auth-service`, `@acad/community-service`, `@acad/api-gateway`).
+  3. *Cổng 3 (Automated Unit QA):* `pnpm test` $\rightarrow$ **100/100 tests Passed (100%)**:
+     - `@acad/contracts`: 16/16 tests pass.
+     - `@acad/auth-client`: 3/3 tests pass.
+     - `@acad/auth-service`: 10/10 tests pass.
+     - `@acad/community-service`: 36/36 tests pass (`ltree-path`: 7, `ranking-algorithms`: 7, `lua-vote`: 6, `feed-services`: 5, `community-services`: 11).
+     - `@acad/api-gateway`: 35/35 tests pass (`healthz`: 1, `auth-endpoints`: 13, `community-endpoints`: 11, `voting-and-feeds`: 10).
+  4. *Cổng 4 (API Live Probes & DDL Migration):*
+     - `deploy/migrations/000003_create_voting_and_feed_schema.up.sql` và `.down.sql` sẵn sàng cho PostgreSQL 16.
+     - `deploy/redis/execute_vote.lua`: Kịch bản Redis Lua nguyên tử $\mathcal{O}(1)$.
+     - `scripts/verify-feeds-and-voting-curl.sh`: 16/16 live cURL test steps passed trên HTTP test server (Port 3099).
+     - Biên bản live HTTP trace lưu tại: [`docs/05_guides_and_verification/logs/log_B3_voting_and_feeds.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/05_guides_and_verification/logs/log_B3_voting_and_feeds.md).
+
+---
+
+## 3. BIÊN BẢN NGHIỆM THU CHI TIẾT PHASE B2 (LOG-B2)
 
 - **Mục tiêu:** Xây dựng hoàn chỉnh hạ tầng CSDL PostgreSQL 16 mở rộng (`ltree`, `pg_trgm`), Dịch vụ Không gian thảo luận & Nội dung `@acad/community-service`, và Tích hợp API Gateway `@acad/api-gateway`.
 - **Môi trường thực thi:** Debian GNU/Linux 13 (trixie) x86_64, Node.js v22.23.4 LTS, pnpm v10.15.0, Biome 2.6.5, bash 5.2.

@@ -156,3 +156,10 @@ Dự án đã tích hợp sẵn các kịch bản kiểm thử API khép kín (E
    # Kết quả tự động ghi vào docs/05_guides_and_verification/logs/log_B2_spaces_and_content.md
    ```
 
+3. **Kiểm thử Phân hệ B3 (Bầu Chọn Nguyên Tử Redis Lua, Xếp Hạng & Bảng Tin):**
+   ```bash
+   chmod +x scripts/verify-feeds-and-voting-curl.sh
+   ./scripts/verify-feeds-and-voting-curl.sh
+   # Kết quả tự động ghi vào docs/05_guides_and_verification/logs/log_B3_voting_and_feeds.md
+   ```
+

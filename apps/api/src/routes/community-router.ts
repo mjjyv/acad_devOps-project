@@ -1,13 +1,16 @@
 /**
  * @file community-router.ts
- * @description API Routes for Spaces, Threads CMS, Nested Comments ltree, and Media Presigned URLs.
+ * @description API Routes for Spaces, Threads CMS, Nested Comments ltree, Media Presigned URLs, Atomic Voting, and Feeds.
  */
 
 import { TokenManager } from '@acad/auth-service';
 import type {
   CommentService,
+  FeedService,
   SpaceService,
   ThreadService,
+  VoteFlushWorker,
+  VoteService,
   ZeroHopStorageService,
 } from '@acad/community-service';
 import {
@@ -24,6 +27,9 @@ export interface CommunityServices {
   threadService: ThreadService;
   commentService: CommentService;
   storageService: ZeroHopStorageService;
+  voteService: VoteService;
+  feedService: FeedService;
+  flushWorker?: VoteFlushWorker | undefined;
 }
 
 export const CreateCommentBodySchema = z.object({
@@ -37,6 +43,10 @@ export const PresignedUrlBodySchema = z.object({
   fileType: z.string().min(1),
 });
 
+export const VoteBodySchema = z.object({
+  direction: z.union([z.literal(1), z.literal(-1)]),
+});
+
 // Helper lấy an toàn userId từ AuthGuard
 function getAuthUserId(req: Request): string {
   const userId = req.user?.sub;
@@ -44,6 +54,16 @@ function getAuthUserId(req: Request): string {
     throw new Error('Unauthorized: thiếu thông tin người dùng phiên đăng nhập');
   }
   return userId;
+}
+
+// Helper lấy userId tùy chọn từ Bearer token (nếu có)
+function getOptionalUserId(req: Request, jwtSecret: string): string | undefined {
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith('Bearer ')) {
+    const claims = TokenManager.verifyAccessToken(authHeader.slice(7).trim(), jwtSecret);
+    if (claims) return claims.sub;
+  }
+  return undefined;
 }
 
 export function createCommunityRouter(
@@ -84,13 +104,7 @@ export function createCommunityRouter(
   router.get('/spaces/:slug', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const slug = req.params.slug as string;
-      // Trích xuất userId nếu có token Bearer gửi kèm (optional)
-      let userId: string | undefined;
-      const authHeader = req.headers.authorization;
-      if (authHeader?.startsWith('Bearer ')) {
-        const claims = TokenManager.verifyAccessToken(authHeader.slice(7).trim(), jwtSecret);
-        if (claims) userId = claims.sub;
-      }
+      const userId = getOptionalUserId(req, jwtSecret);
 
       const space = await services.spaceService.getSpaceBySlug(slug, userId);
       if (!space) {
@@ -194,24 +208,23 @@ export function createCommunityRouter(
   // 2. THREADS ENDPOINTS (/threads)
   // ===========================================================================
 
-  // GET /spaces/:slug/threads - Danh sách bài viết trong không gian
+  // GET /spaces/:slug/threads - Danh sách bài viết trong không gian (Feed & Keyset Cursor)
   router.get('/spaces/:slug/threads', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const slug = req.params.slug as string;
-      const space = await services.spaceService.getSpaceBySlug(slug);
-      if (!space) {
-        res.status(404).json({ title: 'Not Found', status: 404 });
-        return;
-      }
-      const flairId = req.query.flairId as string | undefined;
+      const userId = getOptionalUserId(req, jwtSecret);
+      const sort = req.query.sort as 'hot' | 'new' | 'top' | 'best' | undefined;
+      const time = req.query.time as 'day' | 'week' | 'month' | 'year' | 'all' | undefined;
       const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : 20;
-      const offset = req.query.offset ? parseInt(String(req.query.offset), 10) : 0;
-      const threads = await services.threadService.listSpaceThreads(space.id, {
-        flairId,
+      const cursor = req.query.cursor as string | undefined;
+
+      const feed = await services.feedService.getSpaceFeed(slug, userId, {
+        sort,
+        time,
         limit,
-        offset,
+        cursor,
       });
-      res.status(200).json({ threads });
+      res.status(200).json(feed);
     } catch (err) {
       next(err);
     }
@@ -287,7 +300,119 @@ export function createCommunityRouter(
   });
 
   // ===========================================================================
-  // 3. COMMENTS ENDPOINTS (ltree & Capped Depth)
+  // 3. VOTING & SAVED THREADS ENDPOINTS (Phase B3)
+  // ===========================================================================
+
+  // POST /threads/:id/vote - Bầu chọn bài viết (AuthGuard)
+  router.post(
+    '/threads/:id/vote',
+    guard,
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const threadId = req.params.id as string;
+        const body = VoteBodySchema.parse(req.body);
+        const userId = getAuthUserId(req);
+
+        const result = await services.voteService.voteThread(threadId, userId, body.direction);
+        res.status(200).json(result);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  // POST /comments/:id/vote - Bầu chọn bình luận (AuthGuard)
+  router.post(
+    '/comments/:id/vote',
+    guard,
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const commentId = req.params.id as string;
+        const body = VoteBodySchema.parse(req.body);
+        const userId = getAuthUserId(req);
+
+        const result = await services.voteService.voteComment(commentId, userId, body.direction);
+        res.status(200).json(result);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  // POST /threads/:id/save - Đánh dấu lưu / bỏ lưu bài viết (AuthGuard)
+  router.post(
+    '/threads/:id/save',
+    guard,
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const threadId = req.params.id as string;
+        const userId = getAuthUserId(req);
+
+        const result = await services.voteService.toggleSaveThread(threadId, userId);
+        res.status(200).json(result);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  // GET /users/me/saved - Danh sách bài viết đã lưu của tôi (AuthGuard)
+  router.get('/users/me/saved', guard, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = getAuthUserId(req);
+      const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : 20;
+      const offset = req.query.offset ? parseInt(String(req.query.offset), 10) : 0;
+
+      const items = await services.voteService.listSavedThreads(userId, limit, offset);
+      res.status(200).json({ items });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // ===========================================================================
+  // 4. FEEDS ENDPOINTS (/feed/home, /feed/popular) (Phase B3)
+  // ===========================================================================
+
+  // GET /feed/home - Bảng tin trang chủ (các Spaces đã tham gia)
+  router.get('/feed/home', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = getOptionalUserId(req, jwtSecret);
+      const sort = req.query.sort as 'hot' | 'new' | 'top' | 'best' | undefined;
+      const time = req.query.time as 'day' | 'week' | 'month' | 'year' | 'all' | undefined;
+      const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : 20;
+      const cursor = req.query.cursor as string | undefined;
+
+      const feed = await services.feedService.getHomeFeed(userId, { sort, time, limit, cursor });
+      res.status(200).json(feed);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // GET /feed/popular - Bảng tin thịnh hành toàn cầu
+  router.get('/feed/popular', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = getOptionalUserId(req, jwtSecret);
+      const sort = req.query.sort as 'hot' | 'new' | 'top' | 'best' | undefined;
+      const time = req.query.time as 'day' | 'week' | 'month' | 'year' | 'all' | undefined;
+      const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : 20;
+      const cursor = req.query.cursor as string | undefined;
+
+      const feed = await services.feedService.getPopularFeed(userId, {
+        sort,
+        time,
+        limit,
+        cursor,
+      });
+      res.status(200).json(feed);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // ===========================================================================
+  // 5. COMMENTS ENDPOINTS (ltree & Capped Depth)
   // ===========================================================================
 
   // GET /threads/:threadId/comments - Lấy toàn bộ cây bình luận đã sắp xếp
@@ -344,7 +469,7 @@ export function createCommunityRouter(
   );
 
   // ===========================================================================
-  // 4. MEDIA STORAGE ENDPOINTS (Presigned PUT URL)
+  // 6. MEDIA STORAGE ENDPOINTS (Presigned PUT URL)
   // ===========================================================================
 
   // POST /media/presigned-url - Cấp Presigned PUT URL tải ảnh Zero-hop (AuthGuard)

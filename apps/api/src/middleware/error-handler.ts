@@ -12,6 +12,7 @@ import {
   DuplicateSlugError,
   InsufficientSpacePermissionError,
   SpaceNotFoundError,
+  TargetNotFoundError,
   ThreadNotFoundError,
 } from '@acad/community-service';
 import type { NextFunction, Request, Response } from 'express';
@@ -79,7 +80,8 @@ export function errorHandler() {
     if (
       err instanceof SpaceNotFoundError ||
       err instanceof ThreadNotFoundError ||
-      err instanceof CommentNotFoundError
+      err instanceof CommentNotFoundError ||
+      err instanceof TargetNotFoundError
     ) {
       const problem: RFC7807Problem = {
         type: 'https://api.acad.vn/errors/not-found',
