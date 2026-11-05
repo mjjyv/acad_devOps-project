@@ -1,5 +1,5 @@
 # ==============================================================================
-# MULTI-STAGE DOCKERFILE - PRODUCTION API GATEWAY & AUTH RUNNER
+# MULTI-STAGE DOCKERFILE - PRODUCTION API GATEWAY & BACKEND ENGINE
 # Node.js 22 Alpine, non-root user, multi-stage
 # ==============================================================================
 
@@ -15,6 +15,7 @@ COPY packages/auth-client/package.json ./packages/auth-client/
 COPY services/auth/package.json ./services/auth/
 COPY services/community/package.json ./services/community/
 COPY apps/api/package.json ./apps/api/
+COPY apps/web/package.json ./apps/web/
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
@@ -24,8 +25,8 @@ COPY packages/ ./packages/
 COPY services/ ./services/
 COPY apps/api/ ./apps/api/
 
-# Build all packages and applications
-RUN pnpm run build
+# Build backend packages and api gateway
+RUN pnpm --filter @acad/api-gateway... run build
 
 # Stage 2: Production Minimal Runner
 FROM node:22-alpine AS runner
@@ -38,20 +39,13 @@ ENV PORT=3000
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 appuser
 
-# Copy workspace layout and built outputs
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/pnpm-workspace.yaml ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/packages/contracts/dist ./packages/contracts/dist
-COPY --from=builder /app/packages/contracts/package.json ./packages/contracts/package.json
-COPY --from=builder /app/packages/auth-client/dist ./packages/auth-client/dist
-COPY --from=builder /app/packages/auth-client/package.json ./packages/auth-client/package.json
-COPY --from=builder /app/services/auth/dist ./services/auth/dist
-COPY --from=builder /app/services/auth/package.json ./services/auth/package.json
-COPY --from=builder /app/services/community/dist ./services/community/dist
-COPY --from=builder /app/services/community/package.json ./services/community/package.json
-COPY --from=builder /app/apps/api/dist ./apps/api/dist
-COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
+# Copy workspace layout, dependencies and built outputs
+COPY --from=builder --chown=appuser:nodejs /app/package.json ./
+COPY --from=builder --chown=appuser:nodejs /app/pnpm-workspace.yaml ./
+COPY --from=builder --chown=appuser:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=appuser:nodejs /app/packages ./packages
+COPY --from=builder --chown=appuser:nodejs /app/services ./services
+COPY --from=builder --chown=appuser:nodejs /app/apps/api ./apps/api
 
 USER appuser
 EXPOSE 3000

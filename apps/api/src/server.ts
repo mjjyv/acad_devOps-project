@@ -37,7 +37,9 @@ async function bootstrap() {
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,
     ssl:
-      process.env.DATABASE_SSL === 'true' || DATABASE_URL.includes('sslmode=require')
+      process.env.DATABASE_SSL === 'true' ||
+      DATABASE_URL.includes('sslmode=require') ||
+      (!DATABASE_URL.includes('localhost') && !DATABASE_URL.includes('127.0.0.1'))
         ? { rejectUnauthorized: false }
         : undefined,
   });

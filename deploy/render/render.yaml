@@ -5,7 +5,25 @@
 
 services:
   # ----------------------------------------------------------------------------
-  # BACKEND API GATEWAY & AUTH RUNNER (DOCKER WEB SERVICE)
+  # 1. FRONTEND WEB CLIENT (NEXT.JS 15 BRUTALIST UI)
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: acad-web-client
+    runtime: node
+    plan: free
+    region: singapore # hoặc oregon / frankfurt
+    buildCommand: pnpm install --frozen-lockfile && pnpm run build
+    startCommand: pnpm --filter @acad/web exec next start -p $PORT -H 0.0.0.0
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: NEXT_PUBLIC_API_URL
+        value: https://acad-core-api.onrender.com
+
+  # ----------------------------------------------------------------------------
+  # 2. BACKEND API GATEWAY & CORE ENGINES (DOCKER WEB SERVICE)
   # ----------------------------------------------------------------------------
   - type: web
     name: acad-core-api

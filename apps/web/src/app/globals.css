@@ -1,0 +1,76 @@
+:root {
+  --bg-primary: #222831;
+  --bg-secondary: #393e46;
+  --accent-gold: #948979;
+  --text-main: #dfd0b8;
+  --border-color: #948979;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, monospace;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+.brutalist-card {
+  background-color: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  box-shadow: 4px 4px 0px 0px rgba(148, 137, 121, 0.4);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.brutalist-badge {
+  display: inline-block;
+  background-color: var(--accent-gold);
+  color: #222831;
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-right: 0.5rem;
+}
+
+.brutalist-button {
+  background-color: var(--accent-gold);
+  color: #222831;
+  border: 2px solid var(--text-main);
+  box-shadow: 3px 3px 0px 0px #dfd0b8;
+  padding: 0.6rem 1.2rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+  display: inline-block;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.brutalist-button:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px 0px #dfd0b8;
+}
+
+.status-indicator {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #22c55e;
+  margin-right: 8px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.4; }
+  100% { opacity: 1; }
+}
