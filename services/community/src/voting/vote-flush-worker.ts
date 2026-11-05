@@ -33,7 +33,7 @@ export class VoteFlushWorker {
     this.isRunning = true;
     this.timer = setInterval(() => {
       this.flushNow().catch((err) => {
-        console.error('[VOTE FLUSH WORKER ERROR]:', err);
+        console.warn('[VOTE FLUSH WORKER DEFERRED]:', err?.message || err);
       });
     }, this.intervalMs);
   }

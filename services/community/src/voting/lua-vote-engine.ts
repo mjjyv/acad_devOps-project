@@ -264,7 +264,11 @@ export class RedisVoteEngine implements IVoteStorageEngine {
   }
 
   public async getDirtyTargetIds(): Promise<string[]> {
-    return this.redis.smembers(this.DIRTY_KEY);
+    try {
+      return await this.redis.smembers(this.DIRTY_KEY);
+    } catch {
+      return [];
+    }
   }
 
   public async clearDirtyTargetIds(targetIds: string[]): Promise<void> {

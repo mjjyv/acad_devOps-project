@@ -10,6 +10,17 @@ export interface HealthCheckOptions {
 export function createHealthzRouter(options: HealthCheckOptions = {}): Router {
   const router = Router();
 
+  router.get('/', (_req: Request, res: Response) => {
+    res.json({
+      name: 'Acad DevOps Core API Gateway',
+      version: '2.0.0',
+      documentation: '/api/v1/openapi.yaml',
+      healthz: '/healthz',
+      status: 'running',
+      timestamp: new Date().toISOString(),
+    });
+  });
+
   router.get('/healthz', async (_req: Request, res: Response) => {
     const checks: Record<string, string> = {};
     let isHealthy = true;

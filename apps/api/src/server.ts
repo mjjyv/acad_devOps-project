@@ -24,7 +24,10 @@ const PORT = parseInt(process.env.PORT || '10000', 10);
 const DATABASE_URL =
   process.env.DATABASE_URL ||
   'postgresql://postgres:postgres@localhost:5432/acad_dev?sslmode=disable';
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+let REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+if (REDIS_URL.includes('upstash.io') && REDIS_URL.startsWith('redis://')) {
+  REDIS_URL = REDIS_URL.replace('redis://', 'rediss://');
+}
 const JWT_SECRET = process.env.JWT_SECRET || TokenManager.DEFAULT_SECRET;
 
 async function bootstrap() {
@@ -46,9 +49,20 @@ async function bootstrap() {
 
   // 2. Khởi tạo Redis Client
   const redis = new Redis(REDIS_URL, {
-    maxRetriesPerRequest: 3,
+    maxRetriesPerRequest: null,
     enableReadyCheck: true,
     lazyConnect: true,
+    retryStrategy(times) {
+      return Math.min(times * 200, 3000);
+    },
+    reconnectOnError(err) {
+      const targetErrors = ['READONLY', 'ECONNRESET', 'ETIMEDOUT'];
+      return targetErrors.some((target) => err.message.includes(target));
+    },
+  });
+
+  redis.on('error', (err) => {
+    console.warn('[REDIS WARNING] Lỗi kết nối Redis tạm thời (sẽ tự động retry):', err.message);
   });
 
   try {
