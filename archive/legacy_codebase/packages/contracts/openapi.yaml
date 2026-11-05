@@ -1,0 +1,333 @@
+openapi: 3.1.0
+info:
+  title: Acad Community Platform API Specification
+  version: 1.0.0
+  description: Bản đặc tả khế ước giao tiếp toàn diện (OpenAPI 3.1 Contract) giữa Client (Next.js) và Core Backend (Go).
+
+paths:
+  # ==========================================
+  # PHÂN HỆ AUTH & SESSION
+  # ==========================================
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      summary: Đăng ký tài khoản thành viên mới
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, username, password]
+              properties:
+                email: { type: string, format: email }
+                username: { type: string, minLength: 3, maxLength: 32 }
+                password: { type: string, minLength: 8 }
+                deviceFingerprint: { type: string }
+      responses:
+        '201':
+          description: Đăng ký thành công kèm Set-Cookie phiên
+        '400':
+          description: Dữ liệu không hợp lệ
+
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Đăng nhập hệ thống & Thiết lập phiên
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [login, password]
+              properties:
+                login: { type: string }
+                password: { type: string }
+                deviceFingerprint: { type: string }
+      responses:
+        '200':
+          description: Đăng nhập thành công
+
+  /api/v1/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Xoay vòng Refresh Token (Token Rotation DAG)
+      responses:
+        '200':
+          description: Cấp lại token mới thành công
+        '401':
+          description: Hết hạn phiên
+        '403':
+          description: Phát hiện tấn công Token Reuse!
+
+  /api/v1/auth/me:
+    get:
+      tags: [Auth]
+      summary: Lấy hồ sơ tài khoản và quyền hạn hiện tại
+      responses:
+        '200':
+          description: Trả về thông tin UserProfile
+
+  # ==========================================
+  # PHÂN HỆ BẢNG TIN (FEED AGGREGATOR)
+  # ==========================================
+  /api/v1/feed:
+    get:
+      tags: [Feed]
+      summary: Lấy danh sách bài viết phân trang bằng con trỏ Base64
+      parameters:
+        - in: query
+          name: sort
+          schema: { type: string, enum: [hot, new, top], default: hot }
+        - in: query
+          name: cursor
+          schema: { type: string, description: Base64 composite cursor }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+        - in: query
+          name: spaceSlug
+          schema: { type: string }
+      responses:
+        '200':
+          description: Danh sách bài viết kèm next_cursor
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  threads:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ThreadSummary'
+                  nextCursor:
+                    type: string
+                    nullable: true
+
+  # ==========================================
+  # PHÂN HỆ KHÔNG GIAN (SPACES)
+  # ==========================================
+  /api/v1/spaces:
+    post:
+      tags: [Spaces]
+      summary: Tạo Không gian thảo luận mới (Yêu cầu Karma >= 500, Tuổi tài khoản >= 30d)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [slug, name]
+              properties:
+                slug: { type: string }
+                name: { type: string }
+                description: { type: string }
+      responses:
+        '201':
+          description: Tạo Space thành công
+        '403':
+          description: Không đủ điều kiện ABAC
+
+  /api/v1/spaces/{slug}:
+    get:
+      tags: [Spaces]
+      summary: Chi tiết Không gian thảo luận
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Thông tin chi tiết Space
+
+  # ==========================================
+  # PHÂN HỆ BÀI VIẾT (THREADS)
+  # ==========================================
+  /api/v1/threads:
+    post:
+      tags: [Threads]
+      summary: Đăng bài viết mới (Kiểm định Tiptap AST)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [spaceId, title, contentAst]
+              properties:
+                spaceId: { type: string, format: uuid }
+                title: { type: string, minLength: 5, maxLength: 255 }
+                contentAst: { type: object, description: JSON Abstract Syntax Tree }
+                mediaKeys: { type: array, items: { type: string } }
+      responses:
+        '201':
+          description: Bài viết được đăng thành công
+
+  /api/v1/threads/{slug}:
+    get:
+      tags: [Threads]
+      summary: Chi tiết bài viết phục vụ SEO ISR
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Chi tiết bài viết kèm counters
+
+  /api/v1/threads/{id}/votes:
+    post:
+      tags: [Voting]
+      summary: Bầu chọn Upvote / Downvote / Unvote (Chạy qua Redis Lua O(1))
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [direction]
+              properties:
+                direction: { type: integer, enum: [1, -1] }
+      responses:
+        '200':
+          description: Ghi nhận vote thành công
+        '403':
+          description: Downvote yêu cầu tối thiểu 500 điểm Karma
+
+  # ==========================================
+  # PHÂN HỆ BÌNH LUẬN (COMMENTS)
+  # ==========================================
+  /api/v1/threads/{id}/comments:
+    get:
+      tags: [Comments]
+      summary: Lấy cây bình luận trải phẳng (Flattened Tree) sắp xếp theo path ltree
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Mảng một chiều FlatCommentItem phục vụ ảo hóa DOM
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FlatCommentItem'
+
+    post:
+      tags: [Comments]
+      summary: Gửi bình luận hoặc phản hồi phân tầng
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [contentAst]
+              properties:
+                parentId: { type: string, format: uuid, nullable: true }
+                contentAst: { type: object }
+      responses:
+        '201':
+          description: Bình luận được tạo thành công
+
+  # ==========================================
+  # PHÂN HỆ TẢI TỆP ZERO-HOP (MEDIA)
+  # ==========================================
+  /api/v1/media/presign:
+    post:
+      tags: [Media]
+      summary: Xin Presigned URL tải file trực tiếp lên Cloudflare R2 / S3
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fileName, fileSize, mimeType, blurhash]
+              properties:
+                fileName: { type: string }
+                fileSize: { type: integer, maximum: 10485760 }
+                mimeType: { type: string, enum: [image/jpeg, image/png, image/webp, image/gif] }
+                blurhash: { type: string }
+      responses:
+        '200':
+          description: Trả về uploadUrl và fileKey
+
+  # ==========================================
+  # PHÂN HỆ REALTIME HUB (SSE)
+  # ==========================================
+  /api/v1/realtime/events:
+    get:
+      tags: [Realtime]
+      summary: Kênh truyền đẩy sự kiện thời gian thực (Server-Sent Events)
+      parameters:
+        - in: header
+          name: Last-Event-ID
+          schema: { type: string }
+      responses:
+        '200':
+          description: Luồng sự kiện Server-Sent Events
+          content:
+            text/event-stream:
+              schema: { type: string }
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ThreadSummary:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        spaceSlug: { type: string }
+        title: { type: string }
+        snippet: { type: string }
+        counters:
+          type: object
+          properties:
+            upvotes: { type: integer }
+            downvotes: { type: integer }
+            netScore: { type: integer }
+            commentCount: { type: integer }
+            hotScore: { type: number }
+
+    FlatCommentItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        path: { type: string, example: "0001.0002.0001" }
+        depth: { type: integer, minimum: 0, maximum: 8 }
+        hasChildren: { type: boolean }
+        childCount: { type: integer }
+        isCollapsed: { type: boolean }
+        contentAst: { type: object }

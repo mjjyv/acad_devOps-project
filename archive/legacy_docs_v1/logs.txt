@@ -1,0 +1,92 @@
+cp .env.example .env
+
+sudo docker compose -f deploy/docker/docker-compose.dev.yml up --build
+[+] up 36/37
+ ✔ Image redis:7-alpine             Pulled                                 11.7s
+ ✔ Image node:24-alpine             Pulled                                 10.5s
+ ✔ Image postgres:16-alpine         Pulled                                 11.8s
+ ✔ Network docker_acad-internal-net Created                                 0.0s
+ ✔ Volume docker_pgdata             Created                                 0.0s
+ ✔ Volume docker_redisdata          Created                                 0.0s
+ ✔ Container acad-postgres-dev      Created                                 0.5s
+ ✔ Container acad-redis-dev         Created                                 0.5s
+ ✔ Container acad-core-api-dev      Created                                 0.0s
+ ✔ Container acad-web-client-dev    Created                                 0.0s
+Attaching to acad-core-api-dev, acad-postgres-dev, acad-redis-dev, acad-web-client-dev
+acad-redis-dev  | 1:C 30 Oct 2026 06:27:05.458 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+acad-redis-dev  | 1:C 30 Oct 2026 06:27:05.458 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+acad-redis-dev  | 1:C 30 Oct 2026 06:27:05.458 * Redis version=7.4.12, bits=64, commit=00000000, modified=0, pid=1, just started
+acad-redis-dev  | 1:C 30 Oct 2026 06:27:05.458 * Configuration loaded
+acad-redis-dev  | 1:M 30 Oct 2026 06:27:05.458 * Increased maximum number of open files to 10032 (it was originally set to 1024).
+acad-redis-dev  | 1:M 30 Oct 2026 06:27:05.458 * monotonic clock: POSIX clock_gettime
+acad-redis-dev  | 1:M 30 Oct 2026 06:27:05.459 * Running mode=standalone, port=6379.
+acad-redis-dev  | 1:M 30 Oct 2026 06:27:05.459 * Server initialized
+acad-redis-dev  | 1:M 30 Oct 2026 06:27:05.459 * Ready to accept connections tcp
+Container acad-postgres-dev Waiting 
+Container acad-redis-dev Waiting 
+acad-postgres-dev  | The files belonging to this database system will be owned by user "postgres".
+acad-postgres-dev  | This user must also own the server process.
+acad-postgres-dev  | 
+acad-postgres-dev  | The database cluster will be initialized with locale "en_US.utf8".
+acad-postgres-dev  | The default database encoding has accordingly been set to "UTF8".
+acad-postgres-dev  | The default text search configuration will be set to "english".
+acad-postgres-dev  | 
+acad-postgres-dev  | Data page checksums are disabled.
+acad-postgres-dev  | 
+acad-postgres-dev  | fixing permissions on existing directory /var/lib/postgresql/data ... ok
+acad-postgres-dev  | creating subdirectories ... ok
+acad-postgres-dev  | selecting dynamic shared memory implementation ... posix
+acad-postgres-dev  | selecting default max_connections ... 100
+acad-postgres-dev  | selecting default shared_buffers ... 128MB
+acad-postgres-dev  | selecting default time zone ... UTC
+acad-postgres-dev  | creating configuration files ... ok
+acad-postgres-dev  | running bootstrap script ... ok
+acad-postgres-dev  | sh: locale: not found
+acad-postgres-dev  | 2026-10-30 06:27:06.060 UTC [35] WARNING:  no usable system locales were found
+acad-postgres-dev  | performing post-bootstrap initialization ... ok
+acad-postgres-dev  | syncing data to disk ... ok
+acad-postgres-dev  | 
+acad-postgres-dev  | 
+acad-postgres-dev  | Success. You can now start the database server using:
+acad-postgres-dev  | 
+acad-postgres-dev  |     pg_ctl -D /var/lib/postgresql/data -l logfile start
+acad-postgres-dev  | 
+acad-postgres-dev  | initdb: warning: enabling "trust" authentication for local connections
+acad-postgres-dev  | initdb: hint: You can change this by editing pg_hba.conf or using the option -A, or --auth-local and --auth-host, the next time you run initdb.
+acad-postgres-dev  | waiting for server to start....2026-10-30 06:27:06.576 UTC [41] LOG:  starting PostgreSQL 16.15 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+acad-postgres-dev  | 2026-10-30 06:27:06.579 UTC [41] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+acad-postgres-dev  | 2026-10-30 06:27:06.586 UTC [44] LOG:  database system was shut down at 2026-10-30 06:27:06 UTC
+acad-postgres-dev  | 2026-10-30 06:27:06.593 UTC [41] LOG:  database system is ready to accept connections
+acad-postgres-dev  |  done
+acad-postgres-dev  | server started
+acad-postgres-dev  | 2026-10-30 06:27:06.712 UTC [52] ERROR:  could not extend file "base/16384/2757": No space left on device
+acad-postgres-dev  | 2026-10-30 06:27:06.712 UTC [52] HINT:  Check free disk space.
+acad-postgres-dev  | 2026-10-30 06:27:06.712 UTC [52] STATEMENT:  CREATE DATABASE "acad_community_dev" ;
+acad-postgres-dev  | ERROR:  could not extend file "base/16384/2757": No space left on device
+acad-postgres-dev  | HINT:  Check free disk space.
+acad-postgres-dev exited with code 3 (restarting)
+acad-postgres-dev  | 
+acad-postgres-dev  | PostgreSQL Database directory appears to contain a database; Skipping initialization
+acad-postgres-dev  | 
+acad-postgres-dev  | 2026-10-30 06:27:07.143 UTC [1] LOG:  starting PostgreSQL 16.15 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+acad-postgres-dev  | 2026-10-30 06:27:07.143 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+acad-postgres-dev  | 2026-10-30 06:27:07.143 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+acad-postgres-dev  | 2026-10-30 06:27:07.148 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+acad-postgres-dev  | 2026-10-30 06:27:07.154 UTC [29] LOG:  database system was interrupted; last known up at 2026-10-30 06:27:06 UTC
+acad-postgres-dev  | 2026-10-30 06:27:07.295 UTC [29] LOG:  database system was not properly shut down; automatic recovery in progress
+acad-postgres-dev  | 2026-10-30 06:27:07.298 UTC [29] LOG:  redo starts at 0/14F7180
+acad-postgres-dev  | 2026-10-30 06:27:07.307 UTC [29] FATAL:  could not extend file "base/16384/2838": No space left on device
+acad-postgres-dev  | 2026-10-30 06:27:07.307 UTC [29] HINT:  Check free disk space.
+acad-postgres-dev  | 2026-10-30 06:27:07.307 UTC [29] CONTEXT:  WAL redo at 0/157CF28 for XLOG/FPI: ; blkref #0: rel 1663/16384/2838, blk 32 FPW
+acad-postgres-dev  | 2026-10-30 06:27:07.308 UTC [1] LOG:  startup process (PID 29) exited with exit code 1
+acad-postgres-dev  | 2026-10-30 06:27:07.308 UTC [1] LOG:  terminating any other active server processes
+acad-postgres-dev  | 2026-10-30 06:27:07.309 UTC [1] LOG:  shutting down due to startup process failure
+acad-postgres-dev  | 2026-10-30 06:27:07.310 UTC [1] LOG:  database system is shut down
+acad-postgres-dev exited with code 1 (restarting)
+acad-postgres-dev  | 
+acad-postgres-dev  | PostgreSQL Database directory appears to contain a database; Skipping initialization
+acad-postgres-dev  | 
+acad-postgres-dev  | 2026-10-30 06:27:07.731 UTC [1] FATAL:  could not write lock file "postmaster.pid": No space left on device
+acad-postgres-dev exited with code 1 (restarting)
+Container acad-postgres-dev Error dependency infra-db failed to start
+dependency failed to start: container acad-postgres-dev is unhealthy
