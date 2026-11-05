@@ -20,7 +20,7 @@ import { Redis } from 'ioredis';
 import pg from 'pg';
 import { createApp } from './app.js';
 
-const PORT = parseInt(process.env.PORT || '3000', 10);
+const PORT = parseInt(process.env.PORT || '10000', 10);
 const DATABASE_URL =
   process.env.DATABASE_URL ||
   'postgresql://postgres:postgres@localhost:5432/acad_dev?sslmode=disable';
@@ -99,9 +99,9 @@ async function bootstrap() {
 
   const server = http.createServer(app);
 
-  server.listen(PORT, () => {
-    console.log(`[HTTP SERVER] Acad API Gateway đang lắng nghe tại http://localhost:${PORT}`);
-    console.log(`[HEALTH CHECK] Endpoint kiểm tra sức khỏe: http://localhost:${PORT}/healthz`);
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`[HTTP SERVER] Acad API Gateway đang lắng nghe tại http://0.0.0.0:${PORT}`);
+    console.log(`[HEALTH CHECK] Endpoint kiểm tra sức khỏe: http://0.0.0.0:${PORT}/healthz`);
   });
 
   // 5. Quản lý Tắt Máy An Toàn (Graceful Shutdown)

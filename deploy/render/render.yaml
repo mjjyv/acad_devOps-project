@@ -18,7 +18,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 3000
+        value: 10000
       - key: NEXT_PUBLIC_API_URL
         value: https://acad-core-api.onrender.com
 
@@ -37,7 +37,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 3000
+        value: 10000
       - key: DATABASE_URL
         sync: false # Connection string tới Managed PostgreSQL (Supabase / Render DB / Neon)
       - key: REDIS_URL

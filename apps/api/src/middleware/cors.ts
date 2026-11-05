@@ -3,7 +3,13 @@ import cors, { type CorsOptions } from 'cors';
 export function configureCors() {
   const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS
     ? process.env.CORS_ALLOWED_ORIGINS.split(',').map((o) => o.trim())
-    : ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:5173'];
+    : [
+        'http://localhost:3000',
+        'http://localhost:10000',
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'https://acad-web-client.onrender.com',
+      ];
 
   const corsOptions: CorsOptions = {
     origin: (origin, callback) => {
