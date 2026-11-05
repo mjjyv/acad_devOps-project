@@ -1,55 +1,25 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createApiServer } from '../src/server.js';
-import { AddressInfo } from 'node:net';
+import { AuthService, InMemorySessionStore, InMemoryUserRepository } from '@acad/auth-service';
+import request from 'supertest';
+import { describe, expect, it } from 'vitest';
+import { createApp } from '../src/app.js';
 
-describe('Kiểm thử API Gateway & Healthcheck Probe (/healthz)', () => {
-  let server: ReturnType<typeof createApiServer>;
-  let baseUrl: string;
+describe('Kiểm tra cổng Health Check (/healthz)', () => {
+  it('GET /healthz phải trả về HTTP 200 OK và thông tin trạng thái dịch vụ', async () => {
+    const userRepository = new InMemoryUserRepository();
+    const sessionStore = new InMemorySessionStore();
+    const authService = new AuthService(userRepository, sessionStore);
 
-  beforeAll(async () => {
-    server = createApiServer();
-    await new Promise<void>((resolve) => {
-      server.listen(0, '127.0.0.1', () => resolve());
+    const app = createApp({
+      authService,
     });
-    const addr = server.address() as AddressInfo;
-    baseUrl = `http://127.0.0.1:${addr.port}`;
-  });
 
-  afterAll(async () => {
-    await new Promise<void>((resolve) => {
-      server.close(() => resolve());
-    });
-  });
+    const res = await request(app).get('/healthz');
 
-  it('GET /healthz trả về mã HTTP 200 OK và status "ok"', async () => {
-    const res = await fetch(`${baseUrl}/healthz`);
     expect(res.status).toBe(200);
-
-    const data = (await res.json()) as any;
-    expect(data.status).toBe('ok');
-    expect(data.service).toBe('acad-community-api');
-    expect(typeof data.uptime).toBe('number');
-    expect(typeof data.timestamp).toBe('string');
-    expect(data.database).toBeDefined();
-    expect(typeof data.database.type).toBe('string');
-  });
-
-  it('GET /api/v1/health cũng trả về status "ok"', async () => {
-    const res = await fetch(`${baseUrl}/api/v1/health`);
-    expect(res.status).toBe(200);
-    const data = (await res.json()) as any;
-    expect(data.status).toBe('ok');
-  });
-
-  it('GET / trả về thông tin API Gateway', async () => {
-    const res = await fetch(`${baseUrl}/`);
-    expect(res.status).toBe(200);
-    const data = (await res.json()) as any;
-    expect(data.status).toBe('running');
-  });
-
-  it('Yêu cầu tới route không tồn tại trả về HTTP 404', async () => {
-    const res = await fetch(`${baseUrl}/non-existent-route`);
-    expect(res.status).toBe(404);
+    expect(res.body).toHaveProperty('status', 'ok');
+    expect(res.body).toHaveProperty('timestamp');
+    expect(res.body).toHaveProperty('uptime');
+    expect(res.body).toHaveProperty('version', '2.0.0');
+    expect(res.body).toHaveProperty('services');
   });
 });

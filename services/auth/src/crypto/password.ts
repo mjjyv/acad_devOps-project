@@ -1,15 +1,12 @@
 import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 
-// ============================================================================
-// CẤU HÌNH THUẬT TOÁN BĂM MẬT KHẨU BẢO MẬT (OWASP STANDARD)
-// Sử dụng KDF chống tấn công ASIC/GPU với Salt ngẫu nhiên 16 bytes
-// ============================================================================
 const SCRYPT_CONFIG = {
-  N: 16384, // CPU/memory cost parameter (16MB memory)
-  r: 8,     // Block size
-  p: 1,     // Parallelization
-  keyLen: 64, // Độ dài khóa xuất ra (512 bits)
-  saltLen: 16, // Độ dài muối ngẫu nhiên (128 bits)
+  N: 16384,
+  r: 8,
+  p: 1,
+  keyLen: 64,
+  saltLen: 16,
+  maxmem: 64 * 1024 * 1024, // 64MB RAM
 };
 
 const scryptAsync = (
@@ -28,8 +25,8 @@ const scryptAsync = (
 
 export class PasswordHasher {
   /**
-   * Băm mật khẩu bản rõ thành chuỗi định dạng chuẩn:
-   * $scrypt$N={N},r={r},p={p}${salt_hex}${hash_hex}
+   * Băm mật khẩu bằng KDF với 64MB RAM, Salt 16 bytes ngẫu nhiên
+   * Định dạng chuẩn: $scrypt$N=16384,r=8,p=1${salt_hex}${hash_hex}
    */
   public static async hash(password: string): Promise<string> {
     const salt = randomBytes(SCRYPT_CONFIG.saltLen);
@@ -37,15 +34,15 @@ export class PasswordHasher {
       cost: SCRYPT_CONFIG.N,
       blockSize: SCRYPT_CONFIG.r,
       parallelization: SCRYPT_CONFIG.p,
-      maxmem: 64 * 1024 * 1024, // 64MB
+      maxmem: SCRYPT_CONFIG.maxmem,
     });
 
     return `$scrypt$N=${SCRYPT_CONFIG.N},r=${SCRYPT_CONFIG.r},p=${SCRYPT_CONFIG.p}$${salt.toString('hex')}$${derivedKey.toString('hex')}`;
   }
 
   /**
-   * So khớp mật khẩu với mã băm đã lưu trữ bằng thuật toán thời gian hằng số O(1)
-   * Chống tấn công kênh bên (Side-channel & Timing Attacks)
+   * So khớp mật khẩu với mã băm lưu trữ bằng thuật toán thời gian an toàn crypto.timingSafeEqual
+   * Chống tấn công Timing Attacks và Side-Channel Attacks
    */
   public static async verify(password: string, storedHash: string): Promise<boolean> {
     try {
@@ -55,20 +52,34 @@ export class PasswordHasher {
         return false;
       }
 
-      const params = parts[2].split(',').reduce<Record<string, number>>((acc, curr) => {
+      const paramsStr = parts[2];
+      const saltHex = parts[3];
+      const hashHex = parts[4];
+
+      if (!paramsStr || !saltHex || !hashHex) {
+        return false;
+      }
+
+      const params = paramsStr.split(',').reduce<Record<string, number>>((acc, curr) => {
         const [k, v] = curr.split('=');
-        acc[k] = parseInt(v, 10);
+        if (k && v) {
+          acc[k] = parseInt(v, 10);
+        }
         return acc;
       }, {});
 
-      const salt = Buffer.from(parts[3], 'hex');
-      const expectedKey = Buffer.from(parts[4], 'hex');
+      const cost = params.N || SCRYPT_CONFIG.N;
+      const blockSize = params.r || SCRYPT_CONFIG.r;
+      const parallelization = params.p || SCRYPT_CONFIG.p;
+
+      const salt = Buffer.from(saltHex, 'hex');
+      const expectedKey = Buffer.from(hashHex, 'hex');
 
       const derivedKey = await scryptAsync(password, salt, expectedKey.length, {
-        cost: params.N || SCRYPT_CONFIG.N,
-        blockSize: params.r || SCRYPT_CONFIG.r,
-        parallelization: params.p || SCRYPT_CONFIG.p,
-        maxmem: 64 * 1024 * 1024,
+        cost,
+        blockSize,
+        parallelization,
+        maxmem: SCRYPT_CONFIG.maxmem,
       });
 
       if (derivedKey.length !== expectedKey.length) {

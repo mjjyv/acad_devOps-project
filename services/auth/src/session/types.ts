@@ -1,33 +1,45 @@
-import { TokenPair } from '../crypto/token.js';
+import type { TokenPair } from '../crypto/token.js';
 
 export interface UserSession {
-  sessionId: string;
+  id: string; // Session UUID
   userId: string;
-  familyId: string;
-  deviceFingerprint: string;
   currentTokenHash: string;
   previousTokenHash: string | null;
   gracePeriodExpiresAt: Date | null;
+  deviceFingerprint: string | null;
   ipAddress: string | null;
   userAgent: string | null;
   isRevoked: boolean;
+  expiresAt: Date;
   createdAt: Date;
   updatedAt: Date;
-  expiresAt: Date;
 }
 
-export type TokenRotationStatus =
-  | 'SUCCESS'
-  | 'GRACE_PERIOD_MATCH'
-  | 'TOKEN_REUSE_DETECTED'
-  | 'SESSION_NOT_FOUND'
-  | 'SESSION_EXPIRED'
-  | 'SESSION_REVOKED';
-
-export interface TokenRotationResult {
-  status: TokenRotationStatus;
-  tokens?: TokenPair;
-  session?: UserSession;
-  familyId?: string;
-  error?: string;
-}
+export type TokenRotationResult =
+  | {
+      status: 'SUCCESS';
+      tokenPair: TokenPair;
+      session: UserSession;
+    }
+  | {
+      status: 'GRACE_PERIOD_RENEWED'; // Cấp Access Token mới trong cửa sổ 30s Grace Period
+      accessToken: string;
+      expiresIn: number;
+      session: UserSession;
+    }
+  | {
+      status: 'TOKEN_REUSE_DETECTED';
+      error: string;
+    }
+  | {
+      status: 'SESSION_NOT_FOUND';
+      error: string;
+    }
+  | {
+      status: 'SESSION_REVOKED';
+      error: string;
+    }
+  | {
+      status: 'SESSION_EXPIRED';
+      error: string;
+    };

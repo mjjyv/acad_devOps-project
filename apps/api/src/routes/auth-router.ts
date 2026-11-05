@@ -1,351 +1,209 @@
-import { IncomingMessage, ServerResponse } from 'node:http';
-import { AuthModule, TokenManager, UserRecord, UserSession } from '@acad/auth-service';
-import { COOKIE_CONFIG } from '@acad/contracts';
+import type { AuthService } from '@acad/auth-service';
+import { TokenManager } from '@acad/auth-service';
+import { LoginInputSchema, RefreshTokenInputSchema, RegisterInputSchema } from '@acad/contracts';
+import { type NextFunction, type Request, type Response, Router } from 'express';
+import { authGuard } from '../middleware/auth-guard.js';
 
-export function parseCookies(cookieHeader?: string): Record<string, string> {
-  const list: Record<string, string> = {};
-  if (!cookieHeader) return list;
-  cookieHeader.split(';').forEach((cookie) => {
-    const parts = cookie.split('=');
-    const name = parts.shift()?.trim();
-    if (name) {
-      list[name] = decodeURIComponent(parts.join('=').trim());
+export function createAuthRouter(
+  authService: AuthService,
+  jwtSecret: string = TokenManager.DEFAULT_SECRET,
+): Router {
+  const router = Router();
+  const guard = authGuard(jwtSecret);
+
+  // POST /auth/register
+  router.post('/register', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const validatedInput = RegisterInputSchema.parse(req.body);
+      const meta = {
+        ipAddress: req.ip || null,
+        userAgent: (req.headers['user-agent'] as string) || null,
+      };
+
+      const result = await authService.register(validatedInput, meta);
+
+      res.status(201).json({
+        user: result.user,
+        tokens: {
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+          tokenType: 'Bearer',
+          expiresIn: TokenManager.ACCESS_TOKEN_TTL_SECONDS,
+        },
+      });
+    } catch (err) {
+      next(err);
     }
   });
-  return list;
-}
 
-export async function readJsonBody<T = any>(req: IncomingMessage, maxBytes = 1024 * 1024): Promise<T> {
-  return new Promise((resolve, reject) => {
-    let data = '';
-    let bytes = 0;
-    req.on('data', (chunk) => {
-      bytes += chunk.length;
-      if (bytes > maxBytes) {
-        reject(new Error('Dung lượng tải lên vượt quá giới hạn'));
+  // POST /auth/login
+  router.post('/login', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const validatedInput = LoginInputSchema.parse(req.body);
+      const meta = {
+        ipAddress: req.ip || null,
+        userAgent: (req.headers['user-agent'] as string) || null,
+      };
+
+      const result = await authService.login(validatedInput, meta);
+
+      res.status(200).json({
+        user: result.user,
+        tokens: {
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+          tokenType: 'Bearer',
+          expiresIn: TokenManager.ACCESS_TOKEN_TTL_SECONDS,
+        },
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // POST /auth/refresh
+  router.post('/refresh', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const validatedInput = RefreshTokenInputSchema.parse(req.body);
+      if (!validatedInput.refreshToken) {
+        res.setHeader('Content-Type', 'application/problem+json');
+        res.status(400).json({
+          type: 'https://api.acad.vn/errors/bad-request',
+          title: 'Missing Refresh Token',
+          status: 400,
+          detail: 'Trường refreshToken là bắt buộc trong body.',
+          instance: req.originalUrl || req.url,
+          correlationId: req.correlationId,
+        });
         return;
       }
-      data += chunk;
-    });
-    req.on('end', () => {
-      if (!data) return resolve({} as T);
-      try {
-        resolve(JSON.parse(data));
-      } catch {
-        reject(new Error('Dữ liệu JSON không hợp lệ'));
+
+      const rotationResult = await authService.refresh(validatedInput.refreshToken);
+
+      if (rotationResult.status === 'SUCCESS') {
+        res.status(200).json({
+          accessToken: rotationResult.tokenPair.accessToken,
+          refreshToken: rotationResult.tokenPair.refreshToken,
+          tokenType: 'Bearer',
+          expiresIn: rotationResult.tokenPair.expiresIn,
+        });
+        return;
       }
-    });
-    req.on('error', (err) => reject(err));
+
+      if (rotationResult.status === 'GRACE_PERIOD_RENEWED') {
+        res.status(200).json({
+          accessToken: rotationResult.accessToken,
+          refreshToken: validatedInput.refreshToken,
+          tokenType: 'Bearer',
+          expiresIn: rotationResult.expiresIn,
+        });
+        return;
+      }
+
+      // Security failures: TOKEN_REUSE_DETECTED, SESSION_REVOKED, SESSION_EXPIRED, SESSION_NOT_FOUND
+      res.setHeader('Content-Type', 'application/problem+json');
+      res.status(401).json({
+        type: 'https://api.acad.vn/errors/unauthorized',
+        title:
+          rotationResult.status === 'TOKEN_REUSE_DETECTED'
+            ? 'Token Reuse Attack Detected'
+            : 'Unauthorized',
+        status: 401,
+        detail: rotationResult.error,
+        instance: req.originalUrl || req.url,
+        correlationId: req.correlationId,
+      });
+    } catch (err) {
+      next(err);
+    }
   });
-}
 
-export function sendJson(
-  res: ServerResponse,
-  statusCode: number,
-  data: unknown,
-  headers?: Record<string, string | string[]>,
-) {
-  const payload = JSON.stringify(data);
-  res.writeHead(statusCode, {
-    'Content-Type': 'application/json',
-    'Content-Length': Buffer.byteLength(payload),
-    ...(headers || {}),
+  // POST /auth/logout
+  router.post('/logout', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (authHeader?.startsWith('Bearer ')) {
+        const token = authHeader.slice(7).trim();
+        const payload = TokenManager.verifyAccessToken(token, jwtSecret);
+        if (payload) {
+          await authService.logout(payload.sub, payload.sessionId);
+        }
+      }
+
+      res.status(200).json({
+        message: 'Đăng xuất thành công',
+      });
+    } catch (err) {
+      next(err);
+    }
   });
-  res.end(payload);
-}
 
-export function createAuthRouter(authModule: AuthModule) {
-  const { controller, sessionStore, userRepo, rateLimiter } = authModule;
+  // GET /auth/me
+  router.get('/me', guard, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?.sub;
+      if (!userId) {
+        res.status(401).json({ title: 'Unauthorized', status: 401 });
+        return;
+      }
 
-  return async (req: IncomingMessage, res: ServerResponse, url: URL): Promise<boolean> => {
-    const method = req.method?.toUpperCase();
-    const pathname = url.pathname;
-    const cookies = parseCookies(req.headers.cookie);
-    const clientIp =
-      (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() ||
-      req.socket.remoteAddress ||
-      '127.0.0.1';
-    const userAgent = (req.headers['user-agent'] as string) || 'unknown_agent';
-
-    // =========================================================================
-    // 1. POST /api/v1/auth/register
-    // =========================================================================
-    if (method === 'POST' && pathname === '/api/v1/auth/register') {
-      try {
-        const body = await readJsonBody(req);
-        const result = await controller.register(body, clientIp, userAgent);
-
-        res.setHeader('Set-Cookie', result.cookies);
-        sendJson(res, 201, {
-          ...result.response,
-          refreshToken: result.rawTokens.refreshToken,
+      const profile = await authService.getProfile(userId);
+      if (!profile) {
+        res.status(404).json({
+          type: 'https://api.acad.vn/errors/not-found',
+          title: 'User Not Found',
+          status: 404,
+          detail: 'Không tìm thấy hồ sơ người dùng tương ứng.',
+          instance: req.originalUrl || req.url,
         });
-        return true;
-      } catch (err: any) {
-        sendJson(res, 400, { error: err.message || 'Đăng ký tài khoản thất bại' });
-        return true;
+        return;
       }
+
+      res.status(200).json(profile);
+    } catch (err) {
+      next(err);
     }
+  });
 
-    // =========================================================================
-    // 2. POST /api/v1/auth/login
-    // =========================================================================
-    if (method === 'POST' && pathname === '/api/v1/auth/login') {
+  // GET /auth/sessions
+  router.get('/sessions', guard, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?.sub;
+      const sessionId = req.user?.sessionId;
+      if (!userId) {
+        res.status(401).json({ title: 'Unauthorized', status: 401 });
+        return;
+      }
+
+      const sessions = await authService.listSessions(userId, sessionId);
+      res.status(200).json({ sessions });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // POST /auth/sessions/:sessionId/revoke
+  router.post(
+    '/sessions/:sessionId/revoke',
+    guard,
+    async (req: Request, res: Response, next: NextFunction) => {
       try {
-        if (rateLimiter) {
-          const rateCheck = await rateLimiter.consume(`login:${clientIp}`, 10, 900);
-          if (!rateCheck.allowed) {
-            sendJson(
-              res,
-              429,
-              {
-                error: `Quá nhiều lượt đăng nhập thất bại. Vui lòng thử lại sau ${rateCheck.retryAfterSeconds || 60} giây.`,
-                code: 'RATE_LIMIT_EXCEEDED',
-                retryAfter: rateCheck.retryAfterSeconds,
-              },
-              { 'Retry-After': String(rateCheck.retryAfterSeconds || 60) },
-            );
-            return true;
-          }
+        const userId = req.user?.sub;
+        const targetSessionId = req.params.sessionId;
+        if (!userId || !targetSessionId) {
+          res.status(400).json({ title: 'Bad Request', status: 400 });
+          return;
         }
 
-        const body = (await readJsonBody(req)) as any;
-        if (!body.login && (body.email || body.username)) {
-          body.login = body.email || body.username;
-        }
-        const result = await controller.login(body, clientIp, userAgent);
-
-        if (rateLimiter) {
-          await rateLimiter.reset(`login:${clientIp}`);
-        }
-
-        res.setHeader('Set-Cookie', result.cookies);
-        sendJson(res, 200, {
-          ...result.response,
-          refreshToken: result.rawTokens.refreshToken,
+        await authService.revokeSession(userId, targetSessionId);
+        res.status(200).json({
+          message: 'Thu hồi phiên thành công',
         });
-        return true;
-      } catch (err: any) {
-        sendJson(res, 401, { error: err.message || 'Đăng nhập thất bại' });
-        return true;
+      } catch (err) {
+        next(err);
       }
-    }
+    },
+  );
 
-    // =========================================================================
-    // 3. POST /api/v1/auth/refresh
-    // =========================================================================
-    if (method === 'POST' && pathname === '/api/v1/auth/refresh') {
-      try {
-        const body = await readJsonBody(req).catch(() => ({}));
-        const rawRefreshToken =
-          cookies[COOKIE_CONFIG.REFRESH_TOKEN.NAME] || body.refreshToken;
-
-        if (!rawRefreshToken) {
-          sendJson(res, 401, { error: 'Yêu cầu thiếu Refresh Token hợp lệ' });
-          return true;
-        }
-
-        const deviceFingerprint =
-          body.deviceFingerprint ||
-          (req.headers['x-device-fingerprint'] as string) ||
-          undefined;
-
-        const userId =
-          body.userId ||
-          (req.headers['x-user-id'] as string) ||
-          undefined;
-
-        const result = await controller.refresh(rawRefreshToken, userId, deviceFingerprint);
-
-        res.setHeader('Set-Cookie', result.cookies);
-        sendJson(res, 200, result.response);
-        return true;
-      } catch (err: any) {
-        if (err.message?.includes('SECURITY_ALERT_TOKEN_REUSE')) {
-          res.setHeader('Set-Cookie', controller.generateClearCookies());
-          sendJson(res, 403, {
-            error: err.message,
-            code: 'TOKEN_REUSE_DETECTED',
-          });
-          return true;
-        }
-
-        sendJson(res, 401, { error: err.message || 'Làm mới token thất bại' });
-        return true;
-      }
-    }
-
-    // =========================================================================
-    // 4. POST /api/v1/auth/logout
-    // =========================================================================
-    if (method === 'POST' && pathname === '/api/v1/auth/logout') {
-      try {
-        const body = await readJsonBody(req).catch(() => ({}));
-        const sessionId = body.sessionId || (req.headers['x-session-id'] as string);
-
-        if (sessionId) {
-          await sessionStore.revokeSession(sessionId);
-        }
-
-        res.setHeader('Set-Cookie', controller.generateClearCookies());
-        sendJson(res, 200, { message: 'Đăng xuất thành công' });
-        return true;
-      } catch (err: any) {
-        res.setHeader('Set-Cookie', controller.generateClearCookies());
-        sendJson(res, 200, { message: 'Đăng xuất thành công' });
-        return true;
-      }
-    }
-
-    // =========================================================================
-    // 5. GET /api/v1/auth/me
-    // =========================================================================
-    if (method === 'GET' && pathname === '/api/v1/auth/me') {
-      try {
-        const authHeader = req.headers.authorization;
-        let token = '';
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-          token = authHeader.substring(7).trim();
-        } else if (cookies[COOKIE_CONFIG.ACCESS_TOKEN.NAME]) {
-          token = cookies[COOKIE_CONFIG.ACCESS_TOKEN.NAME];
-        }
-
-        if (!token) {
-          sendJson(res, 401, { error: 'Yêu cầu không có quyền truy cập (Thiếu token)' });
-          return true;
-        }
-
-        const claims = TokenManager.verifyAccessToken(token);
-        const user = await userRepo.findById(claims.sub);
-        if (!user) {
-          sendJson(res, 401, { error: 'Người dùng không tồn tại' });
-          return true;
-        }
-
-        if (user.status === 'SUSPENDED' || user.status === 'DELETED') {
-          sendJson(res, 403, { error: 'Tài khoản đã bị tạm ngưng hoặc xóa' });
-          return true;
-        }
-
-        const ageDays = Math.floor((Date.now() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24));
-        sendJson(res, 200, {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          role: user.role,
-          status: user.status,
-          karmaScore: user.karmaScore,
-          avatarUrl: user.avatarUrl ?? null,
-          bio: user.bio ?? null,
-          createdAt: user.createdAt.toISOString(),
-          accountAgeDays: ageDays,
-        });
-        return true;
-      } catch (err: any) {
-        sendJson(res, 401, { error: err.message || 'Token không hợp lệ hoặc đã hết hạn' });
-        return true;
-      }
-    }
-
-    // =========================================================================
-    // 6. GET /api/v1/auth/sessions
-    // =========================================================================
-    if (method === 'GET' && pathname === '/api/v1/auth/sessions') {
-      try {
-        const authHeader = req.headers.authorization;
-        let token = '';
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-          token = authHeader.substring(7).trim();
-        } else if (cookies[COOKIE_CONFIG.ACCESS_TOKEN.NAME]) {
-          token = cookies[COOKIE_CONFIG.ACCESS_TOKEN.NAME];
-        }
-
-        if (!token) {
-          sendJson(res, 401, { error: 'Yêu cầu không có quyền truy cập (Thiếu token)' });
-          return true;
-        }
-
-        const claims = TokenManager.verifyAccessToken(token);
-        const sessions = await sessionStore.listUserSessions(claims.sub);
-
-        sendJson(
-          res,
-          200,
-          sessions.map((s: UserSession) => ({
-            sessionId: s.sessionId,
-            deviceFingerprint: s.deviceFingerprint,
-            ipAddress: s.ipAddress,
-            userAgent: s.userAgent,
-            createdAt: s.createdAt.toISOString(),
-            expiresAt: s.expiresAt.toISOString(),
-          })),
-        );
-        return true;
-      } catch (err: any) {
-        sendJson(res, 401, { error: err.message || 'Token không hợp lệ' });
-        return true;
-      }
-    }
-
-    // =========================================================================
-    // 7. DELETE /api/v1/auth/sessions (Thu hồi toàn bộ phiên của tài khoản)
-    // =========================================================================
-    if (method === 'DELETE' && pathname === '/api/v1/auth/sessions') {
-      try {
-        const authHeader = req.headers.authorization;
-        let token = '';
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-          token = authHeader.substring(7).trim();
-        } else if (cookies[COOKIE_CONFIG.ACCESS_TOKEN.NAME]) {
-          token = cookies[COOKIE_CONFIG.ACCESS_TOKEN.NAME];
-        }
-
-        if (!token) {
-          sendJson(res, 401, { error: 'Yêu cầu không có quyền truy cập (Thiếu token)' });
-          return true;
-        }
-
-        const claims = TokenManager.verifyAccessToken(token);
-        await sessionStore.revokeAllUserSessions(claims.sub);
-
-        sendJson(res, 200, { message: 'Đã thu hồi tất cả các phiên đăng nhập thành công' });
-        return true;
-      } catch (err: any) {
-        sendJson(res, 401, { error: err.message || 'Token không hợp lệ' });
-        return true;
-      }
-    }
-
-    // =========================================================================
-    // 8. DELETE /api/v1/auth/sessions/:sessionId (Thu hồi 1 phiên cụ thể)
-    // =========================================================================
-    if (method === 'DELETE' && pathname.startsWith('/api/v1/auth/sessions/')) {
-      try {
-        const authHeader = req.headers.authorization;
-        let token = '';
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-          token = authHeader.substring(7).trim();
-        } else if (cookies[COOKIE_CONFIG.ACCESS_TOKEN.NAME]) {
-          token = cookies[COOKIE_CONFIG.ACCESS_TOKEN.NAME];
-        }
-
-        if (!token) {
-          sendJson(res, 401, { error: 'Yêu cầu không có quyền truy cập (Thiếu token)' });
-          return true;
-        }
-
-        TokenManager.verifyAccessToken(token);
-        const targetSessionId = pathname.replace('/api/v1/auth/sessions/', '');
-        await sessionStore.revokeSession(targetSessionId);
-
-        sendJson(res, 200, { message: 'Thu hồi phiên thành công' });
-        return true;
-      } catch (err: any) {
-        sendJson(res, 401, { error: err.message || 'Token không hợp lệ' });
-        return true;
-      }
-    }
-
-    return false;
-  };
+  return router;
 }

@@ -1,147 +1,108 @@
-import { createServer, IncomingMessage, ServerResponse } from 'node:http';
-import { AuthModule, createAuthModule } from '@acad/auth-service';
-import { CommunityService, createCommunityService } from '@acad/community-service';
-import { createAuthRouter } from './routes/auth-router.js';
-import { createAdminRouter } from './routes/admin-router.js';
-import { createCommunityRouter } from './routes/community-router.js';
+import http from 'node:http';
+import {
+  AuthService,
+  PostgresUserRepository,
+  RedisSessionStore,
+  TokenManager,
+} from '@acad/auth-service';
+import { Redis } from 'ioredis';
+import pg from 'pg';
+import { createApp } from './app.js';
 
-export interface ServerInstance {
-  server: ReturnType<typeof createServer>;
-  port: number;
-  authModule: AuthModule;
-  communityService: CommunityService;
-}
+const PORT = parseInt(process.env.PORT || '3000', 10);
+const DATABASE_URL =
+  process.env.DATABASE_URL ||
+  'postgresql://postgres:postgres@localhost:5432/acad_dev?sslmode=disable';
+const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+const JWT_SECRET = process.env.JWT_SECRET || TokenManager.DEFAULT_SECRET;
 
-export interface ApiServerOptions {
-  authModule?: AuthModule;
-  communityService?: CommunityService;
-}
+async function bootstrap() {
+  console.log(`[BOOTSTRAP] Khởi động Acad API Gateway (Version 2.0.0)...`);
 
-export function createApiServer(options: ApiServerOptions = {}) {
-  const authModule = options.authModule || createAuthModule();
-  const communityService = options.communityService || createCommunityService();
+  // 1. Khởi tạo Connection Pool PostgreSQL
+  const pool = new pg.Pool({
+    connectionString: DATABASE_URL,
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
+    ssl:
+      process.env.DATABASE_SSL === 'true' || DATABASE_URL.includes('sslmode=require')
+        ? { rejectUnauthorized: false }
+        : undefined,
+  });
 
-  const authRouter = createAuthRouter(authModule);
-  const adminRouter = createAdminRouter(authModule, communityService);
-  const communityRouter = createCommunityRouter(communityService, authModule);
+  // 2. Khởi tạo Redis Client
+  const redis = new Redis(REDIS_URL, {
+    maxRetriesPerRequest: 3,
+    enableReadyCheck: true,
+    lazyConnect: true,
+  });
 
-  const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
-    const origin = req.headers.origin;
-    if (origin) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-    } else {
-      res.setHeader('Access-Control-Allow-Origin', '*');
-    }
-
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    res.setHeader(
-      'Access-Control-Allow-Headers',
-      'Content-Type, Authorization, X-Device-Fingerprint, X-Session-Id',
+  try {
+    await redis.connect();
+    console.log('[REDIS] Kết nối Redis thành công.');
+  } catch (err) {
+    console.warn(
+      '[REDIS WARNING] Không thể kết nối Redis lúc khởi động. Dịch vụ sẽ tự động retry:',
+      err,
     );
+  }
 
-    if (req.method === 'OPTIONS') {
-      res.writeHead(204);
-      res.end();
-      return;
-    }
+  // 3. Khởi tạo Repositories & Services
+  const userRepository = new PostgresUserRepository(pool);
+  const sessionStore = new RedisSessionStore(redis);
+  const authService = new AuthService(userRepository, sessionStore, JWT_SECRET);
 
-    const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
-
-    // =========================================================================
-    // ENDPOINT HEALTHCHECK PHỤC VỤ DOCKER HEALTHCHECK VÀ RENDER KEEP-ALIVE
-    // =========================================================================
-    if (url.pathname === '/healthz' || url.pathname === '/api/v1/health') {
-      const authDbHealth = (authModule.userRepo as any).getHealthStatus?.() || {
-        type: 'unknown',
-        isFallback: false,
-      };
-      const communityDbHealth = communityService.getHealthStatus();
-
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(
-        JSON.stringify({
-          status: 'ok',
-          service: 'acad-community-api',
-          version: '1.0.0',
-          uptime: process.uptime(),
-          timestamp: new Date().toISOString(),
-          database: authDbHealth,
-          communityDatabase: communityDbHealth,
-        }),
-      );
-      return;
-    }
-
-    // =========================================================================
-    // XỬ LÝ CÁC ROUTE AUTH (/api/v1/auth/*)
-    // =========================================================================
-    if (url.pathname.startsWith('/api/v1/auth')) {
-      const handled = await authRouter(req, res, url);
-      if (handled) return;
-    }
-
-    // =========================================================================
-    // XỬ LÝ CÁC ROUTE ADMIN (/api/v1/admin/*)
-    // =========================================================================
-    if (url.pathname.startsWith('/api/v1/admin')) {
-      const handled = await adminRouter(req, res, url);
-      if (handled) return;
-    }
-
-    // =========================================================================
-    // XỬ LÝ CÁC ROUTE CỘNG ĐỒNG (/api/v1/spaces, /api/v1/threads, /api/v1/comments)
-    // =========================================================================
-    if (
-      url.pathname.startsWith('/api/v1/spaces') ||
-      url.pathname.startsWith('/api/v1/threads') ||
-      url.pathname.startsWith('/api/v1/comments')
-    ) {
-      const handled = await communityRouter(req, res, url);
-      if (handled) return;
-    }
-
-    // Default route
-    if (url.pathname === '/') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(
-        JSON.stringify({
-          name: 'Acad Community API Gateway',
-          documentation: '/api/v1/openapi.yaml',
-          status: 'running',
-        }),
-      );
-      return;
-    }
-
-    // 404 Route Not Found
-    res.writeHead(404, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Endpoint không tồn tại' }));
+  // 4. Khởi tạo Express App & HTTP Server
+  const app = createApp({
+    authService,
+    jwtSecret: JWT_SECRET,
+    pool,
+    redis,
   });
 
-  return Object.assign(server, { authModule, communityService });
-}
+  const server = http.createServer(app);
 
-// Khởi chạy khi gọi trực tiếp tệp
-if (process.env.NODE_ENV !== 'test' && import.meta.url === `file://${process.argv[1]}`) {
-  const PORT = parseInt(process.env.PORT || process.env.API_PORT || '8080', 10);
-  const server = createApiServer();
-  server.listen(PORT, '0.0.0.0', () => {
-    console.log(`[Acad API Service] Máy chủ đang lắng nghe tại cổng http://0.0.0.0:${PORT}`);
-    console.log(`[Acad API Service] Healthcheck endpoint sẵn sàng tại http://0.0.0.0:${PORT}/healthz`);
+  server.listen(PORT, () => {
+    console.log(`[HTTP SERVER] Acad API Gateway đang lắng nghe tại http://localhost:${PORT}`);
+    console.log(`[HEALTH CHECK] Endpoint kiểm tra sức khỏe: http://localhost:${PORT}/healthz`);
   });
 
-  const shutdown = async () => {
-    console.log('\n[Acad API Service] Nhận tín hiệu dừng, đang đóng máy chủ an toàn...');
-    if (server.authModule) {
-      await server.authModule.close();
-    }
-    server.close(() => {
-      console.log('[Acad API Service] Máy chủ đã đóng kết nối thành công.');
-      process.exit(0);
+  // 5. Quản lý Tắt Máy An Toàn (Graceful Shutdown)
+  let isShuttingDown = false;
+  const gracefulShutdown = async (signal: string) => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    console.log(`\n[SHUTDOWN] Nhận tín hiệu ${signal}. Tiến hành đóng các kết nối an toàn...`);
+
+    server.close(async () => {
+      console.log('[HTTP SERVER] Máy chủ HTTP đã đóng tiếp nhận kết nối mới.');
+      try {
+        await pool.end();
+        console.log('[POSTGRES] Pool kết nối cơ sở dữ liệu đã giải phóng.');
+        await redis.quit();
+        console.log('[REDIS] Kết nối Redis đã đóng an toàn.');
+        process.exit(0);
+      } catch (err) {
+        console.error('[SHUTDOWN ERROR] Lỗi khi giải phóng tài nguyên:', err);
+        process.exit(1);
+      }
     });
+
+    // Ép buộc kết thúc sau 10 giây nếu các tiến trình không kịp đóng
+    setTimeout(() => {
+      console.error('[SHUTDOWN TIMEOUT] Quá thời gian chờ (10s), buộc dừng tiến trình.');
+      process.exit(1);
+    }, 10000).unref();
   };
 
-  process.on('SIGTERM', shutdown);
-  process.on('SIGINT', shutdown);
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+}
+
+if (process.env.NODE_ENV !== 'test') {
+  bootstrap().catch((err) => {
+    console.error('[FATAL BOOTSTRAP ERROR]:', err);
+    process.exit(1);
+  });
 }

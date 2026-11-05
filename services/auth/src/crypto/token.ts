@@ -1,38 +1,49 @@
-import { createHmac, createHash, randomBytes, timingSafeEqual } from 'node:crypto';
-import { JWTClaims, JWTClaimsSchema } from '@acad/contracts';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import type { UserRole, UserStatus } from '@acad/contracts';
 
-// ============================================================================
-// TOKEN MANAGER & CRYPTOGRAPHIC ENGINE
-// ============================================================================
+export interface UserTokenClaims {
+  sub: string; // User ID
+  username: string;
+  email: string;
+  role: UserRole;
+  status: UserStatus;
+  sessionId: string;
+}
+
+export interface FullJWTClaims extends UserTokenClaims {
+  iss: string;
+  iat: number;
+  exp: number;
+}
 
 export interface TokenPair {
   accessToken: string;
   refreshToken: string;
-  expiresIn: number; // 900 seconds (15 mins)
+  expiresIn: number; // 900 giây (15 phút)
 }
 
 export class TokenManager {
-  private static readonly DEFAULT_SECRET = 'acad-super-secure-jwt-hmac-secret-key-32-chars-min!';
+  public static readonly DEFAULT_SECRET =
+    'acad-super-secure-jwt-hmac-secret-key-at-least-32-chars-long!';
   public static readonly ACCESS_TOKEN_TTL_SECONDS = 15 * 60; // 15 phút (900s)
   public static readonly REFRESH_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 ngày
 
   /**
-   * Sinh Refresh Token ngẫu nhiên bảo mật cao (64 bytes CSPRNG)
+   * Sinh chuỗi Refresh Token ngẫu nhiên bảo mật cao (64 bytes CSPRNG)
    */
   public static generateRefreshToken(): string {
     return randomBytes(64).toString('base64url');
   }
 
   /**
-   * Băm SHA-256 chuỗi Refresh Token để lưu trữ an toàn trong Database / Redis
-   * Tuyệt đối không bao giờ lưu trữ Refresh Token dạng bản rõ
+   * Băm SHA-256 chuỗi Refresh Token để lưu trữ an toàn trong DB và Redis
    */
   public static hashToken(token: string): string {
     return createHash('sha256').update(token, 'utf8').digest('hex');
   }
 
   /**
-   * So sánh an toàn hai chuỗi mã băm theo thời gian hằng số O(1)
+   * So sánh an toàn hai chuỗi mã băm trong thời gian hằng số O(1)
    */
   public static timingSafeCompare(a: string, b: string): boolean {
     const bufA = Buffer.from(a, 'utf8');
@@ -44,72 +55,68 @@ export class TokenManager {
   }
 
   /**
-   * Ký số và sinh chuỗi JWT Access Token (HMAC-SHA256)
+   * Ký số Access Token HMAC-SHA256 (HS256)
    */
   public static signAccessToken(
-    payload: Omit<JWTClaims, 'iss' | 'iat' | 'exp'>,
-    secret: string = this.DEFAULT_SECRET,
+    claims: UserTokenClaims,
+    secret: string = TokenManager.DEFAULT_SECRET,
   ): string {
     const now = Math.floor(Date.now() / 1000);
-    const fullClaims: JWTClaims = {
-      ...payload,
-      iss: 'acad-community-auth',
+    const fullClaims: FullJWTClaims = {
+      ...claims,
+      iss: 'acad-devops-platform',
       iat: now,
-      exp: now + this.ACCESS_TOKEN_TTL_SECONDS,
+      exp: now + TokenManager.ACCESS_TOKEN_TTL_SECONDS,
     };
 
-    // Kiểm định schema claims
-    JWTClaimsSchema.parse(fullClaims);
-
-    const header = {
-      alg: 'HS256',
-      typ: 'JWT',
-    };
-
-    const encodedHeader = Buffer.from(JSON.stringify(header)).toString('base64url');
-    const encodedPayload = Buffer.from(JSON.stringify(fullClaims)).toString('base64url');
-    const dataToSign = `${encodedHeader}.${encodedPayload}`;
-
+    const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' }), 'utf8').toString(
+      'base64url',
+    );
+    const payload = Buffer.from(JSON.stringify(fullClaims), 'utf8').toString('base64url');
     const signature = createHmac('sha256', secret)
-      .update(dataToSign)
+      .update(`${header}.${payload}`, 'utf8')
       .digest('base64url');
 
-    return `${dataToSign}.${signature}`;
+    return `${header}.${payload}.${signature}`;
   }
 
   /**
-   * Giải mã và kiểm tra tính toàn vẹn của JWT Access Token
+   * Giải mã và xác thực chữ ký của Access Token
    */
   public static verifyAccessToken(
     token: string,
-    secret: string = this.DEFAULT_SECRET,
-  ): JWTClaims {
-    const parts = token.split('.');
-    if (parts.length !== 3) {
-      throw new Error('Định dạng token không hợp lệ (Phải gồm 3 phần)');
+    secret: string = TokenManager.DEFAULT_SECRET,
+  ): FullJWTClaims | null {
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) {
+        return null;
+      }
+
+      const [headerB64, payloadB64, signatureB64] = parts;
+      if (!headerB64 || !payloadB64 || !signatureB64) {
+        return null;
+      }
+
+      const expectedSignature = createHmac('sha256', secret)
+        .update(`${headerB64}.${payloadB64}`, 'utf8')
+        .digest('base64url');
+
+      if (!TokenManager.timingSafeCompare(signatureB64, expectedSignature)) {
+        return null;
+      }
+
+      const payloadJson = Buffer.from(payloadB64, 'base64url').toString('utf8');
+      const claims = JSON.parse(payloadJson) as FullJWTClaims;
+
+      const now = Math.floor(Date.now() / 1000);
+      if (claims.exp < now) {
+        return null; // Token hết hạn
+      }
+
+      return claims;
+    } catch {
+      return null;
     }
-
-    const [encodedHeader, encodedPayload, signature] = parts;
-    const dataToSign = `${encodedHeader}.${encodedPayload}`;
-
-    const expectedSignature = createHmac('sha256', secret)
-      .update(dataToSign)
-      .digest('base64url');
-
-    if (!this.timingSafeCompare(signature, expectedSignature)) {
-      throw new Error('Chữ ký token không hợp lệ hoặc đã bị thay đổi');
-    }
-
-    const payloadJson = Buffer.from(encodedPayload, 'base64url').toString('utf8');
-    const parsedClaims = JSON.parse(payloadJson);
-
-    const claims = JWTClaimsSchema.parse(parsedClaims);
-
-    const now = Math.floor(Date.now() / 1000);
-    if (claims.exp < now) {
-      throw new Error('Token đã hết hạn');
-    }
-
-    return claims;
   }
 }

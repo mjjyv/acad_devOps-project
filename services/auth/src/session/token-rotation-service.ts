@@ -1,9 +1,8 @@
-import { TokenManager, TokenPair } from '../crypto/token.js';
-import { ISessionStore } from './store.js';
-import { TokenRotationResult, UserSession } from './types.js';
-import { JWTClaims } from '@acad/contracts';
+import { TokenManager, type UserTokenClaims } from '../crypto/token.js';
+import type { ISessionStore } from './store.js';
+import type { TokenRotationResult, UserSession } from './types.js';
 
-export type UserClaimsProvider = (userId: string) => Promise<Omit<JWTClaims, 'iss' | 'iat' | 'exp'>>;
+export type UserClaimsProvider = (userId: string) => Promise<UserTokenClaims | null>;
 
 export class TokenRotationService {
   public static readonly GRACE_PERIOD_MS = 30 * 1000; // 30 giây
@@ -11,25 +10,15 @@ export class TokenRotationService {
   constructor(
     private sessionStore: ISessionStore,
     private claimsProvider: UserClaimsProvider,
+    private jwtSecret: string = TokenManager.DEFAULT_SECRET,
   ) {}
 
   /**
-   * Thực thi chu trình Xoay vòng Token (Token Rotation Protocol)
-   * Tuân thủ sơ đồ DAG an ninh và quy tắc phát hiện tấn công tái sử dụng (Token Reuse Attack)
+   * Thực thi chu trình xoay vòng token với 30s Grace Period và Token Reuse Attack Detection
    */
-  public async rotateTokens(
-    rawRefreshToken: string,
-    userId?: string,
-    deviceFingerprint?: string,
-  ): Promise<TokenRotationResult> {
+  public async rotateTokens(rawRefreshToken: string): Promise<TokenRotationResult> {
     const submittedHash = TokenManager.hashToken(rawRefreshToken);
-    let session: UserSession | null = null;
-
-    if (userId && deviceFingerprint) {
-      session = await this.sessionStore.getSession(userId, deviceFingerprint);
-    } else if (this.sessionStore.getSessionByTokenHash) {
-      session = await this.sessionStore.getSessionByTokenHash(submittedHash);
-    }
+    const session = await this.sessionStore.getSessionByTokenHash(submittedHash);
 
     if (!session) {
       return {
@@ -54,76 +43,98 @@ export class TokenRotationService {
     }
 
     // =========================================================================
-    // NHÁNH 1: KHỚP TOKEN HIỆN HÀNH (CURRENT TOKEN MATCH)
+    // TRƯỜNG HỢP 1: KHỚP TOKEN HIỆN HÀNH (CURRENT TOKEN MATCH)
     // Người dùng gửi đúng token mới nhất -> Tiến hành xoay vòng bình thường
     // =========================================================================
     if (TokenManager.timingSafeCompare(submittedHash, session.currentTokenHash)) {
+      const claims = await this.claimsProvider(session.userId);
+      if (!claims) {
+        return {
+          status: 'SESSION_NOT_FOUND',
+          error: 'Không tìm thấy thông tin tài khoản người dùng',
+        };
+      }
+
       const newRefreshToken = TokenManager.generateRefreshToken();
       const newRefreshTokenHash = TokenManager.hashToken(newRefreshToken);
 
-      const claims = await this.claimsProvider(session.userId);
-      const newAccessToken = TokenManager.signAccessToken(claims);
+      const claimsWithSession: UserTokenClaims = {
+        ...claims,
+        sessionId: session.id,
+      };
+      const newAccessToken = TokenManager.signAccessToken(claimsWithSession, this.jwtSecret);
 
-      const gracePeriodExpiresAt = new Date(now.getTime() + TokenRotationService.GRACE_PERIOD_MS);
+      const updatedSession: UserSession = {
+        ...session,
+        previousTokenHash: session.currentTokenHash,
+        gracePeriodExpiresAt: new Date(now.getTime() + TokenRotationService.GRACE_PERIOD_MS),
+        currentTokenHash: newRefreshTokenHash,
+        updatedAt: now,
+      };
 
-      await this.sessionStore.updateTokens(
-        session.sessionId,
-        newRefreshTokenHash,
-        session.currentTokenHash, // Đẩy token cũ vào previous_token_hash
-        gracePeriodExpiresAt,
-      );
-
-      const updatedSession = await this.sessionStore.getSessionById(session.sessionId);
+      await this.sessionStore.saveSession(updatedSession);
 
       return {
         status: 'SUCCESS',
-        tokens: {
+        tokenPair: {
           accessToken: newAccessToken,
           refreshToken: newRefreshToken,
           expiresIn: TokenManager.ACCESS_TOKEN_TTL_SECONDS,
         },
-        session: updatedSession ?? undefined,
+        session: updatedSession,
       };
     }
 
     // =========================================================================
-    // NHÁNH 2: KHỚP TOKEN VỪA XOAY VÒNG TRONG CỬA SỔ AN TOÀN (GRACE PERIOD MATCH)
-    // Do nghẽn mạng hoặc nhiều tab gọi refresh cùng lúc trong 30 giây
+    // TRƯỜNG HỢP 2: GỬI LẠI TOKEN CŨ TRONG CỬA SỔ 30S GRACE PERIOD
+    // Người dùng mở nhiều tab, các tab gửi cùng 1 token cũ -> Cấp Access Token mới
     // =========================================================================
     if (
       session.previousTokenHash &&
-      TokenManager.timingSafeCompare(submittedHash, session.previousTokenHash) &&
-      session.gracePeriodExpiresAt &&
-      now <= session.gracePeriodExpiresAt
+      TokenManager.timingSafeCompare(submittedHash, session.previousTokenHash)
     ) {
-      const claims = await this.claimsProvider(session.userId);
-      const currentAccessToken = TokenManager.signAccessToken(claims);
+      if (session.gracePeriodExpiresAt && now.getTime() <= session.gracePeriodExpiresAt.getTime()) {
+        const claims = await this.claimsProvider(session.userId);
+        if (!claims) {
+          return {
+            status: 'SESSION_NOT_FOUND',
+            error: 'Không tìm thấy thông tin tài khoản người dùng',
+          };
+        }
 
-      // Cấp lại Access Token mới mà KHÔNG tiếp tục xoay vòng Refresh Token
-      // nhằm giữ nguyên tính nhất quán cho các request song song hợp lệ
-      return {
-        status: 'GRACE_PERIOD_MATCH',
-        tokens: {
-          accessToken: currentAccessToken,
-          refreshToken: rawRefreshToken, // Giữ nguyên token của client trong grace period
+        const claimsWithSession: UserTokenClaims = {
+          ...claims,
+          sessionId: session.id,
+        };
+        const newAccessToken = TokenManager.signAccessToken(claimsWithSession, this.jwtSecret);
+
+        return {
+          status: 'GRACE_PERIOD_RENEWED',
+          accessToken: newAccessToken,
           expiresIn: TokenManager.ACCESS_TOKEN_TTL_SECONDS,
-        },
-        session,
+          session,
+        };
+      }
+
+      // =======================================================================
+      // TRƯỜNG HỢP 3: TOKEN REUSE ATTACK
+      // Token cũ đã xoay vòng bị phát lại NGOÀI cửa sổ 30s -> Tấn công đánh cắp phiên!
+      // =======================================================================
+      console.warn(
+        `[SECURITY WARNING] Phát hiện Token Reuse Attack đối với User ID: ${session.userId}. Thu hồi cưỡng chế toàn bộ phiên!`,
+      );
+      await this.sessionStore.revokeAllUserSessions(session.userId);
+
+      return {
+        status: 'TOKEN_REUSE_DETECTED',
+        error:
+          'Cảnh báo an ninh: Phát hiện dấu hiệu tái sử dụng token đã thu hồi. Toàn bộ phiên đăng nhập đã bị hủy.',
       };
     }
 
-    // =========================================================================
-    // NHÁNH 3: PHÁT HIỆN TẤN CÔNG TÁI SỬ DỤNG TOKEN (TOKEN REUSE DETECTED)
-    // Token không khớp cả current lẫn previous trong grace period
-    // Dấu hiệu rõ ràng Refresh Token cũ đã bị kẻ tấn công đánh cắp và cố tình phát lại!
-    // =========================================================================
-    await this.sessionStore.revokeFamily(session.familyId);
-
     return {
-      status: 'TOKEN_REUSE_DETECTED',
-      familyId: session.familyId,
-      error:
-        'CẢNH BÁO AN NINH: Phát hiện hành vi tái sử dụng Refresh Token không hợp lệ. Toàn bộ phiên làm việc của tài khoản trên thiết bị này đã bị hủy bỏ lập tức.',
+      status: 'SESSION_NOT_FOUND',
+      error: 'Token không hợp lệ hoặc không thuộc phiên này',
     };
   }
 }

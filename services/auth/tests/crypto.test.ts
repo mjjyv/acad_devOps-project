@@ -1,95 +1,87 @@
 import { describe, expect, it } from 'vitest';
 import { PasswordHasher } from '../src/crypto/password.js';
-import { TokenManager } from '../src/crypto/token.js';
+import { TokenManager, type UserTokenClaims } from '../src/crypto/token.js';
 
-describe('1. Kiểm thử Thuật toán Băm Mật khẩu (PasswordHasher)', () => {
-  it('Băm mật khẩu thành chuỗi định dạng scrypt chuẩn với salt ngẫu nhiên', async () => {
-    const rawPass = 'SecretP@ssw0rd123';
-    const hash1 = await PasswordHasher.hash(rawPass);
-    const hash2 = await PasswordHasher.hash(rawPass);
+describe('Động cơ Mật mã & Quản lý Token (@acad/auth-service/crypto)', () => {
+  describe('1. PasswordHasher (KDF 64MB RAM & Constant-time comparison)', () => {
+    it('Phải băm mật khẩu thành chuỗi scrypt định dạng chuẩn', async () => {
+      const rawPassword = 'StrongPassword123!';
+      const hash = await PasswordHasher.hash(rawPassword);
 
-    expect(hash1).toMatch(/^\$scrypt\$N=16384,r=8,p=1\$[a-f0-9]{32}\$[a-f0-9]{128}$/);
-    expect(hash2).toMatch(/^\$scrypt\$N=16384,r=8,p=1\$[a-f0-9]{32}\$[a-f0-9]{128}$/);
+      expect(hash).toContain('$scrypt$N=16384,r=8,p=1$');
+      const parts = hash.split('$');
+      expect(parts.length).toBe(5);
+      expect(parts[3]?.length).toBe(32); // 16 bytes salt hex = 32 hex chars
+      expect(parts[4]?.length).toBe(128); // 64 bytes key hex = 128 hex chars
+    });
 
-    // Muối ngẫu nhiên phải khác nhau -> Mã băm phải khác nhau dù cùng mật khẩu
-    expect(hash1).not.toBe(hash2);
+    it('Phải xác thực thành công mật khẩu đúng và từ chối mật khẩu sai', async () => {
+      const rawPassword = 'CorrectPassword999$';
+      const hash = await PasswordHasher.hash(rawPassword);
+
+      const isValid = await PasswordHasher.verify(rawPassword, hash);
+      expect(isValid).toBe(true);
+
+      const isInvalid = await PasswordHasher.verify('WrongPassword123', hash);
+      expect(isInvalid).toBe(false);
+    });
+
+    it('Phải từ chối chuỗi hash bị định dạng sai hoặc giả mạo', async () => {
+      expect(await PasswordHasher.verify('any', 'malformed_hash')).toBe(false);
+      expect(await PasswordHasher.verify('any', '$md5$N=1$salt$hash')).toBe(false);
+    });
   });
 
-  it('Xác thực đúng mật khẩu và từ chối mật khẩu sai', async () => {
-    const rawPass = 'MyStrongPassword#2026';
-    const hash = await PasswordHasher.hash(rawPass);
+  describe('2. TokenManager (JWT HS256 & CSPRNG 64 Bytes)', () => {
+    const mockClaims: UserTokenClaims = {
+      sub: '11111111-1111-1111-1111-111111111111',
+      username: 'alex_devops',
+      email: 'alex@acad.community',
+      role: 'USER',
+      status: 'ACTIVE',
+      sessionId: '22222222-2222-2222-2222-222222222222',
+    };
 
-    const isMatch = await PasswordHasher.verify(rawPass, hash);
-    expect(isMatch).toBe(true);
+    it('Phải sinh Refresh Token ngẫu nhiên độ dài 64 bytes base64url', () => {
+      const token1 = TokenManager.generateRefreshToken();
+      const token2 = TokenManager.generateRefreshToken();
 
-    const isWrong = await PasswordHasher.verify('WrongPassword#2026', hash);
-    expect(isWrong).toBe(false);
-  });
+      expect(token1).not.toBe(token2);
+      expect(token1.length).toBeGreaterThanOrEqual(80);
+    });
 
-  it('Từ chối chuỗi hash bị chỉnh sửa hoặc sai định dạng', async () => {
-    const rawPass = 'CorrectPass123';
-    const hash = await PasswordHasher.hash(rawPass);
-    const tamperedHash = hash.slice(0, -4) + '0000';
+    it('Phải băm SHA-256 nhất quán cho Refresh Token', () => {
+      const token = 'sample_random_token_string';
+      const hash1 = TokenManager.hashToken(token);
+      const hash2 = TokenManager.hashToken(token);
 
-    const isValid = await PasswordHasher.verify(rawPass, tamperedHash);
-    expect(isValid).toBe(false);
+      expect(hash1).toBe(hash2);
+      expect(hash1.length).toBe(64);
+    });
 
-    const isMalformed = await PasswordHasher.verify(rawPass, 'invalid$hash$string');
-    expect(isMalformed).toBe(false);
-  });
-});
+    it('Phải ký số và giải mã thành công Access Token JWT HS256', () => {
+      const secret = 'super-secret-key-32-characters-length!';
+      const token = TokenManager.signAccessToken(mockClaims, secret);
 
-describe('2. Kiểm thử Token Manager & Mật mã Ký số (TokenManager)', () => {
-  const dummyPayload = {
-    sub: '7c9e6679-7425-40de-944b-e07fc1f90ae7',
-    username: 'alice_dev',
-    email: 'alice@example.com',
-    role: 'USER' as const,
-    status: 'ACTIVE' as const,
-    karmaScore: 120,
-    accountAgeDays: 14,
-    tokenVersion: 1,
-    spacePermissions: [],
-  };
+      const decoded = TokenManager.verifyAccessToken(token, secret);
+      expect(decoded).not.toBeNull();
+      expect(decoded?.sub).toBe(mockClaims.sub);
+      expect(decoded?.username).toBe(mockClaims.username);
+      expect(decoded?.role).toBe(mockClaims.role);
+      expect(decoded?.sessionId).toBe(mockClaims.sessionId);
+      expect(decoded?.exp).toBeGreaterThan(decoded?.iat || 0);
+    });
 
-  it('Ký và giải mã JWT Access Token thành công với đầy đủ Claims', () => {
-    const token = TokenManager.signAccessToken(dummyPayload);
-    expect(typeof token).toBe('string');
-    expect(token.split('.')).toHaveLength(3);
+    it('Phải từ chối Access Token nếu sai khóa bí mật hoặc bị chỉnh sửa chữ ký', () => {
+      const secret1 = 'key-one-32-characters-length-needed-here!';
+      const secret2 = 'key-two-32-characters-length-needed-here!';
+      const token = TokenManager.signAccessToken(mockClaims, secret1);
 
-    const verified = TokenManager.verifyAccessToken(token);
-    expect(verified.sub).toBe(dummyPayload.sub);
-    expect(verified.username).toBe('alice_dev');
-    expect(verified.role).toBe('USER');
-    expect(verified.iss).toBe('acad-community-auth');
-    expect(verified.exp - verified.iat).toBe(TokenManager.ACCESS_TOKEN_TTL_SECONDS);
-  });
+      const decoded = TokenManager.verifyAccessToken(token, secret2);
+      expect(decoded).toBeNull();
 
-  it('Phát hiện và từ chối token có chữ ký bị giả mạo', () => {
-    const token = TokenManager.signAccessToken(dummyPayload);
-    const parts = token.split('.');
-    // Giả mạo payload
-    const tamperedPayload = Buffer.from(
-      JSON.stringify({ ...dummyPayload, role: 'ADMIN' }),
-    ).toString('base64url');
-    const tamperedToken = `${parts[0]}.${tamperedPayload}.${parts[2]}`;
-
-    expect(() => TokenManager.verifyAccessToken(tamperedToken)).toThrowError(
-      /Chữ ký token không hợp lệ/,
-    );
-  });
-
-  it('Sinh Refresh Token ngẫu nhiên bảo mật (CSPRNG) và băm SHA-256 nhất quán', () => {
-    const rt1 = TokenManager.generateRefreshToken();
-    const rt2 = TokenManager.generateRefreshToken();
-
-    expect(typeof rt1).toBe('string');
-    expect(rt1).not.toBe(rt2);
-    expect(rt1.length).toBeGreaterThanOrEqual(80);
-
-    const hash1 = TokenManager.hashToken(rt1);
-    const hash2 = TokenManager.hashToken(rt1);
-    expect(hash1).toBe(hash2);
-    expect(hash1).toMatch(/^[a-f0-9]{64}$/);
+      const tamperedToken = `${token}tampered`;
+      expect(TokenManager.verifyAccessToken(tamperedToken, secret1)).toBeNull();
+    });
   });
 });

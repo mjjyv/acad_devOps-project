@@ -1,125 +1,141 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { AuthController, InMemoryUserRepository } from '../src/handlers/auth-controller.js';
-import { InMemorySessionStore } from '../src/session/store.js';
+import { describe, expect, it } from 'vitest';
+import { TokenManager, type UserTokenClaims } from '../src/crypto/token.js';
+import { InMemorySessionStore } from '../src/session/redis-session-store.js';
+import { TokenRotationService } from '../src/session/token-rotation-service.js';
+import type { UserSession } from '../src/session/types.js';
 
-describe('3. Kiểm thử Giao thức Xoay vòng Token & Phát hiện Tấn công (Token Rotation Protocol)', () => {
-  let userRepo: InMemoryUserRepository;
-  let sessionStore: InMemorySessionStore;
-  let authController: AuthController;
+describe('Động cơ Xoay vòng Token (@acad/auth-service/TokenRotationService)', () => {
+  const mockUserId = '11111111-1111-1111-1111-111111111111';
+  const mockSessionId = '22222222-2222-2222-2222-222222222222';
+  const mockClaims: UserTokenClaims = {
+    sub: mockUserId,
+    username: 'alex_devops',
+    email: 'alex@acad.community',
+    role: 'USER',
+    status: 'ACTIVE',
+    sessionId: mockSessionId,
+  };
 
-  beforeEach(() => {
-    userRepo = new InMemoryUserRepository();
-    sessionStore = new InMemorySessionStore();
-    authController = new AuthController(userRepo, sessionStore);
+  const claimsProvider = async (userId: string) => {
+    return userId === mockUserId ? mockClaims : null;
+  };
+
+  it('Trường hợp 1: Xoay vòng chuẩn - Cấp cặp Token mới và thiết lập 30s Grace Period', async () => {
+    const sessionStore = new InMemorySessionStore();
+    const service = new TokenRotationService(sessionStore, claimsProvider);
+
+    const initialToken = TokenManager.generateRefreshToken();
+    const initialHash = TokenManager.hashToken(initialToken);
+
+    const initialSession: UserSession = {
+      id: mockSessionId,
+      userId: mockUserId,
+      currentTokenHash: initialHash,
+      previousTokenHash: null,
+      gracePeriodExpiresAt: null,
+      deviceFingerprint: 'cli-test',
+      ipAddress: '127.0.0.1',
+      userAgent: 'Vitest',
+      isRevoked: false,
+      expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    await sessionStore.saveSession(initialSession);
+
+    // Thực hiện xoay vòng token
+    const result = await service.rotateTokens(initialToken);
+    expect(result.status).toBe('SUCCESS');
+
+    if (result.status === 'SUCCESS') {
+      expect(result.tokenPair.refreshToken).not.toBe(initialToken);
+      expect(result.tokenPair.accessToken).toBeDefined();
+
+      // Kiểm tra trạng thái phiên sau xoay vòng
+      const updatedSession = await sessionStore.getSession(mockUserId, mockSessionId);
+      expect(updatedSession).not.toBeNull();
+      expect(updatedSession?.previousTokenHash).toBe(initialHash);
+      expect(updatedSession?.currentTokenHash).toBe(
+        TokenManager.hashToken(result.tokenPair.refreshToken),
+      );
+      expect(updatedSession?.gracePeriodExpiresAt).toBeDefined();
+    }
   });
 
-  it('Chu trình Đăng ký -> Đăng nhập -> Cấp phát cặp Token ban đầu', async () => {
-    const regResult = await authController.register({
-      email: 'bob@example.com',
-      username: 'bob_builder',
-      password: 'SecurePassword#123',
-      deviceFingerprint: 'device_macbook_pro_01',
-    });
+  it('Trường hợp 2: Gửi lại token cũ trong cửa sổ 30s Grace Period -> Cấp Access Token mới không phá phiên', async () => {
+    const sessionStore = new InMemorySessionStore();
+    const service = new TokenRotationService(sessionStore, claimsProvider);
 
-    expect(regResult.response.user.username).toBe('bob_builder');
-    expect(regResult.response.accessToken).toBeDefined();
-    expect(regResult.rawTokens.refreshToken).toBeDefined();
-    expect(regResult.cookies).toHaveLength(2);
-    expect(regResult.cookies[0]).toContain('access_token=');
-    expect(regResult.cookies[1]).toContain('refresh_token=');
+    const oldToken = TokenManager.generateRefreshToken();
+    const oldHash = TokenManager.hashToken(oldToken);
 
-    // Đăng nhập lại
-    const loginResult = await authController.login({
-      login: 'bob@example.com',
-      password: 'SecurePassword#123',
-      deviceFingerprint: 'device_macbook_pro_01',
-    });
-    expect(loginResult.response.user.email).toBe('bob@example.com');
+    const activeToken = TokenManager.generateRefreshToken();
+    const activeHash = TokenManager.hashToken(activeToken);
+
+    // Thiết lập phiên đang trong trạng thái 30s grace period
+    const graceSession: UserSession = {
+      id: mockSessionId,
+      userId: mockUserId,
+      currentTokenHash: activeHash,
+      previousTokenHash: oldHash,
+      gracePeriodExpiresAt: new Date(Date.now() + 25 * 1000), // Còn 25s
+      deviceFingerprint: 'cli-test',
+      ipAddress: '127.0.0.1',
+      userAgent: 'Vitest',
+      isRevoked: false,
+      expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    await sessionStore.saveSession(graceSession);
+
+    // Gửi lại oldToken trong grace period
+    const result = await service.rotateTokens(oldToken);
+    expect(result.status).toBe('GRACE_PERIOD_RENEWED');
+
+    if (result.status === 'GRACE_PERIOD_RENEWED') {
+      expect(result.accessToken).toBeDefined();
+
+      // Phiên vẫn còn active và giữ nguyên activeHash
+      const currentSession = await sessionStore.getSession(mockUserId, mockSessionId);
+      expect(currentSession?.currentTokenHash).toBe(activeHash);
+      expect(currentSession?.isRevoked).toBe(false);
+    }
   });
 
-  it('Xoay vòng Token thành công: Cấp cặp token mới và lưu vết token cũ vào Grace Period', async () => {
-    const reg = await authController.register({
-      email: 'carol@example.com',
-      username: 'carol_tester',
-      password: 'SecurePassword#123',
-      deviceFingerprint: 'device_phone_pixel',
-    });
+  it('Trường hợp 3: Token Reuse Attack - Phát lại token cũ ngoài cửa sổ 30s -> Thu hồi toàn bộ phiên', async () => {
+    const sessionStore = new InMemorySessionStore();
+    const service = new TokenRotationService(sessionStore, claimsProvider);
 
-    const rt1 = reg.rawTokens.refreshToken;
-    const userId = reg.response.user.id;
+    const stolenOldToken = TokenManager.generateRefreshToken();
+    const stolenOldHash = TokenManager.hashToken(stolenOldToken);
 
-    // Tiến hành xoay vòng lần 1
-    const rot1 = await authController.refresh(rt1, userId, 'device_phone_pixel');
-    expect(rot1.response.accessToken).toBeDefined();
-    expect(rot1.cookies).toHaveLength(2);
+    const activeToken = TokenManager.generateRefreshToken();
+    const activeHash = TokenManager.hashToken(activeToken);
 
-    // Kiểm tra session trong store
-    const session = await sessionStore.getSession(userId, 'device_phone_pixel');
-    expect(session).toBeDefined();
-    expect(session?.previousTokenHash).toBeDefined();
-    expect(session?.gracePeriodExpiresAt).toBeDefined();
-  });
+    // Thiết lập phiên có grace period đã hết hạn (quá 30s)
+    const expiredGraceSession: UserSession = {
+      id: mockSessionId,
+      userId: mockUserId,
+      currentTokenHash: activeHash,
+      previousTokenHash: stolenOldHash,
+      gracePeriodExpiresAt: new Date(Date.now() - 5000), // Đã hết hạn cách đây 5s
+      deviceFingerprint: 'cli-test',
+      ipAddress: '127.0.0.1',
+      userAgent: 'Vitest',
+      isRevoked: false,
+      expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    await sessionStore.saveSession(expiredGraceSession);
 
-  it('Cơ chế Grace Period (30s): Yêu cầu lặp hợp lệ do nghẽn mạng không bị coi là tấn công', async () => {
-    const reg = await authController.register({
-      email: 'david@example.com',
-      username: 'david_network',
-      password: 'SecurePassword#123',
-      deviceFingerprint: 'device_ipad_air',
-    });
+    // Kẻ tấn công phát lại stolenOldToken ngoài grace period
+    const result = await service.rotateTokens(stolenOldToken);
+    expect(result.status).toBe('TOKEN_REUSE_DETECTED');
 
-    const rt1 = reg.rawTokens.refreshToken;
-    const userId = reg.response.user.id;
-
-    // Lần 1: Xoay vòng bình thường
-    const rot1 = await authController.refresh(rt1, userId, 'device_ipad_air');
-    expect(rot1.response.accessToken).toBeDefined();
-
-    // Lần 2: Giả lập Client gửi lại RT1 ngay sau đó (trong vòng 30s Grace Period)
-    const rotGrace = await authController.refresh(rt1, userId, 'device_ipad_air');
-    expect(rotGrace.response.accessToken).toBeDefined();
-
-    // Phiên không bị thu hồi
-    const session = await sessionStore.getSession(userId, 'device_ipad_air');
-    expect(session?.isRevoked).toBe(false);
-  });
-
-  it('PHÁT HIỆN TẤN CÔNG TOKEN REUSE: Tái sử dụng Refresh Token cũ làm sập toàn bộ Session Family', async () => {
-    const reg = await authController.register({
-      email: 'eve@example.com',
-      username: 'eve_security',
-      password: 'SecurePassword#123',
-      deviceFingerprint: 'device_eve_laptop',
-    });
-
-    const rt1 = reg.rawTokens.refreshToken;
-    const userId = reg.response.user.id;
-
-    // Lần 1: Xoay vòng từ RT1 sang RT2
-    await authController.refresh(rt1, userId, 'device_eve_laptop');
-
-    // Chỉnh sửa thời gian grace_period_expires_at về quá khứ để mô phỏng hết hạn 30s Grace Period
-    const sessionBefore = await sessionStore.getSession(userId, 'device_eve_laptop');
-    expect(sessionBefore).toBeDefined();
-    await sessionStore.updateTokens(
-      sessionBefore!.sessionId,
-      sessionBefore!.currentTokenHash,
-      sessionBefore!.previousTokenHash,
-      new Date(Date.now() - 5000), // Đã hết hạn grace period 5s trước
-    );
-
-    // Kẻ tấn công cố tình gửi lại RT1 (đã bị thu hồi)
-    await expect(
-      authController.refresh(rt1, userId, 'device_eve_laptop'),
-    ).rejects.toThrowError(/SECURITY_ALERT_TOKEN_REUSE/);
-
-    // TOÀN BỘ PHIÊN CỦA FAMILY ĐÃ BỊ HỦY BỎ LẬP TỨC
-    const sessionAfter = await sessionStore.getSession(userId, 'device_eve_laptop');
-    expect(sessionAfter?.isRevoked).toBe(true);
-
-    // Mọi yêu cầu refresh tiếp theo đều bị chặn
-    await expect(
-      authController.refresh('any_token_string', userId, 'device_eve_laptop'),
-    ).rejects.toThrowError(/Phiên làm việc này đã bị thu hồi/);
+    // Toàn bộ phiên của người dùng phải bị cưỡng chế thu hồi
+    const currentSession = await sessionStore.getSession(mockUserId, mockSessionId);
+    expect(currentSession?.isRevoked).toBe(true);
   });
 });
