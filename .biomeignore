@@ -1,0 +1,7 @@
+archive/**
+archive
+node_modules/**
+dist/**
+.next/**
+coverage/**
+deploy/**

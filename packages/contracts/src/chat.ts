@@ -1,0 +1,91 @@
+import { z } from 'zod';
+
+export const ChatChannelTypeSchema = z.enum(['DIRECT', 'GROUP']);
+export type ChatChannelType = z.infer<typeof ChatChannelTypeSchema>;
+
+export const ChatRequestStatusSchema = z.enum(['PENDING', 'ACCEPTED', 'IGNORED', 'BLOCKED']);
+export type ChatRequestStatus = z.infer<typeof ChatRequestStatusSchema>;
+
+export const ChatAttachmentSchema = z.object({
+  type: z.enum(['IMAGE', 'FILE', 'THREAD_CARD', 'CODE_SNIPPET']),
+  url: z.string().url().optional(),
+  title: z.string().optional(),
+  metadata: z.record(z.unknown()).optional(),
+});
+export type ChatAttachment = z.infer<typeof ChatAttachmentSchema>;
+
+export const ChatMessageSchema = z.object({
+  id: z.string().uuid(),
+  channelId: z.string().uuid(),
+  senderId: z.string().uuid(),
+  senderUsername: z.string(),
+  senderAvatarUrl: z.string().url().nullable().optional(),
+  parentMessageId: z.string().uuid().nullable().optional(), // Phục vụ Chat Threads
+  content: z.string().min(1).max(5000),
+  attachments: z.array(ChatAttachmentSchema).default([]),
+  repliesCount: z.number().int().default(0), // Số phản hồi trong thread con
+  isDeleted: z.boolean().default(false),
+  createdAt: z.string().datetime(),
+});
+export type ChatMessage = z.infer<typeof ChatMessageSchema>;
+
+export const ChatChannelSchema = z.object({
+  id: z.string().uuid(),
+  type: ChatChannelTypeSchema,
+  name: z.string().nullable().optional(),
+  creatorId: z.string().uuid(),
+  membersCount: z.number().int().default(2),
+  lastMessage: ChatMessageSchema.nullable().optional(),
+  unreadCount: z.number().int().default(0),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime().optional(),
+});
+export type ChatChannel = z.infer<typeof ChatChannelSchema>;
+
+export const CreateGroupChannelInputSchema = z.object({
+  name: z.string().min(2).max(128),
+  memberIds: z.array(z.string().uuid()).min(1).max(50),
+});
+export type CreateGroupChannelInput = z.infer<typeof CreateGroupChannelInputSchema>;
+
+export const SendMessageInputSchema = z.object({
+  channelId: z.string().uuid().optional(),
+  recipientId: z.string().uuid().optional(), // Nếu gửi tin nhắn trực tiếp lần đầu
+  parentMessageId: z.string().uuid().optional(), // Nếu phản hồi trong nhánh Chat Thread
+  content: z.string().min(1).max(5000),
+  attachments: z.array(ChatAttachmentSchema).optional(),
+});
+export type SendMessageInput = z.infer<typeof SendMessageInputSchema>;
+
+export const ChatRequestSchema = z.object({
+  id: z.string().uuid(),
+  senderId: z.string().uuid(),
+  senderUsername: z.string(),
+  senderAvatarUrl: z.string().url().nullable().optional(),
+  receiverId: z.string().uuid(),
+  initialMessage: z.string(),
+  status: ChatRequestStatusSchema,
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime().optional(),
+});
+export type ChatRequest = z.infer<typeof ChatRequestSchema>;
+
+export const RespondChatRequestInputSchema = z.object({
+  status: z.enum(['ACCEPTED', 'IGNORED', 'BLOCKED']),
+});
+export type RespondChatRequestInput = z.infer<typeof RespondChatRequestInputSchema>;
+
+export const PresenceEventSchema = z.object({
+  userId: z.string().uuid(),
+  isOnline: z.boolean(),
+  lastSeenAt: z.string().datetime(),
+});
+export type PresenceEvent = z.infer<typeof PresenceEventSchema>;
+
+export const TypingIndicatorEventSchema = z.object({
+  channelId: z.string().uuid(),
+  userId: z.string().uuid(),
+  username: z.string(),
+  isTyping: z.boolean(),
+});
+export type TypingIndicatorEvent = z.infer<typeof TypingIndicatorEventSchema>;

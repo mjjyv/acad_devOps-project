@@ -10,3 +10,6 @@ build/
 .DS_Store
 coverage/
 *.tsbuildinfo
+archive/**/node_modules/
+archive/**/dist/
+archive/**/.next/

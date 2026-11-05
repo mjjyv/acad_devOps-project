@@ -1,196 +1,122 @@
 openapi: 3.1.0
 info:
-  title: Acad Community Platform API Specification
-  version: 1.0.0
-  description: Bản đặc tả khế ước giao tiếp toàn diện (OpenAPI 3.1 Contract) giữa Client (Next.js) và Core Backend (Go).
+  title: Acad DevOps Platform API Contracts
+  version: 2.0.0
+  description: Single Source of Truth for Acad DevOps Platform APIs across all services and gateways.
+servers:
+  - url: /api/v1
+    description: Current Base API Path
 
 paths:
-  # ==========================================
-  # PHÂN HỆ AUTH & SESSION
-  # ==========================================
-  /api/v1/auth/register:
+  /auth/register:
     post:
-      tags: [Auth]
-      summary: Đăng ký tài khoản thành viên mới
+      summary: Đăng ký tài khoản người dùng mới
+      operationId: registerUser
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [email, username, password]
+              required: [username, email, password]
               properties:
-                email: { type: string, format: email }
                 username: { type: string, minLength: 3, maxLength: 32 }
-                password: { type: string, minLength: 8 }
-                deviceFingerprint: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8, maxLength: 128 }
       responses:
         '201':
-          description: Đăng ký thành công kèm Set-Cookie phiên
+          description: Đăng ký thành công
         '400':
-          description: Dữ liệu không hợp lệ
+          description: Dữ liệu không hợp lệ (RFC 7807)
+        '409':
+          description: Tên đăng nhập hoặc email đã tồn tại
 
-  /api/v1/auth/login:
+  /auth/login:
     post:
-      tags: [Auth]
-      summary: Đăng nhập hệ thống & Thiết lập phiên
+      summary: Xác thực người dùng và khởi tạo phiên
+      operationId: loginUser
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [login, password]
+              required: [identifier, password]
               properties:
-                login: { type: string }
+                identifier: { type: string }
                 password: { type: string }
-                deviceFingerprint: { type: string }
+                fingerprint: { type: string }
       responses:
         '200':
-          description: Đăng nhập thành công
-
-  /api/v1/auth/refresh:
-    post:
-      tags: [Auth]
-      summary: Xoay vòng Refresh Token (Token Rotation DAG)
-      responses:
-        '200':
-          description: Cấp lại token mới thành công
+          description: Đăng nhập thành công, cấp Access Token và Refresh Cookie
         '401':
-          description: Hết hạn phiên
-        '403':
-          description: Phát hiện tấn công Token Reuse!
+          description: Sai thông tin đăng nhập hoặc tài khoản bị khóa
 
-  /api/v1/auth/me:
-    get:
-      tags: [Auth]
-      summary: Lấy hồ sơ tài khoản và quyền hạn hiện tại
-      responses:
-        '200':
-          description: Trả về thông tin UserProfile
-
-  # ==========================================
-  # PHÂN HỆ BẢNG TIN (FEED AGGREGATOR)
-  # ==========================================
-  /api/v1/feed:
-    get:
-      tags: [Feed]
-      summary: Lấy danh sách bài viết phân trang bằng con trỏ Base64
-      parameters:
-        - in: query
-          name: sort
-          schema: { type: string, enum: [hot, new, top], default: hot }
-        - in: query
-          name: cursor
-          schema: { type: string, description: Base64 composite cursor }
-        - in: query
-          name: limit
-          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
-        - in: query
-          name: spaceSlug
-          schema: { type: string }
-      responses:
-        '200':
-          description: Danh sách bài viết kèm next_cursor
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  threads:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/ThreadSummary'
-                  nextCursor:
-                    type: string
-                    nullable: true
-
-  # ==========================================
-  # PHÂN HỆ KHÔNG GIAN (SPACES)
-  # ==========================================
-  /api/v1/spaces:
+  /auth/refresh:
     post:
-      tags: [Spaces]
-      summary: Tạo Không gian thảo luận mới (Yêu cầu Karma >= 500, Tuổi tài khoản >= 30d)
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [slug, name]
-              properties:
-                slug: { type: string }
-                name: { type: string }
-                description: { type: string }
+      summary: Xoay vòng Refresh Token (Token Rotation kèm 30s Grace Period)
+      operationId: refreshToken
+      responses:
+        '200':
+          description: Cấp Access Token mới
+        '401':
+          description: Refresh Token hết hạn hoặc không hợp lệ
+        '403':
+          description: Phát hiện Token Reuse Attack (Hủy toàn bộ cụm phiên)
+
+  /auth/logout:
+    post:
+      summary: Đăng xuất và thu hồi phiên làm việc hiện tại
+      operationId: logoutUser
+      responses:
+        '200':
+          description: Đăng xuất thành công
+
+  /spaces:
+    get:
+      summary: Lấy danh sách không gian thảo luận
+      operationId: listSpaces
+      responses:
+        '200':
+          description: Danh sách không gian
+    post:
+      summary: Tạo không gian mới
+      operationId: createSpace
       responses:
         '201':
-          description: Tạo Space thành công
-        '403':
-          description: Không đủ điều kiện ABAC
+          description: Tạo không gian thành công
 
-  /api/v1/spaces/{slug}:
+  /threads:
     get:
-      tags: [Spaces]
-      summary: Chi tiết Không gian thảo luận
+      summary: Lấy danh sách bài viết thảo luận (Hot/New/Top/Best)
+      operationId: listThreads
       parameters:
-        - in: path
-          name: slug
-          required: true
+        - name: sort
+          in: query
+          schema: { type: string, enum: [hot, new, top, best], default: hot }
+        - name: time
+          in: query
+          schema: { type: string, enum: [day, week, month, year, all], default: all }
+        - name: cursor
+          in: query
           schema: { type: string }
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
       responses:
         '200':
-          description: Thông tin chi tiết Space
+          description: Danh sách bài viết kèm con trỏ Base64
 
-  # ==========================================
-  # PHÂN HỆ BÀI VIẾT (THREADS)
-  # ==========================================
-  /api/v1/threads:
+  /threads/{id}/vote:
     post:
-      tags: [Threads]
-      summary: Đăng bài viết mới (Kiểm định Tiptap AST)
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [spaceId, title, contentAst]
-              properties:
-                spaceId: { type: string, format: uuid }
-                title: { type: string, minLength: 5, maxLength: 255 }
-                contentAst: { type: object, description: JSON Abstract Syntax Tree }
-                mediaKeys: { type: array, items: { type: string } }
-      responses:
-        '201':
-          description: Bài viết được đăng thành công
-
-  /api/v1/threads/{slug}:
-    get:
-      tags: [Threads]
-      summary: Chi tiết bài viết phục vụ SEO ISR
+      summary: Bỏ phiếu nguyên tử qua Redis Lua
+      operationId: voteThread
       parameters:
-        - in: path
-          name: slug
-          required: true
-          schema: { type: string }
-      responses:
-        '200':
-          description: Chi tiết bài viết kèm counters
-
-  /api/v1/threads/{id}/votes:
-    post:
-      tags: [Voting]
-      summary: Bầu chọn Upvote / Downvote / Unvote (Chạy qua Redis Lua O(1))
-      security:
-        - BearerAuth: []
-      parameters:
-        - in: path
-          name: id
+        - name: id
+          in: path
           required: true
           schema: { type: string, format: uuid }
       requestBody:
@@ -204,130 +130,43 @@ paths:
                 direction: { type: integer, enum: [1, -1] }
       responses:
         '200':
-          description: Ghi nhận vote thành công
+          description: Kết quả bầu chọn
+
+  /threads/{id}/comments:
+    get:
+      summary: Lấy cây bình luận ltree Base36
+      operationId: getThreadComments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Cây bình luận trải phẳng O(N) kèm cờ Capped Depth 8
+
+  /chat/channels:
+    get:
+      summary: Lấy danh sách phòng chat tham gia
+      operationId: listChatChannels
+      responses:
+        '200':
+          description: Danh sách phòng chat
+
+  /chat/requests:
+    get:
+      summary: Lấy danh sách yêu cầu tin nhắn lạ đang chờ duyệt
+      operationId: listChatRequests
+      responses:
+        '200':
+          description: Hàng đợi chat requests
+
+  /admin/stats:
+    get:
+      summary: Thống kê thời gian thực toàn hệ thống
+      operationId: getAdminStats
+      responses:
+        '200':
+          description: Số liệu thống kê
         '403':
-          description: Downvote yêu cầu tối thiểu 500 điểm Karma
-
-  # ==========================================
-  # PHÂN HỆ BÌNH LUẬN (COMMENTS)
-  # ==========================================
-  /api/v1/threads/{id}/comments:
-    get:
-      tags: [Comments]
-      summary: Lấy cây bình luận trải phẳng (Flattened Tree) sắp xếp theo path ltree
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema: { type: string, format: uuid }
-      responses:
-        '200':
-          description: Mảng một chiều FlatCommentItem phục vụ ảo hóa DOM
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/FlatCommentItem'
-
-    post:
-      tags: [Comments]
-      summary: Gửi bình luận hoặc phản hồi phân tầng
-      security:
-        - BearerAuth: []
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema: { type: string, format: uuid }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [contentAst]
-              properties:
-                parentId: { type: string, format: uuid, nullable: true }
-                contentAst: { type: object }
-      responses:
-        '201':
-          description: Bình luận được tạo thành công
-
-  # ==========================================
-  # PHÂN HỆ TẢI TỆP ZERO-HOP (MEDIA)
-  # ==========================================
-  /api/v1/media/presign:
-    post:
-      tags: [Media]
-      summary: Xin Presigned URL tải file trực tiếp lên Cloudflare R2 / S3
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [fileName, fileSize, mimeType, blurhash]
-              properties:
-                fileName: { type: string }
-                fileSize: { type: integer, maximum: 10485760 }
-                mimeType: { type: string, enum: [image/jpeg, image/png, image/webp, image/gif] }
-                blurhash: { type: string }
-      responses:
-        '200':
-          description: Trả về uploadUrl và fileKey
-
-  # ==========================================
-  # PHÂN HỆ REALTIME HUB (SSE)
-  # ==========================================
-  /api/v1/realtime/events:
-    get:
-      tags: [Realtime]
-      summary: Kênh truyền đẩy sự kiện thời gian thực (Server-Sent Events)
-      parameters:
-        - in: header
-          name: Last-Event-ID
-          schema: { type: string }
-      responses:
-        '200':
-          description: Luồng sự kiện Server-Sent Events
-          content:
-            text/event-stream:
-              schema: { type: string }
-
-components:
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-
-  schemas:
-    ThreadSummary:
-      type: object
-      properties:
-        id: { type: string, format: uuid }
-        spaceSlug: { type: string }
-        title: { type: string }
-        snippet: { type: string }
-        counters:
-          type: object
-          properties:
-            upvotes: { type: integer }
-            downvotes: { type: integer }
-            netScore: { type: integer }
-            commentCount: { type: integer }
-            hotScore: { type: number }
-
-    FlatCommentItem:
-      type: object
-      properties:
-        id: { type: string, format: uuid }
-        path: { type: string, example: "0001.0002.0001" }
-        depth: { type: integer, minimum: 0, maximum: 8 }
-        hasChildren: { type: boolean }
-        childCount: { type: integer }
-        isCollapsed: { type: boolean }
-        contentAst: { type: object }
+          description: Chặn truy cập nếu không phải ADMIN
