@@ -1,0 +1,28 @@
+# ==============================================================================
+# RENDER CLOUD BLUEPRINT SPECIFICATION (INFRASTRUCTURE-AS-CODE)
+# File: deploy/render/render.yaml
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # BACKEND API GATEWAY & AUTH RUNNER (DOCKER WEB SERVICE)
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: acad-core-api
+    runtime: docker
+    plan: free
+    region: singapore # hoặc oregon / frankfurt
+    dockerfilePath: deploy/docker/Dockerfile.api.prod
+    dockerContext: .
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        sync: false # Connection string tới Managed PostgreSQL (Supabase / Render DB / Neon)
+      - key: REDIS_URL
+        sync: false # Connection string tới Upstash Redis / Managed Redis
+      - key: JWT_SECRET
+        generateValue: true # Render tự động sinh chuỗi secret ngẫu nhiên bảo mật cao

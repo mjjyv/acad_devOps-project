@@ -1,0 +1,59 @@
+# ==============================================================================
+# MULTI-STAGE DOCKERFILE - PRODUCTION API GATEWAY & AUTH RUNNER
+# Node.js 22 Alpine, non-root user, multi-stage
+# ==============================================================================
+
+# Stage 1: Build environment
+FROM node:22-alpine AS builder
+RUN corepack enable && corepack prepare pnpm@10.15.0 --activate
+WORKDIR /app
+
+# Copy root workspace configurations
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json tsconfig.json ./
+COPY packages/contracts/package.json ./packages/contracts/
+COPY packages/auth-client/package.json ./packages/auth-client/
+COPY services/auth/package.json ./services/auth/
+COPY apps/api/package.json ./apps/api/
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy source code
+COPY packages/ ./packages/
+COPY services/ ./services/
+COPY apps/api/ ./apps/api/
+
+# Build all packages and applications
+RUN pnpm run build
+
+# Stage 2: Production Minimal Runner
+FROM node:22-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Security: Non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 appuser
+
+# Copy workspace layout and built outputs
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/pnpm-workspace.yaml ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages/contracts/dist ./packages/contracts/dist
+COPY --from=builder /app/packages/contracts/package.json ./packages/contracts/package.json
+COPY --from=builder /app/packages/auth-client/dist ./packages/auth-client/dist
+COPY --from=builder /app/packages/auth-client/package.json ./packages/auth-client/package.json
+COPY --from=builder /app/services/auth/dist ./services/auth/dist
+COPY --from=builder /app/services/auth/package.json ./services/auth/package.json
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
+
+USER appuser
+EXPOSE 3000
+
+HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/healthz || exit 1
+
+CMD ["node", "apps/api/dist/server.js"]

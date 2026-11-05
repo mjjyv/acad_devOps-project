@@ -15,7 +15,8 @@
     "format": "biome format --write .",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm -r --if-present run test",
-    "build": "pnpm -r --if-present run build"
+    "build": "pnpm -r --if-present run build",
+    "build:libs": "pnpm -r --if-present run build"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.5",
