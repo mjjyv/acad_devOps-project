@@ -45,7 +45,7 @@ export class SpaceService {
       creatorId: entity.creatorId,
       membersCount: entity.memberCount,
       threadsCount: entity.threadCount,
-      isPrivate: false,
+      isPrivate: Boolean(entity.isPrivate),
       isJoined,
       myRole: (myRole as 'MEMBER' | 'MODERATOR' | 'ADMIN' | null) || null,
       createdAt: entity.createdAt,
@@ -60,6 +60,7 @@ export class SpaceService {
       description: input.description || null,
       rules: input.rules || [],
       creatorId,
+      isPrivate: input.isPrivate ?? false,
     });
 
     return this.toSpaceContract(space, true, 'CREATOR');

@@ -893,6 +893,7 @@ export class PostgresModerationRepository implements IModerationRepository {
       creatorId: r.creator_id,
       memberCount: r.member_count ?? 1,
       threadCount: r.thread_count ?? 0,
+      isPrivate: Boolean(r.is_private),
       createdAt: new Date(r.created_at).toISOString(),
       updatedAt: new Date(r.updated_at).toISOString(),
     }));

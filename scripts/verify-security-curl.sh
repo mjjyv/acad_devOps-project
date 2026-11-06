@@ -68,7 +68,7 @@ for i in $(seq 1 12); do
   HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$API_URL/auth/login" \
     -H "Content-Type: application/json" \
     -H "X-Forwarded-For: 203.0.113.195" \
-    -d "{\"email\":\"security_probe_$i@synapse.test\",\"password\":\"wrong_pass\"}")
+    -d "{\"email\":\"security_probe_$i@acad.vn\",\"password\":\"wrong_pass\"}")
   
   if [ "$HTTP_CODE" = "429" ]; then
     RATE_LIMITED=$((RATE_LIMITED + 1))
@@ -81,7 +81,7 @@ if [ "$RATE_LIMITED" -gt 0 ]; then
   SAMPLE_429=$(curl -s -X POST "$API_URL/auth/login" \
     -H "Content-Type: application/json" \
     -H "X-Forwarded-For: 203.0.113.195" \
-    -d '{"email":"sample@synapse.test","password":"wrong"}')
+    -d '{"email":"sample@acad.vn","password":"wrong"}')
   echo "  [INFO] Chi tiết RFC 7807: $SAMPLE_429"
 else
   echo "  [FAIL] Không nhận được mã 429 sau 12 yêu cầu liên tiếp."
@@ -91,7 +91,7 @@ fi
 echo ""
 echo "=== 4. Kiểm Thử Phản Hồi CORS Preflight ==="
 OPTIONS_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X OPTIONS "$API_URL/auth/login" \
-  -H "Origin: https://synapse.network" \
+  -H "Origin: http://localhost:3000" \
   -H "Access-Control-Request-Method: POST")
 
 if [ "$OPTIONS_CODE" = "204" ] || [ "$OPTIONS_CODE" = "200" ]; then
@@ -105,7 +105,7 @@ echo ""
 echo "========================================================================"
 if [ "$FAILED" -eq 0 ]; then
   echo "🎉 TẤT CẢ CÁC BÀI KIỂM THỬ BẢO MẬT ĐỀU VƯỢT QUA XUẤT SẮC!"
-  echo "Hệ thống SYNAPSE đã được gia cố toàn diện theo tiêu chuẩn Universal Security Shield."
+  echo "Hệ thống Acad DevOps (SYNAPSE Engine) đã được gia cố toàn diện theo tiêu chuẩn Universal Security Shield."
   exit 0
 else
   echo "⚠️ Có $FAILED lỗi an ninh chưa đạt tiêu chuẩn. Vui lòng rà soát lại."

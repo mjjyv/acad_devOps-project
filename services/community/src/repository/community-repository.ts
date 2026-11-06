@@ -39,6 +39,7 @@ export interface SpaceEntity {
   description: string | null;
   avatarUrl: string | null;
   bannerUrl: string | null;
+  isPrivate: boolean;
   rules: Array<{ title: string; description: string }>;
   creatorId: string;
   memberCount: number;
@@ -106,6 +107,8 @@ export interface CommentEntity {
   authorUsername?: string | undefined;
   authorAvatarUrl?: string | null | undefined;
   authorKarmaScore?: number | undefined;
+  directRepliesCount?: number | undefined;
+  totalDescendantsCount?: number | undefined;
 }
 
 export interface ThreadCountersEntity {
@@ -136,6 +139,7 @@ export interface ICommunityRepository {
     bannerUrl?: string | null;
     rules?: Array<{ title: string; description: string }>;
     creatorId: string;
+    isPrivate?: boolean;
   }): Promise<SpaceEntity>;
   findSpaceBySlug(slug: string): Promise<SpaceEntity | null>;
   findSpaceById(id: string): Promise<SpaceEntity | null>;
@@ -245,6 +249,7 @@ export class InMemoryCommunityRepository implements ICommunityRepository {
     bannerUrl?: string | null;
     rules?: Array<{ title: string; description: string }>;
     creatorId: string;
+    isPrivate?: boolean;
   }): Promise<SpaceEntity> {
     const slugLower = data.slug.toLowerCase();
     for (const space of this.spaces.values()) {
@@ -266,6 +271,7 @@ export class InMemoryCommunityRepository implements ICommunityRepository {
       creatorId: data.creatorId,
       memberCount: 1,
       threadCount: 0,
+      isPrivate: Boolean(data.isPrivate),
       createdAt: now,
       updatedAt: now,
     };

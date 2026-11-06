@@ -1,5 +1,5 @@
 -- ==============================================================================
--- SYNAPSE PLATFORM - REALISTIC COMMUNITY SEED DATA
+-- ACAD DEVOPS PLATFORM (SYNAPSE ENGINE) - REALISTIC COMMUNITY SEED DATA
 -- Target: PostgreSQL 16+ (PostgreSQL, ltree, trigram)
 -- File: deploy/seeds/001_realistic_community_seed.sql
 -- ==============================================================================

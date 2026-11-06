@@ -5,8 +5,6 @@
 
 import pg from 'pg';
 import { CursorManager } from '../voting/cursor-manager.js';
-import { GravityDecayEngine } from '../voting/gravity-decay.js';
-import { WilsonScoreEngine } from '../voting/wilson-score.js';
 import {
   type CommentEntity,
   DatabaseConnectionError,
@@ -62,6 +60,7 @@ export class PostgresCommunityRepository implements ICommunityRepository {
       description: (row.description as string | null) || null,
       avatarUrl: (row.avatar_url as string | null) || null,
       bannerUrl: (row.banner_url as string | null) || null,
+      isPrivate: Boolean(row.is_private),
       rules: (row.rules as Array<{ title: string; description: string }>) || [],
       creatorId: String(row.creator_id),
       memberCount: parseInt(String(row.member_count || '1'), 10),
@@ -82,9 +81,12 @@ export class PostgresCommunityRepository implements ICommunityRepository {
       content: (row.content as string | null) || null,
       linkUrl: (row.link_url as string | null) || null,
       threadType: (row.thread_type as 'TEXT' | 'LINK' | 'MEDIA') || 'TEXT',
-      upvotesCount: parseInt(String(row.upvotes_count || '0'), 10),
-      downvotesCount: parseInt(String(row.downvotes_count || '0'), 10),
-      commentCount: parseInt(String(row.comment_count || '0'), 10),
+      upvotesCount: parseInt(String(row.c_upvotes ?? row.upvotes ?? row.upvotes_count ?? '0'), 10),
+      downvotesCount: parseInt(
+        String(row.c_downvotes ?? row.downvotes ?? row.downvotes_count ?? '0'),
+        10,
+      ),
+      commentCount: parseInt(String(row.c_comment_count ?? row.comment_count ?? '0'), 10),
       isPinned: Boolean(row.is_pinned),
       isLocked: Boolean(row.is_locked),
       createdAt: new Date(String(row.created_at)).toISOString(),
@@ -126,6 +128,8 @@ export class PostgresCommunityRepository implements ICommunityRepository {
       authorKarmaScore: row.author_karma_score
         ? parseInt(String(row.author_karma_score), 10)
         : undefined,
+      directRepliesCount: parseInt(String(row.direct_replies_count || '0'), 10),
+      totalDescendantsCount: parseInt(String(row.total_descendants_count || '0'), 10),
     };
   }
 
@@ -139,14 +143,15 @@ export class PostgresCommunityRepository implements ICommunityRepository {
     bannerUrl?: string | null;
     rules?: Array<{ title: string; description: string }>;
     creatorId: string;
+    isPrivate?: boolean;
   }): Promise<SpaceEntity> {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
 
       const query = `
-        INSERT INTO spaces (name, slug, description, avatar_url, banner_url, rules, creator_id, member_count)
-        VALUES ($1, LOWER($2), $3, $4, $5, $6, $7, 1)
+        INSERT INTO spaces (name, slug, description, avatar_url, banner_url, rules, creator_id, is_private, member_count)
+        VALUES ($1, LOWER($2), $3, $4, $5, $6, $7, $8, 1)
         RETURNING *;
       `;
       const res = await client.query(query, [
@@ -157,6 +162,7 @@ export class PostgresCommunityRepository implements ICommunityRepository {
         data.bannerUrl || null,
         JSON.stringify(data.rules || []),
         data.creatorId,
+        Boolean(data.isPrivate),
       ]);
 
       const space = this.mapSpaceRow(res.rows[0]);
@@ -377,6 +383,15 @@ export class PostgresCommunityRepository implements ICommunityRepository {
       await client.query('UPDATE spaces SET thread_count = thread_count + 1 WHERE id = $1;', [
         data.spaceId,
       ]);
+      await client.query('UPDATE users SET threads_count = threads_count + 1 WHERE id = $1;', [
+        data.authorId,
+      ]);
+      await client.query(
+        `INSERT INTO thread_counters (thread_id, upvotes, downvotes, net_score, hot_score, wilson_score, comment_count, updated_at)
+         VALUES ($1, 0, 0, 0, 0, 0, 0, NOW())
+         ON CONFLICT (thread_id) DO NOTHING;`,
+        [res.rows[0].id],
+      );
       await client.query('COMMIT');
       return this.mapThreadRow(res.rows[0]);
     } catch (err) {
@@ -392,6 +407,10 @@ export class PostgresCommunityRepository implements ICommunityRepository {
     try {
       const res = await this.pool.query(
         `SELECT t.*,
+                tc.upvotes AS c_upvotes,
+                tc.downvotes AS c_downvotes,
+                tc.comment_count AS c_comment_count,
+                tc.net_score AS c_net_score,
                 s.slug AS space_slug,
                 s.name AS space_name,
                 u.username AS author_username,
@@ -399,6 +418,7 @@ export class PostgresCommunityRepository implements ICommunityRepository {
                 f.name AS flair_name,
                 f.color AS flair_color
          FROM threads t
+         LEFT JOIN thread_counters tc ON t.id = tc.thread_id
          LEFT JOIN spaces s ON t.space_id = s.id
          LEFT JOIN users u ON t.author_id = u.id
          LEFT JOIN space_flairs f ON t.flair_id = f.id
@@ -415,6 +435,10 @@ export class PostgresCommunityRepository implements ICommunityRepository {
     try {
       const res = await this.pool.query(
         `SELECT t.*,
+                tc.upvotes AS c_upvotes,
+                tc.downvotes AS c_downvotes,
+                tc.comment_count AS c_comment_count,
+                tc.net_score AS c_net_score,
                 s.slug AS space_slug,
                 s.name AS space_name,
                 u.username AS author_username,
@@ -422,6 +446,7 @@ export class PostgresCommunityRepository implements ICommunityRepository {
                 f.name AS flair_name,
                 f.color AS flair_color
          FROM threads t
+         LEFT JOIN thread_counters tc ON t.id = tc.thread_id
          LEFT JOIN spaces s ON t.space_id = s.id
          LEFT JOIN users u ON t.author_id = u.id
          LEFT JOIN space_flairs f ON t.flair_id = f.id
@@ -445,6 +470,10 @@ export class PostgresCommunityRepository implements ICommunityRepository {
       const offset = options?.offset || 0;
       let query = `
         SELECT t.*,
+                tc.upvotes AS c_upvotes,
+                tc.downvotes AS c_downvotes,
+                tc.comment_count AS c_comment_count,
+                tc.net_score AS c_net_score,
                s.slug AS space_slug,
                s.name AS space_name,
                u.username AS author_username,
@@ -452,6 +481,7 @@ export class PostgresCommunityRepository implements ICommunityRepository {
                f.name AS flair_name,
                f.color AS flair_color
         FROM threads t
+        LEFT JOIN thread_counters tc ON t.id = tc.thread_id
         LEFT JOIN spaces s ON t.space_id = s.id
         LEFT JOIN users u ON t.author_id = u.id
         LEFT JOIN space_flairs f ON t.flair_id = f.id
@@ -567,12 +597,14 @@ export class PostgresCommunityRepository implements ICommunityRepository {
 
   public async listCommentsByThread(threadId: string): Promise<CommentEntity[]> {
     try {
-      // 1 câu truy vấn duy nhất JOIN users sắp xếp theo path ltree tăng dần: < 1.2ms qua GiST index
+      // 1 câu truy vấn duy nhất JOIN users và đếm số reply con đệ quy qua ltree GiST index
       const res = await this.pool.query(
         `SELECT c.*,
                 u.username AS author_username,
                 u.avatar_url AS author_avatar_url,
-                u.karma_score AS author_karma_score
+                u.karma_score AS author_karma_score,
+                (SELECT COUNT(*) FROM comments r WHERE r.parent_id = c.id) AS direct_replies_count,
+                (SELECT COUNT(*) FROM comments d WHERE d.thread_id = c.thread_id AND d.path <@ c.path AND d.id <> c.id) AS total_descendants_count
          FROM comments c
          LEFT JOIN users u ON c.author_id = u.id
          WHERE c.thread_id = $1
@@ -851,33 +883,23 @@ export class PostgresCommunityRepository implements ICommunityRepository {
   ): Promise<{ items: ThreadEntity[]; nextCursor: string | null }> {
     const sort = options?.sort ?? 'hot';
     const time = options?.time ?? 'all';
-    const limit = options?.limit ?? 20;
+    const limit = Math.min(Math.max(options?.limit ?? 20, 1), 50);
 
-    let sql = `
-      SELECT t.*,
-             s.slug AS space_slug,
-             s.name AS space_name,
-             u.username AS author_username,
-             u.avatar_url AS author_avatar_url,
-             f.name AS flair_name,
-             f.color AS flair_color,
-             COALESCE(tc.upvotes, t.upvotes_count) as c_upvotes,
-             COALESCE(tc.downvotes, t.downvotes_count) as c_downvotes,
-             COALESCE(tc.net_score, (t.upvotes_count - t.downvotes_count)) as c_net_score,
-             COALESCE(tc.hot_score, 0) as c_hot_score,
-             COALESCE(tc.wilson_score, 0) as c_wilson_score
-      FROM threads t
-      LEFT JOIN spaces s ON t.space_id = s.id
-      LEFT JOIN users u ON t.author_id = u.id
-      LEFT JOIN space_flairs f ON t.flair_id = f.id
-      LEFT JOIN thread_counters tc ON tc.thread_id = t.id
-      WHERE 1=1
-    `;
+    let scoreExpression = `ROUND((COALESCE(tc.net_score, (t.upvotes_count - t.downvotes_count)) / POWER(GREATEST(EXTRACT(EPOCH FROM (NOW() - t.created_at)) / 3600.0 + 2.0, 1.0), 1.8))::numeric, 4)`;
+    if (sort === 'top') {
+      scoreExpression = `(COALESCE(tc.net_score, (t.upvotes_count - t.downvotes_count)))::numeric`;
+    } else if (sort === 'best') {
+      scoreExpression = `COALESCE(tc.wilson_score, 0)::numeric`;
+    } else if (sort === 'new') {
+      scoreExpression = `FLOOR(EXTRACT(EPOCH FROM t.created_at) * 1000)::numeric`;
+    }
+
     const params: unknown[] = [];
+    const whereClauses: string[] = ['1=1'];
 
     if (spaceIds && spaceIds.length > 0) {
       params.push(spaceIds);
-      sql += ` AND t.space_id = ANY($${params.length})`;
+      whereClauses.push(`t.space_id = ANY($${params.length})`);
     }
 
     if (sort === 'top' && time !== 'all') {
@@ -888,68 +910,109 @@ export class PostgresCommunityRepository implements ICommunityRepository {
         year: '365 days',
       };
       const interval = windowIntervals[time] ?? '1 day';
-      sql += ` AND t.created_at >= NOW() - INTERVAL '${interval}'`;
+      whereClauses.push(`t.created_at >= NOW() - INTERVAL '${interval}'`);
     }
 
-    const res = await this.pool.query(sql, params);
-    const threads = res.rows.map((r) => this.mapThreadRow(r));
+    const decoded = options?.cursor ? CursorManager.decode(options.cursor) : null;
 
-    const scoredList = threads.map((t) => {
-      const createdAtMs = new Date(t.createdAt).getTime();
-      let score = 0;
-      if (sort === 'hot') {
-        score = GravityDecayEngine.computeHotScore(
-          t.upvotesCount - t.downvotesCount,
-          new Date(t.createdAt),
-        );
-      } else if (sort === 'best') {
-        score = WilsonScoreEngine.computeWilsonScore(t.upvotesCount, t.downvotesCount);
-      } else if (sort === 'top') {
-        score = t.upvotesCount - t.downvotesCount;
-      } else {
-        score = createdAtMs;
-      }
-      return { thread: t, score, createdAtMs, id: t.id };
-    });
+    let query = '';
+    if (decoded && isUuid(decoded.id)) {
+      params.push(decoded.id);
+      const cursorIdParamIndex = params.length;
+      params.push(decoded.score);
+      const cursorScoreParamIndex = params.length;
+      params.push(decoded.createdAtMs);
+      const cursorTimeParamIndex = params.length;
+      params.push(limit + 1);
+      const limitParamIndex = params.length;
 
-    scoredList.sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      if (b.createdAtMs !== a.createdAtMs) return b.createdAtMs - a.createdAtMs;
-      return b.id.localeCompare(a.id);
-    });
+      query = `
+        WITH scored AS (
+          SELECT t.*,
+                 s.slug AS space_slug,
+                 s.name AS space_name,
+                 u.username AS author_username,
+                 u.avatar_url AS author_avatar_url,
+                 f.name AS flair_name,
+                 f.color AS flair_color,
+                 COALESCE(tc.upvotes, t.upvotes_count) as c_upvotes,
+                 COALESCE(tc.downvotes, t.downvotes_count) as c_downvotes,
+                 COALESCE(tc.net_score, (t.upvotes_count - t.downvotes_count)) as c_net_score,
+                 COALESCE(tc.comment_count, t.comment_count) as c_comment_count,
+                 ${scoreExpression} AS computed_score,
+                 FLOOR(EXTRACT(EPOCH FROM t.created_at) * 1000)::bigint AS created_at_ms
+          FROM threads t
+          LEFT JOIN spaces s ON t.space_id = s.id
+          LEFT JOIN users u ON t.author_id = u.id
+          LEFT JOIN space_flairs f ON t.flair_id = f.id
+          LEFT JOIN thread_counters tc ON tc.thread_id = t.id
+          WHERE ${whereClauses.join(' AND ')}
+        ),
+        cursor_ref AS (
+          SELECT computed_score, created_at_ms, id
+          FROM scored
+          WHERE id = $${cursorIdParamIndex}
+          UNION ALL
+          SELECT $${cursorScoreParamIndex}::numeric AS computed_score, $${cursorTimeParamIndex}::bigint AS created_at_ms, $${cursorIdParamIndex}::uuid AS id
+          LIMIT 1
+        )
+        SELECT s.*
+        FROM scored s, cursor_ref c
+        WHERE (s.computed_score < c.computed_score)
+           OR (s.computed_score = c.computed_score AND s.created_at_ms < c.created_at_ms)
+           OR (s.computed_score = c.computed_score AND s.created_at_ms = c.created_at_ms AND s.id < c.id)
+        ORDER BY s.computed_score DESC, s.created_at_ms DESC, s.id DESC
+        LIMIT $${limitParamIndex};
+      `;
+    } else {
+      params.push(limit + 1);
+      const limitParamIndex = params.length;
 
-    let startIndex = 0;
-    if (options?.cursor) {
-      const decoded = CursorManager.decode(options.cursor);
-      if (decoded) {
-        const found = scoredList.findIndex((item) => {
-          if (item.score < decoded.score) return true;
-          if (item.score === decoded.score && item.createdAtMs < decoded.createdAtMs) return true;
-          if (
-            item.score === decoded.score &&
-            item.createdAtMs === decoded.createdAtMs &&
-            item.id < decoded.id
-          ) {
-            return true;
-          }
-          return false;
-        });
-        startIndex = found !== -1 ? found : scoredList.length;
-      }
+      query = `
+        WITH scored AS (
+          SELECT t.*,
+                 s.slug AS space_slug,
+                 s.name AS space_name,
+                 u.username AS author_username,
+                 u.avatar_url AS author_avatar_url,
+                 f.name AS flair_name,
+                 f.color AS flair_color,
+                 COALESCE(tc.upvotes, t.upvotes_count) as c_upvotes,
+                 COALESCE(tc.downvotes, t.downvotes_count) as c_downvotes,
+                 COALESCE(tc.net_score, (t.upvotes_count - t.downvotes_count)) as c_net_score,
+                 COALESCE(tc.comment_count, t.comment_count) as c_comment_count,
+                 ${scoreExpression} AS computed_score,
+                 FLOOR(EXTRACT(EPOCH FROM t.created_at) * 1000)::bigint AS created_at_ms
+          FROM threads t
+          LEFT JOIN spaces s ON t.space_id = s.id
+          LEFT JOIN users u ON t.author_id = u.id
+          LEFT JOIN space_flairs f ON t.flair_id = f.id
+          LEFT JOIN thread_counters tc ON tc.thread_id = t.id
+          WHERE ${whereClauses.join(' AND ')}
+        )
+        SELECT s.*
+        FROM scored s
+        ORDER BY s.computed_score DESC, s.created_at_ms DESC, s.id DESC
+        LIMIT $${limitParamIndex};
+      `;
     }
 
-    const pageItems = scoredList.slice(startIndex, startIndex + limit);
-    const hasMore = startIndex + limit < scoredList.length;
+    const res = await this.pool.query(query, params);
+    const hasMore = res.rows.length > limit;
+    const pageRows = hasMore ? res.rows.slice(0, limit) : res.rows;
+    const items = pageRows.map((r) => this.mapThreadRow(r));
+
     let nextCursor: string | null = null;
-    if (hasMore && pageItems.length > 0) {
-      const last = pageItems[pageItems.length - 1];
-      if (last) {
-        nextCursor = CursorManager.encode(last.score, last.createdAtMs, last.id);
-      }
+    if (hasMore && pageRows.length > 0) {
+      const lastRow = pageRows[pageRows.length - 1];
+      const score = parseFloat(String(lastRow.computed_score));
+      const createdAtMs = parseInt(String(lastRow.created_at_ms), 10);
+      const id = String(lastRow.id);
+      nextCursor = CursorManager.encode(score, createdAtMs, id);
     }
 
     return {
-      items: pageItems.map((p) => p.thread),
+      items,
       nextCursor,
     };
   }

@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS users (
     role user_role NOT NULL DEFAULT 'USER',
     status user_status NOT NULL DEFAULT 'ACTIVE',
     karma_score INTEGER NOT NULL DEFAULT 0,
+    threads_count INTEGER NOT NULL DEFAULT 0,
     avatar_url TEXT,
     bio TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
