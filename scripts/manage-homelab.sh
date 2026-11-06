@@ -100,8 +100,41 @@ case "$ACTION" in
       echo "HTTP $WEB_CODE"
     fi
     ;;
+  verify-domain)
+    DOMAIN="${2:-}"
+    if [ -z "$DOMAIN" ]; then
+      echo "Lỗi: Vui lòng cung cấp tên miền."
+      echo "Ví dụ: $0 verify-domain example.com"
+      exit 1
+    fi
+    echo "=== KIỂM TRA ĐIỀU HƯỚNG TÊN MIỀN TOÀN CẦU CHO: $DOMAIN ==="
+    echo "1. Kiểm tra Frontend (https://$DOMAIN/):"
+    FRONTEND_STATUS=$(curl -s -m 6 -o /dev/null -w "%{http_code}" "https://$DOMAIN/" || echo "FAILED")
+    echo "   -> HTTP Status: $FRONTEND_STATUS"
+
+    echo "2. Kiểm tra Healthz qua Frontend Rewrite (https://$DOMAIN/healthz):"
+    HEALTH_FRONT=$(curl -s -m 6 "https://$DOMAIN/healthz" || echo "FAILED")
+    echo "   -> Response: $HEALTH_FRONT"
+
+    echo "3. Kiểm tra Subdomain API trực tiếp (https://api.$DOMAIN/healthz):"
+    HEALTH_API=$(curl -s -m 6 "https://api.$DOMAIN/healthz" || echo "FAILED")
+    echo "   -> Response: $HEALTH_API"
+
+    echo "4. Kiểm tra Auth Proxy Login (POST https://$DOMAIN/auth/login):"
+    AUTH_RESP=$(curl -s -m 6 -X POST "https://$DOMAIN/auth/login" \
+      -H "Content-Type: application/json" \
+      -d '{"email":"probe_test@acad.dev","password":"wrong"}' || echo "FAILED")
+    echo "   -> Auth Endpoint: $AUTH_RESP"
+
+    echo ""
+    if echo "$FRONTEND_STATUS" | grep -q "200"; then
+      echo "✅ Tên miền $DOMAIN đã kết nối thành công và đang hoạt động tốt!"
+    else
+      echo "⚠️ Tên miền chưa phản hồi 200 OK. Vui lòng kiểm tra lại cấu hình Public Hostnames trên Cloudflare Tunnel."
+    fi
+    ;;
   *)
-    echo "Cách dùng: $0 {start|stop|restart|status|logs-api|logs-web|test}"
+    echo "Cách dùng: $0 {start|stop|restart|status|logs-api|logs-web|test|verify-domain <domain>}"
     exit 1
     ;;
 esac
