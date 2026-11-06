@@ -27,7 +27,7 @@ export function Header() {
     setSearchQuery,
     showToast,
   } = useUI();
-  const { user, isAuthenticated, openAuthModal, requireAuth } = useAuth();
+  const { user, isAuthenticated, openAuthModal } = useAuth();
   const [searchFocused, setSearchFocused] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [sessionsModalOpen, setSessionsModalOpen] = useState(false);
@@ -323,21 +323,20 @@ export function Header() {
             </button>
 
             {/* Create Post Button */}
-            <button
-              type="button"
-              onClick={() =>
-                requireAuth(
-                  () =>
-                    showToast('Giao diện Soạn Thảo (Tiptap Editor) sẽ kích hoạt trong Phase F2'),
-                  'Đăng nhập để tạo bài thảo luận mới',
-                )
-              }
+            <Link
+              href="/submit"
               className="reddit-pill-btn primary"
-              style={{ gap: '4px', padding: '0 14px' }}
+              style={{
+                gap: '4px',
+                padding: '0 14px',
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+              }}
             >
               <PlusIcon size={18} />
               <span>Create</span>
-            </button>
+            </Link>
 
             {/* Notifications Bell */}
             <button

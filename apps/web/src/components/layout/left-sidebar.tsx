@@ -239,9 +239,9 @@ export function LeftSidebar() {
         {communitiesExpanded && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '4px' }}>
             {spacesList.map((space) => (
-              <div
+              <Link
                 key={space.slug}
-                onClick={() => showToast(`Điều hướng đến không gian ${space.name}`)}
+                href={`/s/${space.slug}`}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -249,6 +249,7 @@ export function LeftSidebar() {
                   padding: '8px 12px',
                   borderRadius: 'var(--radius-md)',
                   cursor: 'pointer',
+                  textDecoration: 'none',
                   transition: 'all 0.15s ease',
                 }}
                 onMouseEnter={(e) =>
@@ -280,7 +281,7 @@ export function LeftSidebar() {
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                   {space.members}
                 </span>
-              </div>
+              </Link>
             ))}
           </div>
         )}

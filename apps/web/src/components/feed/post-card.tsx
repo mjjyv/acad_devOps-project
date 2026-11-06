@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type React from 'react';
 import { useState } from 'react';
 import {
@@ -36,6 +37,7 @@ interface PostCardProps {
 }
 
 export function PostCard({ post }: PostCardProps) {
+  const router = useRouter();
   const { viewMode, showToast, addRecentPost } = useUIState();
   const { requireAuth } = useAuth();
   const [vote, setVote] = useState<1 | -1 | null>(post.userVote || null);
@@ -113,6 +115,7 @@ export function PostCard({ post }: PostCardProps) {
       upvotes: calculatedVotes,
       comments: post.comments,
     });
+    router.push(`/threads/${post.id}`);
   };
 
   // Compact View rendering
@@ -308,7 +311,13 @@ export function PostCard({ post }: PostCardProps) {
           margin: '0 0 8px 0',
         }}
       >
-        {post.title}
+        <Link
+          href={`/threads/${post.id}`}
+          onClick={(e) => e.stopPropagation()}
+          style={{ color: 'var(--text-primary)', textDecoration: 'none' }}
+        >
+          {post.title}
+        </Link>
       </h2>
 
       {/* Post Text Body snippet if present */}
