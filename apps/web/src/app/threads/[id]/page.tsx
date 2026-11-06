@@ -200,7 +200,7 @@ export default function ThreadDetailPage() {
     <div className="app-shell">
       <Header />
 
-      <div className="app-body">
+      <div className="app-container">
         <LeftSidebar />
 
         <main className="main-content" style={{ maxWidth: '1060px' }}>

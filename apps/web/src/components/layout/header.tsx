@@ -80,7 +80,7 @@ export function Header() {
                 fontSize: '19px',
                 fontWeight: 900,
                 letterSpacing: '0.04em',
-                background: 'linear-gradient(135deg, #f8fafc 0%, #06b6d4 100%)',
+                background: 'linear-gradient(135deg, #f0f0db 0%, #e1d9bc 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
               }}

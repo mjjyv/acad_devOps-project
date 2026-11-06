@@ -420,7 +420,19 @@ export function createCommunityRouter(
     '/threads/:threadId/comments',
     async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const threadId = req.params.threadId as string;
+        const threadIdParam = req.params.threadId as string;
+        let threadId = threadIdParam;
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          threadIdParam,
+        );
+        if (!isUuid) {
+          const thread = await services.threadService.getThreadBySlug(threadIdParam);
+          if (!thread) {
+            res.status(200).json({ items: [], totalCount: 0 });
+            return;
+          }
+          threadId = thread.id;
+        }
         const tree = await services.commentService.getThreadComments(threadId);
         res.status(200).json(tree);
       } catch (err) {

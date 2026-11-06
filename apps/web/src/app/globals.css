@@ -1,43 +1,44 @@
 /* ==============================================================================
    SYNAPSE PLATFORM - THE NEURAL NETWORK FOR ENGINEERS & ARCHITECTS
-   Deep Tech Obsidian & Emerald Matrix Design System
+   Sophisticated Technical Matrix Design System
+   Palette Ratios: #30364F (40%) | #ACBAC4 (35%) | #E1D9BC (15%) | #F0F0DB (10%)
    File: apps/web/src/app/globals.css
    ============================================================================== */
 
 :root {
-  /* 1. Nền tảng & Bề mặt (Canvas & Surfaces - Obsidian Void) */
-  --bg-canvas: #090a0f;
-  --bg-surface: #12151f;
-  --bg-surface-hover: #1a1f30;
-  --bg-subtle: #0d1017;
-  --bg-input: #171b2b;
-  --bg-input-focus: #12151f;
-  --bg-badge: #1c2236;
-  --bg-pill: #171b2b;
-  --bg-pill-hover: #22283d;
+  /* 1. Nền tảng & Bề mặt (40% - Slate Indigo Matrix: #30364F) */
+  --bg-canvas: #30364f;
+  --bg-surface: #262b40;
+  --bg-surface-hover: #353c58;
+  --bg-subtle: #202436;
+  --bg-input: #23283c;
+  --bg-input-focus: #1d2132;
+  --bg-badge: #2a3048;
+  --bg-pill: rgba(172, 186, 196, 0.12);
+  --bg-pill-hover: rgba(172, 186, 196, 0.22);
 
-  /* 2. Đường kẻ & Viền Kính Mờ (Borders & Glass Dividers) */
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.16);
-  --border-focus: #06b6d4;
-  --border-divider: rgba(255, 255, 255, 0.05);
+  /* 2. Viền & Kẻ mờ (35% - Cool Pewter Slate: #ACBAC4) */
+  --border-subtle: rgba(172, 186, 196, 0.22);
+  --border-strong: rgba(172, 186, 196, 0.45);
+  --border-focus: #e1d9bc;
+  --border-divider: rgba(172, 186, 196, 0.12);
 
-  /* 3. Phân cấp Màu chữ Công thái học (Typography Hierarchy - Slate) */
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --text-inverse: #090a0f;
+  /* 3. Phân cấp Màu chữ (35% Secondary + 10% High-Contrast: #F0F0DB) */
+  --text-primary: #f0f0db;
+  --text-secondary: #acbac4;
+  --text-muted: #8896a2;
+  --text-inverse: #30364f;
 
-  /* 4. Gam màu Điểm nhấn Công nghệ (Emerald & Neon Cyan Matrix) */
-  --color-upvote: #10b981;
-  --color-downvote: #f43f5e;
-  --color-brand: #06b6d4;
-  --color-brand-secondary: #6366f1;
-  --color-brand-hover: #0891b2;
-  --color-success: #10b981;
-  --color-danger: #f43f5e;
-  --color-warning: #f59e0b;
-  --color-mod: #10b981;
+  /* 4. Gam màu Điểm nhấn Công nghệ (15% - Warm Sandstone Silk: #E1D9BC) */
+  --color-brand: #e1d9bc;
+  --color-brand-secondary: #acbac4;
+  --color-brand-hover: #f0f0db;
+  --color-upvote: #e1d9bc;
+  --color-downvote: #f87171;
+  --color-success: #86efac;
+  --color-danger: #f87171;
+  --color-warning: #fde047;
+  --color-mod: #e1d9bc;
 
   /* 5. Kích thước & Khoảng cách (Metrics) */
   --header-height: 56px;
@@ -52,11 +53,11 @@
   --radius-xl: 16px;
   --radius-full: 9999px;
 
-  /* 7. Đổ bóng Chiều sâu (Obsidian Neon Shadows) */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.6);
-  --shadow-dropdown: 0 12px 32px rgba(0, 0, 0, 0.85);
-  --shadow-floating: 0 16px 48px rgba(0, 0, 0, 0.95);
-  --shadow-glow: 0 0 20px -3px rgba(6, 182, 212, 0.35);
+  /* 7. Đổ bóng Chiều sâu (Warm Obsidian Shadows) */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-dropdown: 0 12px 32px rgba(18, 22, 34, 0.85);
+  --shadow-floating: 0 16px 48px rgba(18, 22, 34, 0.95);
+  --shadow-glow: 0 0 20px -3px rgba(225, 217, 188, 0.25);
 }
 
 /* Base Reset */
@@ -79,21 +80,24 @@ html, body {
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
 }
+
 ::-webkit-scrollbar-track {
   background: var(--bg-canvas);
 }
+
 ::-webkit-scrollbar-thumb {
-  background: #1c2236;
+  background: var(--border-subtle);
   border-radius: var(--radius-full);
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: #2a3452;
+  background: var(--border-strong);
 }
 
-/* Layout Utilities */
+/* Layout Shell */
 .app-shell {
   min-height: 100vh;
   display: flex;
@@ -101,7 +105,7 @@ html, body {
   background-color: var(--bg-canvas);
 }
 
-.app-container {
+.app-container, .app-body {
   max-width: 1360px;
   width: 100%;
   margin: 0 auto;
@@ -117,7 +121,7 @@ html, body {
   top: 0;
   z-index: 50;
   height: var(--header-height);
-  background-color: rgba(18, 21, 31, 0.92);
+  background-color: rgba(38, 43, 64, 0.95);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
@@ -148,30 +152,30 @@ html, body {
 }
 
 .search-pill-input:hover {
-  background-color: #1c2236;
+  background-color: #2b3149;
   border-color: var(--border-strong);
 }
 
 .search-pill-input:focus {
   background-color: var(--bg-surface);
   border-color: var(--color-brand);
-  box-shadow: 0 0 14px rgba(6, 182, 212, 0.25);
+  box-shadow: 0 0 14px rgba(225, 217, 188, 0.25);
 }
 
-/* Card Component (Synapse Void Card) */
+/* Card Component (Synapse Card) */
 .reddit-card, .synapse-card {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: 14px 16px;
   margin-bottom: 12px;
-  box-shadow: 0 4px 18px -2px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 4px 18px -2px rgba(18, 22, 34, 0.45);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .reddit-card:hover, .synapse-card:hover {
-  border-color: rgba(6, 182, 212, 0.35);
-  box-shadow: 0 4px 22px -2px rgba(6, 182, 212, 0.08);
+  border-color: rgba(225, 217, 188, 0.35);
+  box-shadow: 0 4px 22px -2px rgba(225, 217, 188, 0.1);
 }
 
 /* Pill Button */
@@ -200,15 +204,17 @@ html, body {
 }
 
 .reddit-pill-btn.primary, .synapse-pill-btn.primary {
-  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #6366f1 100%);
-  color: #ffffff;
-  border: none;
-  box-shadow: 0 0 14px -2px rgba(6, 182, 212, 0.4);
+  background-color: #f0f0db;
+  color: #30364f;
+  font-weight: 800;
+  border: 1px solid rgba(240, 240, 219, 0.6);
+  box-shadow: 0 2px 12px rgba(240, 240, 219, 0.2);
 }
 
 .reddit-pill-btn.primary:hover, .synapse-pill-btn.primary:hover {
-  background: linear-gradient(135deg, #0891b2 0%, #2563eb 50%, #4f46e5 100%);
-  box-shadow: 0 0 18px -1px rgba(6, 182, 212, 0.6);
+  background-color: #ffffff;
+  color: #262b40;
+  box-shadow: 0 4px 16px rgba(240, 240, 219, 0.35);
 }
 
 .reddit-pill-btn.joined, .synapse-pill-btn.joined {
@@ -222,7 +228,7 @@ html, body {
   color: var(--color-danger);
 }
 
-/* Vote Pill (Emerald & Rose Red) */
+/* Vote Pill (Warm Champagne & Soft Red) */
 .vote-pill {
   display: inline-flex;
   align-items: center;
@@ -248,7 +254,7 @@ html, body {
 }
 
 .vote-btn:hover {
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: rgba(172, 186, 196, 0.15);
 }
 
 .vote-btn.up:hover, .vote-btn.up.active {
@@ -276,7 +282,7 @@ html, body {
   color: var(--color-downvote);
 }
 
-/* Pulse indicator (Emerald Online) */
+/* Pulse indicator (Champagne Online) */
 .online-pulse {
   display: inline-block;
   width: 8px;
@@ -284,14 +290,14 @@ html, body {
   border-radius: 50%;
   background-color: var(--color-success);
   margin-right: 6px;
-  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  box-shadow: 0 0 0 0 rgba(134, 239, 172, 0.7);
   animation: pulse 2s infinite;
 }
 
 @keyframes pulse {
-  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
-  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(134, 239, 172, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(134, 239, 172, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(134, 239, 172, 0); }
 }
 
 /* Responsive Media Queries */
@@ -308,9 +314,9 @@ html, body {
     left: 0 !important;
     bottom: 0 !important;
     z-index: 99 !important;
-    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.8) !important;
+    box-shadow: 4px 0 24px rgba(18, 22, 34, 0.8) !important;
   }
-  .app-container {
+  .app-container, .app-body {
     padding: 8px 4px 64px 4px;
   }
   .reddit-card, .synapse-card {

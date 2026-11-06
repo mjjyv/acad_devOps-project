@@ -24,26 +24,26 @@ export function SynapseLogo({ size = 32, ...props }: IconProps) {
           y2="40"
           gradientUnits="userSpaceOnUse"
         >
-          <stop stopColor="#06b6d4" />
-          <stop offset="0.5" stopColor="#3b82f6" />
-          <stop offset="1" stopColor="#8b5cf6" />
+          <stop stopColor="#e1d9bc" />
+          <stop offset="0.5" stopColor="#acbac4" />
+          <stop offset="1" stopColor="#f0f0db" />
         </linearGradient>
         <linearGradient
-          id="synapse-emerald-glow"
+          id="synapse-champagne-glow"
           x1="14"
           y1="14"
           x2="26"
           y2="26"
           gradientUnits="userSpaceOnUse"
         >
-          <stop stopColor="#10b981" />
-          <stop offset="1" stopColor="#06b6d4" />
+          <stop stopColor="#f0f0db" />
+          <stop offset="1" stopColor="#e1d9bc" />
         </linearGradient>
       </defs>
       {/* Outer Hexagon Shield */}
       <polygon
         points="20,2 36,11 36,29 20,38 4,29 4,11"
-        fill="#12151f"
+        fill="#262b40"
         stroke="url(#synapse-brand-grad)"
         strokeWidth="2.2"
         strokeLinejoin="round"
@@ -56,11 +56,11 @@ export function SynapseLogo({ size = 32, ...props }: IconProps) {
         strokeLinecap="round"
       />
       {/* Center Quantum Node */}
-      <polygon points="20,15 25,20 20,25 15,20" fill="url(#synapse-emerald-glow)" />
+      <polygon points="20,15 25,20 20,25 15,20" fill="url(#synapse-champagne-glow)" />
       {/* 3 Convergent Neural Nodes */}
-      <circle cx="20" cy="7" r="2.2" fill="#06b6d4" />
-      <circle cx="6" cy="28" r="2.2" fill="#3b82f6" />
-      <circle cx="34" cy="28" r="2.2" fill="#8b5cf6" />
+      <circle cx="20" cy="7" r="2.2" fill="#e1d9bc" />
+      <circle cx="6" cy="28" r="2.2" fill="#acbac4" />
+      <circle cx="34" cy="28" r="2.2" fill="#f0f0db" />
     </svg>
   );
 }

@@ -137,8 +137,13 @@ case "$ACTION" in
       echo "⚠️ Tên miền chưa phản hồi 200 OK. Vui lòng kiểm tra lại cấu hình Public Hostnames trên Cloudflare Tunnel."
     fi
     ;;
+  seed)
+    echo "--- Nạp dữ liệu mẫu PostgreSQL (Realistic Community Seed Data) ---"
+    podman exec -i acad-postgres psql -U postgres -d acad_dev < "$PROJECT_DIR/deploy/seeds/001_realistic_community_seed.sql"
+    echo "✅ Đã nạp thành công bộ dữ liệu mẫu vào cơ sở dữ liệu acad_dev."
+    ;;
   *)
-    echo "Cách dùng: $0 {start|stop|restart|status|logs-api|logs-web|test|verify-domain <domain>}"
+    echo "Cách dùng: $0 {start|stop|restart|status|logs-api|logs-web|test|seed|verify-domain <domain>}"
     exit 1
     ;;
 esac

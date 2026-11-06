@@ -23,7 +23,7 @@ export class CommunityApi {
    */
   public static async getSpaces(limit = 20, offset = 0): Promise<Space[]> {
     const client = getApiClient();
-    const res = await client.request(`/spaces?limit=${limit}&offset=${offset}`, {
+    const res = await client.request(`/api/v1/spaces?limit=${limit}&offset=${offset}`, {
       method: 'GET',
     });
     if (!res.ok) {
@@ -38,7 +38,7 @@ export class CommunityApi {
    */
   public static async getSpace(slug: string): Promise<SpaceWithFlairs> {
     const client = getApiClient();
-    const res = await client.request(`/spaces/${encodeURIComponent(slug)}`, {
+    const res = await client.request(`/api/v1/spaces/${encodeURIComponent(slug)}`, {
       method: 'GET',
     });
     if (!res.ok) {
@@ -52,7 +52,7 @@ export class CommunityApi {
    */
   public static async joinSpace(slug: string): Promise<void> {
     const client = getApiClient();
-    const res = await client.request(`/spaces/${encodeURIComponent(slug)}/join`, {
+    const res = await client.request(`/api/v1/spaces/${encodeURIComponent(slug)}/join`, {
       method: 'POST',
     });
     if (!res.ok) {
@@ -66,7 +66,7 @@ export class CommunityApi {
    */
   public static async leaveSpace(slug: string): Promise<void> {
     const client = getApiClient();
-    const res = await client.request(`/spaces/${encodeURIComponent(slug)}/leave`, {
+    const res = await client.request(`/api/v1/spaces/${encodeURIComponent(slug)}/leave`, {
       method: 'DELETE',
     });
     if (!res.ok) {
@@ -85,9 +85,24 @@ export class CommunityApi {
   ): Promise<ThreadSummary[]> {
     const client = getApiClient();
     const res = await client.request(
-      `/feeds/${sort}?spaceSlug=${encodeURIComponent(slug)}&limit=${limit}`,
+      `/api/v1/spaces/${encodeURIComponent(slug)}/threads?sort=${sort}&limit=${limit}`,
       { method: 'GET' },
     );
+    if (!res.ok) {
+      return [];
+    }
+    const data = await res.json();
+    return data.items || [];
+  }
+
+  /**
+   * Lấy bảng tin thịnh hành toàn cầu (Popular Feed)
+   */
+  public static async getPopularFeed(limit = 20): Promise<ThreadSummary[]> {
+    const client = getApiClient();
+    const res = await client.request(`/api/v1/feed/popular?limit=${limit}`, {
+      method: 'GET',
+    });
     if (!res.ok) {
       return [];
     }
@@ -100,14 +115,14 @@ export class CommunityApi {
    */
   public static async getThread(id: string): Promise<ThreadDetail> {
     const client = getApiClient();
-    const res = await client.request(`/threads/${encodeURIComponent(id)}`, {
+    const res = await client.request(`/api/v1/threads/${encodeURIComponent(id)}`, {
       method: 'GET',
     });
     if (!res.ok) {
       throw new Error(`Không tìm thấy bài viết (HTTP ${res.status})`);
     }
     const data = await res.json();
-    return data.thread;
+    return data.thread || data;
   }
 
   /**
@@ -123,7 +138,7 @@ export class CommunityApi {
     },
   ): Promise<ThreadSummary> {
     const client = getApiClient();
-    const res = await client.request(`/spaces/${encodeURIComponent(spaceSlug)}/threads`, {
+    const res = await client.request(`/api/v1/spaces/${encodeURIComponent(spaceSlug)}/threads`, {
       method: 'POST',
       body: JSON.stringify(payload),
     });
@@ -142,7 +157,7 @@ export class CommunityApi {
     direction: 1 | -1,
   ): Promise<{ netScore: number; userVote: number }> {
     const client = getApiClient();
-    const res = await client.request(`/threads/${encodeURIComponent(threadId)}/vote`, {
+    const res = await client.request(`/api/v1/threads/${encodeURIComponent(threadId)}/vote`, {
       method: 'POST',
       body: JSON.stringify({ direction }),
     });
@@ -157,13 +172,14 @@ export class CommunityApi {
    */
   public static async getThreadComments(threadId: string): Promise<CommentTreeData> {
     const client = getApiClient();
-    const res = await client.request(`/threads/${encodeURIComponent(threadId)}/comments`, {
+    const res = await client.request(`/api/v1/threads/${encodeURIComponent(threadId)}/comments`, {
       method: 'GET',
     });
     if (!res.ok) {
       return { items: [], totalCount: 0 };
     }
-    return await res.json();
+    const data = await res.json();
+    return data.items ? data : { items: data, totalCount: Array.isArray(data) ? data.length : 0 };
   }
 
   /**
@@ -176,7 +192,7 @@ export class CommunityApi {
     parentAuthorUsername?: string,
   ): Promise<FlatCommentItem> {
     const client = getApiClient();
-    const res = await client.request(`/threads/${encodeURIComponent(threadId)}/comments`, {
+    const res = await client.request(`/api/v1/threads/${encodeURIComponent(threadId)}/comments`, {
       method: 'POST',
       body: JSON.stringify({
         content,
@@ -189,7 +205,7 @@ export class CommunityApi {
       throw new Error(err.detail || 'Không thể gửi bình luận');
     }
     const data = await res.json();
-    return data.comment;
+    return data.comment || data;
   }
 
   /**
@@ -200,7 +216,7 @@ export class CommunityApi {
     direction: 1 | -1,
   ): Promise<{ netScore: number; userVote: number }> {
     const client = getApiClient();
-    const res = await client.request(`/comments/${encodeURIComponent(commentId)}/vote`, {
+    const res = await client.request(`/api/v1/comments/${encodeURIComponent(commentId)}/vote`, {
       method: 'POST',
       body: JSON.stringify({ direction }),
     });

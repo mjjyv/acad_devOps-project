@@ -21,6 +21,12 @@ import {
   type ThreadEntity,
 } from './community-repository.js';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isUuid(val: string): boolean {
+  return UUID_REGEX.test(val);
+}
+
 export class PostgresCommunityRepository implements ICommunityRepository {
   private pool: pg.Pool;
 
@@ -172,6 +178,7 @@ export class PostgresCommunityRepository implements ICommunityRepository {
   }
 
   public async findSpaceById(id: string): Promise<SpaceEntity | null> {
+    if (!isUuid(id)) return null;
     try {
       const res = await this.pool.query('SELECT * FROM spaces WHERE id = $1 LIMIT 1;', [id]);
       return res.rows[0] ? this.mapSpaceRow(res.rows[0]) : null;
@@ -362,6 +369,7 @@ export class PostgresCommunityRepository implements ICommunityRepository {
   }
 
   public async findThreadById(id: string): Promise<ThreadEntity | null> {
+    if (!isUuid(id)) return null;
     try {
       const res = await this.pool.query('SELECT * FROM threads WHERE id = $1 LIMIT 1;', [id]);
       return res.rows[0] ? this.mapThreadRow(res.rows[0]) : null;
@@ -471,6 +479,7 @@ export class PostgresCommunityRepository implements ICommunityRepository {
   }
 
   public async findCommentById(id: string): Promise<CommentEntity | null> {
+    if (!isUuid(id)) return null;
     try {
       const res = await this.pool.query('SELECT * FROM comments WHERE id = $1 LIMIT 1;', [id]);
       return res.rows[0] ? this.mapCommentRow(res.rows[0]) : null;
