@@ -7,12 +7,14 @@ import { configureCors } from './middleware/cors.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { requestIdMiddleware } from './middleware/request-id.js';
 import { createAuthRouter } from './routes/auth-router.js';
+import { type ChatServices, createChatRouter } from './routes/chat-router.js';
 import { type CommunityServices, createCommunityRouter } from './routes/community-router.js';
 import { createHealthzRouter } from './routes/healthz-router.js';
 
 export interface AppOptions {
   authService: AuthService;
   communityServices?: CommunityServices | undefined;
+  chatServices?: ChatServices | undefined;
   jwtSecret?: string | undefined;
   pool?: pg.Pool | undefined;
   redis?: Redis | undefined;
@@ -43,7 +45,14 @@ export function createApp(options: AppOptions): Application {
     app.use('/api/v1', communityRouter);
   }
 
-  // 5. Centralized RFC 7807 Error Handler
+  // 5. Chat Router mounted on /chat and /api/v1/chat
+  if (options.chatServices) {
+    const chatRouter = createChatRouter(options.chatServices, jwtSecret);
+    app.use('/chat', chatRouter);
+    app.use('/api/v1/chat', chatRouter);
+  }
+
+  // 6. Centralized RFC 7807 Error Handler
   app.use(errorHandler());
 
   return app;

@@ -7,6 +7,16 @@ import {
   TokenReuseError,
 } from '@acad/auth-service';
 import {
+  CannotChatWithSelfError,
+  ChatChannelNotFoundError,
+  ChatRequestNotFoundError,
+  DuplicateChatRequestError,
+  NotChannelMemberError,
+  ParentMessageNotFoundError,
+  RecipientNotFoundError,
+  UserBlockedError,
+} from '@acad/chat-service';
+import {
   CommentNotFoundError,
   DuplicateFlairError,
   DuplicateSlugError,
@@ -57,11 +67,27 @@ export function errorHandler() {
       return;
     }
 
-    // 2. Conflict Errors (Duplicate username, email, slug, flair) -> 409 Conflict
+    // 1.1. Bad Request Errors -> 400 Bad Request
+    if (err instanceof CannotChatWithSelfError) {
+      const problem: RFC7807Problem = {
+        type: 'https://api.acad.vn/errors/bad-request',
+        title: 'Bad Request',
+        status: 400,
+        detail: (err as Error).message,
+        instance,
+        correlationId,
+      };
+
+      res.status(400).json(problem);
+      return;
+    }
+
+    // 2. Conflict Errors (Duplicate username, email, slug, flair, chat request) -> 409 Conflict
     if (
       err instanceof DuplicateUserError ||
       err instanceof DuplicateSlugError ||
-      err instanceof DuplicateFlairError
+      err instanceof DuplicateFlairError ||
+      err instanceof DuplicateChatRequestError
     ) {
       const problem: RFC7807Problem = {
         type: 'https://api.acad.vn/errors/conflict',
@@ -76,12 +102,16 @@ export function errorHandler() {
       return;
     }
 
-    // 2.1. Not Found Errors (Space, Thread, Comment) -> 404 Not Found
+    // 2.1. Not Found Errors (Space, Thread, Comment, Chat Channel, Chat Request, Message) -> 404 Not Found
     if (
       err instanceof SpaceNotFoundError ||
       err instanceof ThreadNotFoundError ||
       err instanceof CommentNotFoundError ||
-      err instanceof TargetNotFoundError
+      err instanceof TargetNotFoundError ||
+      err instanceof ChatChannelNotFoundError ||
+      err instanceof ChatRequestNotFoundError ||
+      err instanceof ParentMessageNotFoundError ||
+      err instanceof RecipientNotFoundError
     ) {
       const problem: RFC7807Problem = {
         type: 'https://api.acad.vn/errors/not-found',
@@ -96,8 +126,12 @@ export function errorHandler() {
       return;
     }
 
-    // 2.2. Forbidden Errors (e.g. Insufficient Space Permission) -> 403 Forbidden
-    if (err instanceof InsufficientSpacePermissionError) {
+    // 2.2. Forbidden Errors (e.g. Insufficient Space Permission, Not Chat Member, User Blocked) -> 403 Forbidden
+    if (
+      err instanceof InsufficientSpacePermissionError ||
+      err instanceof NotChannelMemberError ||
+      err instanceof UserBlockedError
+    ) {
       const problem: RFC7807Problem = {
         type: 'https://api.acad.vn/errors/forbidden',
         title: 'Forbidden',

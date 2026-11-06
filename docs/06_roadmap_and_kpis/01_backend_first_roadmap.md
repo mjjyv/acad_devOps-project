@@ -146,12 +146,13 @@ Tuân thủ nghiêm ngặt cẩm nang vận hành [`docs/guide.md`](file:///home
 
 ### 🔹 Phase B4: Phân Hệ Nhắn Tin Thời Gian Thực & Kiểm Duyệt Tin Nhắn (Reddit Realtime Chat)
 *Mục tiêu:* Cung cấp kênh đối thoại trực tiếp 1-1 và Group Chat, giải quyết bài toán chống spam tin nhắn lạ.
-- [ ] Kiến trúc CSDL Nhắn Tin: Bảng `chat_channels`, `chat_members`, `chat_messages`.
-- [ ] Hàng đợi duyệt tin nhắn từ người lạ: Bảng `chat_requests` với trạng thái `PENDING / ACCEPTED / IGNORED / BLOCKED`.
-- [ ] Tính năng Chat Threads: Phân nhánh đối thoại chuyên sâu trong phòng chat qua `parent_message_id`.
-- [ ] Cổng kết nối thời gian thực: Server-Sent Events (SSE) hoặc WebSocket Gateway với cơ chế Heartbeat 15s.
-- [ ] Quản lý trạng thái trực tuyến (Presence) `chat:online_users` và chỉ báo soạn thảo qua Hash TTL 5s trên Redis.
-- **Trạng thái:** ⏳ **Kế hoạch đã sẵn sàng.**
+- [x] Kiến trúc CSDL Nhắn Tin: Bảng `chat_channels`, `chat_members`, `chat_messages` kèm `parent_message_id`.
+- [x] Hàng đợi duyệt tin nhắn từ người lạ: Bảng `chat_requests` với trạng thái `PENDING / ACCEPTED / IGNORED / BLOCKED`.
+- [x] Tính năng Chat Threads: Phân nhánh đối thoại chuyên sâu trong phòng chat qua `parent_message_id`.
+- [x] Cổng kết nối thời gian thực: Server-Sent Events (SSE) RFC 8895 Gateway với cơ chế Heartbeat 15s (`: ping\n\n`) và multi-tab support.
+- [x] Quản lý trạng thái trực tuyến (Presence Heartbeat 15s) và chỉ báo soạn thảo (Typing Indicator 5s) trên Redis với in-memory fallback.
+- [x] Kiểm định CI & API Probes toàn diện: 120/120 tests pass (100%), Biome lint 0 errors, Typecheck 0 errors, 16/16 live cURL probes pass.
+- **Trạng thái:** ✅ **100% Hoàn thành & Đã nghiệm thu (LOG-B4).**
 
 ---
 

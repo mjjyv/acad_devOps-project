@@ -26,6 +26,9 @@ importers:
       '@acad/auth-service':
         specifier: workspace:*
         version: link:../../services/auth
+      '@acad/chat-service':
+        specifier: workspace:*
+        version: link:../../services/chat
       '@acad/community-service':
         specifier: workspace:*
         version: link:../../services/community
@@ -143,6 +146,31 @@ importers:
         version: link:../../packages/contracts
       ioredis:
         specifier: ^5.4.2
+        version: 5.11.1
+      pg:
+        specifier: ^8.13.3
+        version: 8.23.1
+    devDependencies:
+      '@types/node':
+        specifier: ^22.13.4
+        version: 22.20.4
+      '@types/pg':
+        specifier: ^8.11.11
+        version: 8.23.1
+      typescript:
+        specifier: ^5.8.2
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.7(@types/node@22.20.4)
+
+  services/chat:
+    dependencies:
+      '@acad/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      ioredis:
+        specifier: ^5.5.0
         version: 5.11.1
       pg:
         specifier: ^8.13.3

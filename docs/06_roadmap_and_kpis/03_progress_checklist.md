@@ -12,11 +12,11 @@
 
 | Luồng Phát Triển | Mục Tiêu Kỹ Thuật | Tỷ Lệ Hoàn Thành | Trạng Thái Thực Thi |
 | :--- | :--- | :---: | :---: |
-| **Stream B: Backend Engine** | Xây dựng hoàn chỉnh CSDL, Auth, Spaces, Ltree, Lua Voting, Chat, Admin | **75%** | 🔄 Đã xong B0, B1, B2, B3 (Voting & Feeds Engine), Sẵn sàng B4 |
+| **Stream B: Backend Engine** | Xây dựng hoàn chỉnh CSDL, Auth, Spaces, Ltree, Lua Voting, Chat, Admin | **85%** | 🔄 Đã xong B0, B1, B2, B3, B4 (Realtime Chat & Requests Queue), Sẵn sàng B5 |
 | **Stream F: Frontend Client** | Next.js 15 Brutalist Dark Mode, DOM ảo hóa cây bình luận, Floating Chat | **0%** | ⏸️ Tạm hoãn đến khi Stream B hoàn tất |
-| **Stream Q: QA & Load Testing** | Vitest 100% test suites passed, k6 stress test 5,000 RPS | **70%** | 🔄 100/100 Monorepo tests pass (100%), 16/16 Live cURL probes pass |
-| **Stream D: DevOps & Cloud** | Multi-stage Docker, GitHub Actions 4 Gates, Render & Supabase Live | **30%** | 🔄 Docker dev compose, Dockerfile.api.prod, migrations 000001, 000002, 000003 |
-| **TỔNG THỂ DỰ ÁN** | **Nền tảng Diễn đàn & Mạng xã hội chuyên sâu tốc độ cao** | **60.0%** | 🚀 **Hoàn tất Phase B0, B1, B2, B3 -> Sẵn sàng bước vào Phase B4** |
+| **Stream Q: QA & Load Testing** | Vitest 100% test suites passed, k6 stress test 5,000 RPS | **80%** | 🔄 120/120 Monorepo tests pass (100%), 16/16 Live cURL probes pass |
+| **Stream D: DevOps & Cloud** | Multi-stage Docker, GitHub Actions 4 Gates, Render & Supabase Live | **40%** | 🔄 Docker dev compose, Dockerfile.api.prod, migrations 000001, 000002, 000003, 000004 |
+| **TỔNG THỂ DỰ ÁN** | **Nền tảng Diễn đàn & Mạng xã hội chuyên sâu tốc độ cao** | **75.0%** | 🚀 **Hoàn tất Phase B0, B1, B2, B3, B4 -> Sẵn sàng bước vào Phase B5** |
 
 ---
 
@@ -49,11 +49,11 @@
 - [x] Bảng tin phân tầng: Home Feed (`/feed/home`), Popular Feed (`/feed/popular`), Custom Feeds.
 - [x] Phân trang danh sách bằng con trỏ Base64 tổng hợp $\text{base64}(\text{sort\_score}:\text{timestamp}:\text{item\_id})$.
 - [x] Bộ máy tìm kiếm toàn văn bản trong không gian (In-Space Scoped Search) qua `pg_trgm`.
-- [ ] Kiến trúc CSDL Nhắn Tin: Bảng `chat_channels`, `chat_members`, `chat_messages`.
-- [ ] Hàng đợi duyệt tin nhắn từ người lạ (Reddit Chat Requests Queue: PENDING, ACCEPTED, IGNORED, BLOCKED).
-- [ ] Phân nhánh đối thoại trong chat (Chat Threads qua `parent_message_id`).
-- [ ] Cổng sự kiện thời gian thực (SSE / WebSocket) duy trì heartbeat ping 15s.
-- [ ] Trạng thái trực tuyến (Presence) `chat:online_users` và typing indicators trên Redis.
+- [x] Kiến trúc CSDL Nhắn Tin: Bảng `chat_channels`, `chat_members`, `chat_messages` kèm `parent_message_id`.
+- [x] Hàng đợi duyệt tin nhắn từ người lạ (Reddit Chat Requests Queue: PENDING, ACCEPTED, IGNORED, BLOCKED).
+- [x] Phân nhánh đối thoại trong chat (Chat Threads qua `parent_message_id`).
+- [x] Cổng sự kiện thời gian thực (SSE RFC 8895 Gateway) duy trì heartbeat ping 15s.
+- [x] Trạng thái trực tuyến (Presence) TTL 15s và typing indicators TTL 5s trên Redis với in-memory fallback.
 - [ ] Phân quyền Admin Console bảo vệ bằng RBAC Admin Guard (`role === 'ADMIN'`).
 - [ ] Bảng `reports` (Mod Queue cho Space Moderators) và cơ chế cấm ngầm (Shadowban).
 - [ ] Bảng `audit_logs` lưu vết toàn bộ thao tác quản trị an ninh hệ thống.

@@ -2,6 +2,12 @@ import http from 'node:http';
 import { createApp } from '../apps/api/dist/app.js';
 import { AuthService, InMemorySessionStore, InMemoryUserRepository } from '../services/auth/dist/index.js';
 import {
+  ChatService,
+  InMemoryChatRepository,
+  PresenceManager,
+  SseManager,
+} from '../services/chat/dist/index.js';
+import {
   AtomicVoteEngine,
   CommentService,
   FeedService,
@@ -29,6 +35,12 @@ const feedService = new FeedService(communityRepo, voteEngine);
 const flushWorker = new VoteFlushWorker(voteEngine, communityRepo, { intervalMs: 1000 });
 flushWorker.start();
 
+const chatRepo = new InMemoryChatRepository(userRepository);
+const presenceManager = new PresenceManager();
+const sseManager = new SseManager({ heartbeatIntervalMs: 15000 });
+sseManager.startHeartbeat();
+const chatService = new ChatService(chatRepo, sseManager, presenceManager);
+
 const app = createApp({
   authService,
   communityServices: {
@@ -40,6 +52,11 @@ const app = createApp({
     feedService,
     flushWorker,
   },
+  chatServices: {
+    chatService,
+    presenceManager,
+    sseManager,
+  },
 });
 
 const server = http.createServer(app);
@@ -49,12 +66,14 @@ server.listen(PORT, () => {
 });
 
 process.on('SIGTERM', () => {
+  sseManager.stopHeartbeat();
   flushWorker.stop().finally(() => {
     server.close(() => process.exit(0));
   });
 });
 
 process.on('SIGINT', () => {
+  sseManager.stopHeartbeat();
   flushWorker.stop().finally(() => {
     server.close(() => process.exit(0));
   });

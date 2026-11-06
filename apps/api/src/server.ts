@@ -6,6 +6,12 @@ import {
   TokenManager,
 } from '@acad/auth-service';
 import {
+  ChatService,
+  PostgresChatRepository,
+  PresenceManager,
+  SseManager,
+} from '@acad/chat-service';
+import {
   CommentService,
   FeedService,
   PostgresCommunityRepository,
@@ -94,6 +100,13 @@ async function bootstrap() {
   const flushWorker = new VoteFlushWorker(voteEngine, communityRepo, { intervalMs: 5000 });
   flushWorker.start();
 
+  // 3.3. Khởi tạo Phân Hệ Tin Nhắn Thời Gian Thực & Hàng Đợi (Phase B4)
+  const chatRepo = new PostgresChatRepository(pool);
+  const presenceManager = new PresenceManager(redis);
+  const sseManager = new SseManager({ heartbeatIntervalMs: 15000 });
+  sseManager.startHeartbeat();
+  const chatService = new ChatService(chatRepo, sseManager, presenceManager);
+
   // 4. Khởi tạo Express App & HTTP Server
   const app = createApp({
     authService,
@@ -105,6 +118,11 @@ async function bootstrap() {
       voteService,
       feedService,
       flushWorker,
+    },
+    chatServices: {
+      chatService,
+      presenceManager,
+      sseManager,
     },
     jwtSecret: JWT_SECRET,
     pool,
@@ -128,6 +146,8 @@ async function bootstrap() {
     server.close(async () => {
       console.log('[HTTP SERVER] Máy chủ HTTP đã đóng tiếp nhận kết nối mới.');
       try {
+        sseManager.stopHeartbeat();
+        console.log('[SSE] Heartbeat timer đã dừng.');
         await flushWorker.stop();
         console.log('[WORKER] Tiến trình VoteFlushWorker đã dừng an toàn.');
         await pool.end();

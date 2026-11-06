@@ -163,3 +163,10 @@ Dự án đã tích hợp sẵn các kịch bản kiểm thử API khép kín (E
    # Kết quả tự động ghi vào docs/05_guides_and_verification/logs/log_B3_voting_and_feeds.md
    ```
 
+4. **Kiểm thử Phân hệ B4 (Realtime Chat Subsystem, SSE Gateway & Chat Requests Queue):**
+   ```bash
+   chmod +x scripts/verify-chat-curl.sh
+   ./scripts/verify-chat-curl.sh
+   # Kết quả tự động ghi vào docs/05_guides_and_verification/logs/log_B4_realtime_chat.md
+   ```
+

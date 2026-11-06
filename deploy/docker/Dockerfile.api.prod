@@ -13,6 +13,7 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json tsconfig
 COPY packages/contracts/package.json ./packages/contracts/
 COPY packages/auth-client/package.json ./packages/auth-client/
 COPY services/auth/package.json ./services/auth/
+COPY services/chat/package.json ./services/chat/
 COPY services/community/package.json ./services/community/
 COPY apps/api/package.json ./apps/api/
 COPY apps/web/package.json ./apps/web/
