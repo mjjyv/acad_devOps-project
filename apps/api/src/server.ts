@@ -27,7 +27,7 @@ import { Redis } from 'ioredis';
 import pg from 'pg';
 import { createApp } from './app.js';
 
-const PORT = parseInt(process.env.PORT || '10000', 10);
+const PORT = parseInt(process.env.PORT || process.env.API_PORT || '10000', 10);
 const DATABASE_URL =
   process.env.DATABASE_URL ||
   'postgresql://postgres:postgres@localhost:5432/acad_dev?sslmode=disable';
