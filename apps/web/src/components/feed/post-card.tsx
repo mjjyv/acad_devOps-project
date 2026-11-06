@@ -12,6 +12,7 @@ import {
   ShareIcon,
   UpvoteIcon,
 } from '@/components/ui/icons';
+import { useAuth } from '@/lib/auth/auth-context';
 import { useUIState } from '@/lib/store/ui-context';
 
 export interface PostItem {
@@ -36,20 +37,23 @@ interface PostCardProps {
 
 export function PostCard({ post }: PostCardProps) {
   const { viewMode, showToast, addRecentPost } = useUIState();
+  const { requireAuth } = useAuth();
   const [vote, setVote] = useState<1 | -1 | null>(post.userVote || null);
   const [baseVotes, _setBaseVotes] = useState<number>(post.upvotes);
   const [isJoined, setIsJoined] = useState<boolean>(!!post.hasJoined);
   const [isBookmarked, setIsBookmarked] = useState<boolean>(false);
 
-  // 0ms Optimistic Voting State Machine
+  // 0ms Optimistic Voting State Machine protected by Action Guard
   const handleVote = (direction: 1 | -1, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (vote === direction) {
-      // Toggle off
-      setVote(null);
-    } else {
-      setVote(direction);
-    }
+    requireAuth(() => {
+      if (vote === direction) {
+        // Toggle off
+        setVote(null);
+      } else {
+        setVote(direction);
+      }
+    }, 'Đăng nhập để bình chọn bài thảo luận');
   };
 
   const calculatedVotes =
@@ -70,8 +74,10 @@ export function PostCard({ post }: PostCardProps) {
 
   const handleJoinToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsJoined(!isJoined);
-    showToast(!isJoined ? `Joined r/${post.spaceSlug}` : `Left r/${post.spaceSlug}`);
+    requireAuth(() => {
+      setIsJoined(!isJoined);
+      showToast(!isJoined ? `Joined r/${post.spaceSlug}` : `Left r/${post.spaceSlug}`);
+    }, `Đăng nhập để tham gia r/${post.spaceSlug}`);
   };
 
   const handleShare = async (e: React.MouseEvent) => {
@@ -92,8 +98,10 @@ export function PostCard({ post }: PostCardProps) {
 
   const handleBookmarkToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsBookmarked(!isBookmarked);
-    showToast(!isBookmarked ? 'Post saved to bookmarks' : 'Post removed from bookmarks');
+    requireAuth(() => {
+      setIsBookmarked(!isBookmarked);
+      showToast(!isBookmarked ? 'Post saved to bookmarks' : 'Post removed from bookmarks');
+    }, 'Đăng nhập để lưu bài viết');
   };
 
   const handlePostClick = () => {

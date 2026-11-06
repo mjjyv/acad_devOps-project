@@ -2,11 +2,13 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { useAuth } from '../../lib/auth/auth-context';
 import { useUI } from '../../lib/store/ui-context';
 import { ExploreIcon, HomeIcon, PlusIcon, PopularIcon, ShieldIcon } from '../ui/icons';
 
 export function LeftSidebar() {
   const { sidebarOpen, setSidebarOpen, showToast } = useUI();
+  const { requireAuth } = useAuth();
   const [topicsExpanded, setTopicsExpanded] = useState(true);
   const [communitiesExpanded, setCommunitiesExpanded] = useState(true);
 
@@ -131,7 +133,12 @@ export function LeftSidebar() {
         <div>
           <button
             type="button"
-            onClick={() => showToast('Hộp thoại Tạo Không Gian sẽ kích hoạt trong Phase F2')}
+            onClick={() =>
+              requireAuth(
+                () => showToast('Hộp thoại Tạo Không Gian sẽ kích hoạt trong Phase F2'),
+                'Đăng nhập để khởi tạo cộng đồng mới',
+              )
+            }
             style={{
               width: '100%',
               display: 'flex',

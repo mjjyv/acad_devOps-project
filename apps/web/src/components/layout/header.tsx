@@ -2,12 +2,16 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { useAuth } from '../../lib/auth/auth-context';
 import { useUI } from '../../lib/store/ui-context';
+import { SessionsModal } from '../auth/sessions-modal';
+import { UserMenuDropdown } from '../auth/user-menu-dropdown';
 import {
   BellIcon,
   ChatBubbleIcon,
   CloseIcon,
   ExternalLinkIcon,
+  FireIcon,
   MenuIcon,
   PlusIcon,
   RedditAlienLogo,
@@ -23,7 +27,10 @@ export function Header() {
     setSearchQuery,
     showToast,
   } = useUI();
+  const { user, isAuthenticated, openAuthModal, requireAuth } = useAuth();
   const [searchFocused, setSearchFocused] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [sessionsModalOpen, setSessionsModalOpen] = useState(false);
 
   const toggleChat = () => {
     if (chatWidgetState === 'closed' || chatWidgetState === 'minimized') {
@@ -245,7 +252,7 @@ export function Header() {
       </div>
 
       {/* 3. Action Utilities & Profile */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative' }}>
         <a
           href="/docs"
           target="_blank"
@@ -258,117 +265,165 @@ export function Header() {
           <ExternalLinkIcon size={12} />
         </a>
 
-        {/* Realtime Chat Button with Red Badge */}
-        <button
-          type="button"
-          onClick={toggleChat}
-          className="reddit-pill-btn"
-          title="Open Realtime Chat"
-          style={{ position: 'relative', width: '38px', height: '38px', padding: 0 }}
-        >
-          <ChatBubbleIcon size={20} />
-          <span
-            style={{
-              position: 'absolute',
-              top: '4px',
-              right: '4px',
-              backgroundColor: '#ff4500',
-              color: '#ffffff',
-              fontSize: '10px',
-              fontWeight: 800,
-              width: '16px',
-              height: '16px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 0 0 2px var(--bg-surface)',
-            }}
-          >
-            3
-          </span>
-        </button>
+        {!isAuthenticated ? (
+          /* Guest State: Log In & Sign Up buttons */
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => openAuthModal('login')}
+              className="reddit-pill-btn"
+              style={{ fontWeight: 700 }}
+            >
+              Log In
+            </button>
+            <button
+              type="button"
+              onClick={() => openAuthModal('register')}
+              className="reddit-pill-btn primary"
+              style={{ fontWeight: 700 }}
+            >
+              Sign Up
+            </button>
+          </div>
+        ) : (
+          /* Authenticated State */
+          <>
+            {/* Realtime Chat Toggle Button */}
+            <button
+              type="button"
+              onClick={toggleChat}
+              className="reddit-pill-btn"
+              title="Open Realtime Chat"
+              style={{ position: 'relative', width: '38px', height: '38px', padding: 0 }}
+            >
+              <ChatBubbleIcon size={20} />
+              <span
+                style={{
+                  position: 'absolute',
+                  top: '4px',
+                  right: '4px',
+                  backgroundColor: '#ff4500',
+                  color: '#ffffff',
+                  fontSize: '10px',
+                  fontWeight: 800,
+                  width: '16px',
+                  height: '16px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 0 0 2px var(--bg-surface)',
+                }}
+              >
+                3
+              </span>
+            </button>
 
-        {/* Create Post Button */}
-        <button
-          type="button"
-          onClick={() =>
-            showToast('Giao diện Soạn Thảo (Tiptap Editor) sẽ kích hoạt trong Phase F2')
-          }
-          className="reddit-pill-btn primary"
-          style={{ gap: '4px', padding: '0 14px' }}
-        >
-          <PlusIcon size={18} />
-          <span>Create</span>
-        </button>
+            {/* Create Post Button */}
+            <button
+              type="button"
+              onClick={() =>
+                requireAuth(
+                  () =>
+                    showToast('Giao diện Soạn Thảo (Tiptap Editor) sẽ kích hoạt trong Phase F2'),
+                  'Đăng nhập để tạo bài thảo luận mới',
+                )
+              }
+              className="reddit-pill-btn primary"
+              style={{ gap: '4px', padding: '0 14px' }}
+            >
+              <PlusIcon size={18} />
+              <span>Create</span>
+            </button>
 
-        {/* Notifications Bell */}
-        <button
-          type="button"
-          onClick={() => showToast('Không có thông báo vi phạm mới')}
-          className="reddit-pill-btn"
-          title="Notifications"
-          style={{ width: '38px', height: '38px', padding: 0 }}
-        >
-          <BellIcon size={20} />
-        </button>
+            {/* Notifications Bell */}
+            <button
+              type="button"
+              onClick={() => showToast('Không có thông báo vi phạm mới')}
+              className="reddit-pill-btn"
+              title="Notifications"
+              style={{ width: '38px', height: '38px', padding: 0 }}
+            >
+              <BellIcon size={20} />
+            </button>
 
-        {/* User Profile Avatar with Online Dot */}
-        <div
-          onClick={() => showToast('Menu Tài khoản & Quản lý phiên sẽ kích hoạt trong Phase F1')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '2px 8px 2px 2px',
-            borderRadius: 'var(--radius-full)',
-            cursor: 'pointer',
-            backgroundColor: 'transparent',
-          }}
-        >
-          <div style={{ position: 'relative' }}>
+            {/* User Profile Avatar with Online Dot */}
             <div
+              onClick={() => setUserMenuOpen((prev) => !prev)}
               style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                backgroundColor: '#393e46',
-                border: '2px solid var(--border-strong)',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 800,
-                color: '#dfd0b8',
-                fontSize: '13px',
+                gap: '8px',
+                padding: '2px 8px 2px 2px',
+                borderRadius: 'var(--radius-full)',
+                cursor: 'pointer',
+                backgroundColor: userMenuOpen ? 'var(--bg-surface-hover)' : 'transparent',
+                transition: 'background-color 0.15s ease',
               }}
             >
-              AD
+              <div style={{ position: 'relative' }}>
+                <div
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    backgroundColor: 'var(--color-brand)',
+                    border: '2px solid var(--border-strong)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 800,
+                    color: '#ffffff',
+                    fontSize: '13px',
+                  }}
+                >
+                  {user?.username ? user.username.charAt(0).toUpperCase() : 'U'}
+                </div>
+                <span
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    right: 0,
+                    width: '10px',
+                    height: '10px',
+                    backgroundColor: 'var(--color-success)',
+                    borderRadius: '50%',
+                    border: '2px solid var(--bg-surface)',
+                  }}
+                />
+              </div>
+
+              {/* Karma & Name */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  u/{user?.username}
+                </span>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    color: 'var(--text-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '3px',
+                  }}
+                >
+                  <FireIcon size={11} style={{ color: 'var(--color-brand)' }} />
+                  {user?.karmaScore || 0} karma
+                </span>
+              </div>
             </div>
-            <span
-              style={{
-                position: 'absolute',
-                bottom: 0,
-                right: 0,
-                width: '10px',
-                height: '10px',
-                backgroundColor: 'var(--color-success)',
-                borderRadius: '50%',
-                border: '2px solid var(--bg-surface)',
-              }}
+
+            {/* User Menu Dropdown */}
+            <UserMenuDropdown
+              isOpen={userMenuOpen}
+              onClose={() => setUserMenuOpen(false)}
+              onOpenSessions={() => setSessionsModalOpen(true)}
             />
-          </div>
-          <span
-            style={{
-              fontSize: '13px',
-              fontWeight: 600,
-              color: 'var(--text-primary)',
-              display: 'none',
-            }}
-            className="username-label"
-          >
-            admin_pro
-          </span>
-        </div>
+
+            {/* Sessions Modal */}
+            <SessionsModal isOpen={sessionsModalOpen} onClose={() => setSessionsModalOpen(false)} />
+          </>
+        )}
       </div>
     </header>
   );

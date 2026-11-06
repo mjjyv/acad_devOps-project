@@ -2,6 +2,7 @@
 
 import type React from 'react';
 import { useState } from 'react';
+import { useAuth } from '../../lib/auth/auth-context';
 import { useUI } from '../../lib/store/ui-context';
 import { ChatBubbleIcon, CheckIcon, CloseIcon, ExternalLinkIcon } from '../ui/icons';
 
@@ -41,6 +42,7 @@ const INITIAL_MESSAGES: MockMessage[] = [
 
 export function FloatingChatWidget() {
   const { chatWidgetState, setChatWidgetState, showToast } = useUI();
+  const { user, requireAuth } = useAuth();
   const [messages, setMessages] = useState<MockMessage[]>(INITIAL_MESSAGES);
   const [inputText, setInputText] = useState('');
   const [activeTab, setActiveTab] = useState<'direct' | 'groups' | 'requests'>('direct');
@@ -51,30 +53,32 @@ export function FloatingChatWidget() {
     e.preventDefault();
     if (!inputText.trim()) return;
 
-    const newMsg: MockMessage = {
-      id: `m_${Date.now()}`,
-      sender: 'admin_pro',
-      avatar: 'AD',
-      content: inputText.trim(),
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      isSelf: true,
-    };
-    setMessages((prev) => [...prev, newMsg]);
-    setInputText('');
+    requireAuth(() => {
+      const newMsg: MockMessage = {
+        id: `m_${Date.now()}`,
+        sender: user?.username || 'You',
+        avatar: user?.username ? user.username.charAt(0).toUpperCase() : 'U',
+        content: inputText.trim(),
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        isSelf: true,
+      };
+      setMessages((prev) => [...prev, newMsg]);
+      setInputText('');
 
-    // Simulate instant response from bot
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `m_rep_${Date.now()}`,
-          sender: 'bot_devops',
-          avatar: 'B',
-          content: 'SSE Gateway RFC 8895: Tin nhắn đã được gửi qua event stream an toàn.',
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        },
-      ]);
-    }, 800);
+      // Simulate instant response from bot
+      setTimeout(() => {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `m_rep_${Date.now()}`,
+            sender: 'bot_devops',
+            avatar: 'B',
+            content: 'SSE Gateway RFC 8895: Tin nhắn đã được gửi qua event stream an toàn.',
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+      }, 800);
+    }, 'Đăng nhập để tham gia nhắn tin thời gian thực');
   };
 
   // State: MINIMIZED
