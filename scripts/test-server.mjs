@@ -48,6 +48,67 @@ const chatService = new ChatService(chatRepo, sseManager, presenceManager);
 const moderationRepo = new InMemoryModerationRepository();
 const moderationService = new ModerationService(moderationRepo, sessionStore);
 
+// Đồng bộ tự động tài khoản người dùng giữa UserRepository và ModerationRepository
+const origUserCreate = userRepository.createUser.bind(userRepository);
+userRepository.createUser = async (data) => {
+  const user = await origUserCreate(data);
+  moderationRepo.seedUser({
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    role: user.role,
+    status: user.status,
+    karmaScore: user.karmaScore,
+    createdAt: new Date(user.createdAt),
+    updatedAt: new Date(user.updatedAt),
+  });
+  return user;
+};
+
+const origUpdateRole = moderationRepo.updateUserRole.bind(moderationRepo);
+moderationRepo.updateUserRole = async (userId, role) => {
+  await origUpdateRole(userId, role);
+  await userRepository.updateRole(userId, role);
+};
+
+const origUpdateStatus = moderationRepo.updateUserStatus.bind(moderationRepo);
+moderationRepo.updateUserStatus = async (userId, status) => {
+  await origUpdateStatus(userId, status);
+  await userRepository.updateStatus(userId, status);
+};
+
+// Seed không gian mẫu và bài viết mẫu cho quản trị viên kiểm tra
+moderationRepo.seedSpace({
+  id: '00000000-0000-4000-a000-000000000002',
+  name: 'DevOps & Architecture',
+  slug: 'devops-arch',
+  description: 'Thảo luận chuyên sâu về DevOps, Kubernetes và kiến trúc phân tán',
+  creatorId: '00000000-0000-4000-a000-000000000001',
+  iconUrl: null,
+  bannerUrl: null,
+  rules: [],
+  membersCount: 42,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+});
+
+moderationRepo.seedThread({
+  id: '00000000-0000-4000-a000-000000000001',
+  spaceId: '00000000-0000-4000-a000-000000000002',
+  authorId: '00000000-0000-4000-a000-000000000003',
+  title: 'Hạ tầng Monorepo Clean Architecture với Zero-Hop Uploads',
+  body: 'Bản phân tích chi tiết thiết kế hệ thống...',
+  type: 'POST',
+  commentsCount: 15,
+  voteScore: 99,
+  upvotesCount: 100,
+  downvotesCount: 1,
+  hotScore: 450.5,
+  confidenceScore: 0.95,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+});
+
 const app = createApp({
   authService,
   communityServices: {

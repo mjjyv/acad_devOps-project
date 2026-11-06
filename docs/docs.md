@@ -22,7 +22,7 @@ Hệ thống **Acad DevOps Monorepo** là một nền tảng mạng xã hội th
 
 #### 1.3. Phân loại yêu cầu theo MoSCoW
 
-```đoạn mã
+```mermaid
 mindmap
   root((Phân Hạng MoSCoW))
     Must-Have
@@ -53,7 +53,7 @@ Hệ thống được tổ chức theo cấu trúc Layered Microservices Monorep
 
 #### 2.1. Sơ đồ địa hình hệ thống tổng thể (System Topology)
 
-```đoạn mã
+```mermaid
 graph TD
     subgraph ClientLayer ["1. Tầng Trình Duyệt & Giao Diện"]
         Browser["Trình duyệt Web (Desktop / Mobile)"]
@@ -92,7 +92,7 @@ graph TD
 
 Cơ sở dữ liệu kích hoạt 4 tiện ích mở rộng: `uuid-ossp`, `pgcrypto`, `ltree`, `pg_trgm`.
 
-```đoạn mã
+```mermaid
 erDiagram
     users ||--o{ user_sessions : "sở hữu"
     users ||--o{ spaces : "khởi tạo"
@@ -231,7 +231,7 @@ Hệ thống sử dụng cơ chế bảo mật xác thực kép:
 - **Refresh Token:** Chuỗi CSPRNG 64 bytes ngẫu nhiên, mã hóa Base64 URL-safe, lưu trong HttpOnly Cookie (thời hạn 7 ngày).
 - **Cửa sổ ân hạn 30 giây (30s Grace Period) & Phát hiện xâm nhập (Token Reuse Attack):**
 
-```đoạn mã
+```mermaid
 sequenceDiagram
     autonumber
     actor Client as Trình Duyệt Web Client
@@ -301,7 +301,7 @@ sequenceDiagram
 
 - **Chat Threads & Floating View:** Cho phép mở luồng thảo luận phụ theo tin nhắn (`parent_message_id`), chuyển đổi linh hoạt giữa giao diện cửa sổ nổi (Docked), thu nhỏ (Minimized) hoặc tab riêng biệt (Pop-out `↗`).
 
-```đoạn mã
+```mermaid
 sequenceDiagram
     autonumber
     actor Alice as Người gửi (Alice)
@@ -367,7 +367,7 @@ Hệ thống sử dụng tỷ lệ phân bổ 4 gam màu chủ đạo:
 
 Mọi commit trên nhánh `main` hoặc pull request bắt buộc phải vượt qua 4 cổng kiểm thử trước khi được đóng gói:
 
-```đoạn mã
+```mermaid
 flowchart LR
     Gate1["Cổng 1: Linting<br/>(Biome linter < 0.5s)"] --> Gate2["Cổng 2: Typecheck<br/>(TypeScript strict & OpenAPI)"]
     Gate2 --> Gate3["Cổng 3: Test Suites<br/>(Vitest Unit & Integration)"]
@@ -390,7 +390,7 @@ flowchart LR
 
 Với giả định tiến độ hiện tại là **0%**, quy trình phát triển áp dụng tuyệt đối tôn chỉ **Backend-First (Hạ tầng dữ liệu và nghiệp vụ API hoàn thiện trước $\rightarrow$ Giao diện người dùng theo sau)** nhằm triệt tiêu rủi ro refactor và xung đột khế ước dữ liệu.
 
-```đoạn mã
+```mermaid
 gantt
     title LỘ TRÌNH TRIỂN KHAI TOÀN DIỆN DỰ ÁN TỪ MỐC 0% (WEEKS)
     dateFormat  X
@@ -468,7 +468,7 @@ Bản kế hoạch triển khai Backend toàn diện dưới đây được chu�
 
 ### 2. Sơ Đồ Phụ Thuộc Thực Thi (Backend Execution DAG)
 
-```đoạn mã
+```mermaid
 flowchart TD
     subgraph PhaseB1 ["PHASE B1: HẠ TẦNG & ĐỊNH DANH (AUTH SHIELD)"]
         B1_1["1.1 Supabase Schema: Extensions, Users, Sessions"] --> B1_2["1.2 Crypto Engine: Argon2id & CSPRNG Token"]
@@ -800,7 +800,7 @@ Bản kế hoạch triển khai Frontend toàn diện dưới đây được thi
 
 ### 2. Sơ Đồ Phụ Thuộc Thực Thi (Frontend Execution DAG)
 
-```đoạn mã
+```mermaid
 flowchart TD
     subgraph PhaseF1 ["PHASE F1: NỀN TẢNG UI, TOKENS & HỆ THỐNG AUTH"]
         F1_1["1.1 Khởi tạo @acad/ui-tokens & Tailwind v4 Config"] --> F1_2["1.2 Root Shell, Navbar (Shortcut /) & Sidebar"]
@@ -919,7 +919,7 @@ flowchart TD
 2. **Cụm Nút Bỏ Phiếu Nguyên Tử Lạc Quan (Optimistic Voting FSM):**
     - Triển khai máy trạng thái hữu hạn cho nút Up/Downvote tại client:
 
-```đoạn mã
+```mermaid
 stateDiagram-v2
     [*] --> Idle: Khởi tạo từ Server State
     Idle --> OptimisticUp: Bấm Upvote (+1)
@@ -1145,7 +1145,7 @@ Chỉ khi quy trình đóng gói hiển thị thông báo `Route (app) ... Size 
 
 Lộ trình phát triển Backend (Stream B) của dự án Acad DevOps được xây dựng theo tôn chỉ **Backend-First**, chia thành 5 giai đoạn liên hoàn (Phases B1 $\rightarrow$ B5) nhằm thiết lập toàn bộ mô hình dữ liệu, cơ chế mã hóa, logic xếp hạng và bảo mật trước khi kết nối với tầng giao diện.
 
-```đoạn mã
+```mermaid
 flowchart TD
     subgraph B1 ["Phase B1: Hạ Tầng CSDL & Phân Hệ Định Danh (Tuần 1 - 3)"]
         D1["PostgreSQL 16 Extensions & Schemas"] --> A1["Argon2id Hashing & Dual-Token Engine"]
@@ -1184,7 +1184,7 @@ flowchart TD
 - **Thời gian thực hiện:** Tuần 1 – Tuần 3 (Khởi tạo từ 0%)
 - **Mục tiêu:** Thiết lập nền móng lưu trữ dữ liệu với PostgreSQL 16 và Redis 7; triển khai hệ thống xác thực Zero-Trust chống tấn công chiếm đoạt phiên.
 
-```đoạn mã
+```mermaid
 sequenceDiagram
     autonumber
     actor Client as Web Client Interceptor
@@ -1270,7 +1270,7 @@ sequenceDiagram
 - Chỉ mục GiST trên trường `path`: Truy vấn toàn bộ một cây con trong duy nhất 1 câu lệnh SQL (`SELECT * FROM comments WHERE path <@ '0001' ORDER BY path ASC`) với thời gian thực thi $< 1.2\text{ms}$.
 - **Xử lý Ngưỡng sâu Capped Depth 8:** Khi bình luận đạt cấp thứ 8, thuật toán trong `ltree-path-generator.ts` tự động bật cờ `isCappedAtMaxDepth: true` và `parentAuthorMentionNeeded: true`. Bình luận mới kế thừa `path` cấp 8 của cha và chuyển sang dạng phản hồi phẳng (Flat Reply) kèm tiền tố `@tên_tác_giả` để tránh vỡ bố cục trên giao diện di động.
 
-```đoạn mã
+```mermaid
 graph TD
     Root["Thread Gốc"] --> C1["Comment 0001 (Depth 0)"]
     Root --> C2["Comment 0002 (Depth 0)"]
@@ -1297,7 +1297,7 @@ graph TD
 - **Thời gian thực hiện:** Tuần 7 – Tuần 9
 - **Mục tiêu:** Xử lý hàng ngàn lượt vote đồng thời không xung đột (Race-condition free); xây dựng động cơ bảng tin Hacker News Gravity Decay và Wilson Score Interval.
 
-```đoạn mã
+```mermaid
 flowchart LR
     User["Người dùng Upvote / Downvote"] --> Gateway["API Gateway"]
     Gateway --> Lua["Redis 7: execute_vote.lua<br/>• Kiểm tra hướng vote cũ O(1)<br/>• Tính delta điểm (+1, -1, +2, -2)<br/>• HINCRBY bộ đếm nguyên tử<br/>• SADD dirty:votes target_id"]
@@ -1363,7 +1363,7 @@ flowchart LR
 - **Thời gian thực hiện:** Tuần 10 – Tuần 12
 - **Mục tiêu:** Cung cấp kênh đối thoại trực tiếp 1-1 và chat nhóm kỹ thuật; giải quyết triệt để vấn nạn spam tin nhắn lạ thông qua hàng đợi Chat Requests; hỗ trợ phân nhánh Chat Threads.
 
-```đoạn mã
+```mermaid
 stateDiagram-v2
     [*] --> PENDING: Người lạ gửi tin nhắn lần đầu
     PENDING --> ACCEPTED: Người nhận chọn Chấp nhận (Accept)
