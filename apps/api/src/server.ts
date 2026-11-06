@@ -22,6 +22,7 @@ import {
   VoteService,
   ZeroHopStorageService,
 } from '@acad/community-service';
+import { ModerationService, PostgresModerationRepository } from '@acad/moderation-service';
 import { Redis } from 'ioredis';
 import pg from 'pg';
 import { createApp } from './app.js';
@@ -107,6 +108,10 @@ async function bootstrap() {
   sseManager.startHeartbeat();
   const chatService = new ChatService(chatRepo, sseManager, presenceManager);
 
+  // 3.4. Khởi tạo Phân Hệ Kiểm Duyệt & Quản Trị Hệ Thống (Phase B5)
+  const moderationRepo = new PostgresModerationRepository(pool);
+  const moderationService = new ModerationService(moderationRepo, sessionStore);
+
   // 4. Khởi tạo Express App & HTTP Server
   const app = createApp({
     authService,
@@ -124,6 +129,7 @@ async function bootstrap() {
       presenceManager,
       sseManager,
     },
+    moderationService,
     jwtSecret: JWT_SECRET,
     pool,
     redis,

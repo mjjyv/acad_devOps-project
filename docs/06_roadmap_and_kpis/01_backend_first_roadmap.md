@@ -140,7 +140,6 @@ Tuân thủ nghiêm ngặt cẩm nang vận hành [`docs/guide.md`](file:///home
 - [x] Bộ máy tìm kiếm toàn văn bản trong không gian (In-Space Scoped Search) qua `pg_trgm`.
 - [x] Kiểm định CI & API Probes toàn diện: 100/100 tests pass (100%), Biome lint pass (0 errors), Typecheck pass, 16/16 live cURL probes pass.
 - **Trạng thái:** ✅ **100% Hoàn thành & Đã nghiệm thu (LOG-B3).**
-- **Trạng thái:** ⏳ **Kế hoạch đã sẵn sàng.**
 
 ---
 
@@ -158,11 +157,14 @@ Tuân thủ nghiêm ngặt cẩm nang vận hành [`docs/guide.md`](file:///home
 
 ### 🔹 Phase B5: Kiểm Duyệt, Hàng Đợi Báo Cáo & Quản Trị Hệ Thống (Moderation & Admin Hub)
 *Mục tiêu:* Đảm bảo môi trường thảo luận trong sạch, phân quyền kiểm duyệt và quản trị an ninh toàn diện.
-- [ ] Bảo vệ phân hệ quản trị bằng RBAC Admin Guard (`role === 'ADMIN'`), trả về 401/403 nghiêm ngặt.
-- [ ] Bảng `reports` tiếp nhận phản ánh vi phạm nội dung và hàng đợi xử lý Mod Queue cho Space Moderators.
-- [ ] Cơ chế cấm ngầm (Shadowban): Tài khoản vi phạm vẫn thấy bài của mình nhưng ẩn hoàn toàn với cộng đồng.
-- [ ] Nhật ký kiểm toán an ninh chi tiết (`audit_logs`): Ghi nhận toàn bộ thao tác nhạy cảm của ban quản trị.
-- [ ] API Quản trị Thống kê hệ thống: `GET /api/v1/admin/stats` (Active Users, Sessions, Spaces, Threads, Comments).
+- [x] Bảo vệ phân hệ quản trị bằng RBAC Admin Guard (`role === 'ADMIN' | 'GLOBAL_MOD'`), trả về 401/403 nghiêm ngặt chuẩn RFC 7807 Problem Details.
+- [x] Bảng `reports` tiếp nhận phản ánh vi phạm nội dung và hàng đợi xử lý Mod Queue (trạng thái `PENDING / RESOLVED / DISMISSED`).
+- [x] Cơ chế cấm ngầm (Shadowban): Tài khoản vi phạm vẫn thấy bài của mình nhưng ẩn hoàn toàn với cộng đồng.
+- [x] Nhật ký kiểm toán an ninh bất biến (`audit_logs`): Ghi nhận toàn bộ thao tác nhạy cảm của ban quản trị (Role change, Status change, Report resolve, Session revoke).
+- [x] API Quản trị Thống kê hệ thống: `GET /admin/stats` và `/api/v1/admin/stats` (Active Users, Sessions, Spaces, Threads, Comments, Pending Reports).
+- [x] Cưỡng chế thu hồi phiên làm việc (`sessionStore.revokeAllUserSessions`) khi đổi quyền hoặc khóa tài khoản `SUSPENDED` / `DELETED`.
+- [x] Kiểm định CI & API Probes toàn diện: 162/162 tests pass (100%), Biome lint pass (0 errors), Typecheck pass, 18/18 live cURL probes pass.
+- **Trạng thái:** ✅ **100% Hoàn thành & Đã nghiệm thu (LOG-B5). STREAM B HOÀN THÀNH 100%!**
 - [ ] API Quản trị Người dùng: Cung cấp số lượng bài viết `threadsCount`, đổi Role, khóa tài khoản, thu hồi toàn bộ phiên.
 - [ ] API Quản trị Không gian: Quản lý thành viên, xóa không gian vi phạm (`ON DELETE CASCADE`).
 - [ ] API Quản trị Bài viết: Ghim/Bỏ ghim (`Pin/Unpin`), Khóa/Mở bình luận (`Lock/Unlock`), Xóa nội dung.

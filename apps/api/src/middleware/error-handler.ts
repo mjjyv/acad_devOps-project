@@ -25,6 +25,13 @@ import {
   TargetNotFoundError,
   ThreadNotFoundError,
 } from '@acad/community-service';
+import {
+  DuplicateReportError,
+  InvalidReportActionError,
+  TargetNotFoundError as ModTargetNotFoundError,
+  ReportNotFoundError,
+  UnauthorizedAdminActionError,
+} from '@acad/moderation-service';
 import type { NextFunction, Request, Response } from 'express';
 import { ZodError } from 'zod';
 
@@ -68,7 +75,7 @@ export function errorHandler() {
     }
 
     // 1.1. Bad Request Errors -> 400 Bad Request
-    if (err instanceof CannotChatWithSelfError) {
+    if (err instanceof CannotChatWithSelfError || err instanceof InvalidReportActionError) {
       const problem: RFC7807Problem = {
         type: 'https://api.acad.vn/errors/bad-request',
         title: 'Bad Request',
@@ -82,12 +89,13 @@ export function errorHandler() {
       return;
     }
 
-    // 2. Conflict Errors (Duplicate username, email, slug, flair, chat request) -> 409 Conflict
+    // 2. Conflict Errors (Duplicate username, email, slug, flair, chat request, report) -> 409 Conflict
     if (
       err instanceof DuplicateUserError ||
       err instanceof DuplicateSlugError ||
       err instanceof DuplicateFlairError ||
-      err instanceof DuplicateChatRequestError
+      err instanceof DuplicateChatRequestError ||
+      err instanceof DuplicateReportError
     ) {
       const problem: RFC7807Problem = {
         type: 'https://api.acad.vn/errors/conflict',
@@ -102,16 +110,18 @@ export function errorHandler() {
       return;
     }
 
-    // 2.1. Not Found Errors (Space, Thread, Comment, Chat Channel, Chat Request, Message) -> 404 Not Found
+    // 2.1. Not Found Errors (Space, Thread, Comment, Chat Channel, Chat Request, Message, Report) -> 404 Not Found
     if (
       err instanceof SpaceNotFoundError ||
       err instanceof ThreadNotFoundError ||
       err instanceof CommentNotFoundError ||
       err instanceof TargetNotFoundError ||
+      err instanceof ModTargetNotFoundError ||
       err instanceof ChatChannelNotFoundError ||
       err instanceof ChatRequestNotFoundError ||
       err instanceof ParentMessageNotFoundError ||
-      err instanceof RecipientNotFoundError
+      err instanceof RecipientNotFoundError ||
+      err instanceof ReportNotFoundError
     ) {
       const problem: RFC7807Problem = {
         type: 'https://api.acad.vn/errors/not-found',
@@ -126,11 +136,12 @@ export function errorHandler() {
       return;
     }
 
-    // 2.2. Forbidden Errors (e.g. Insufficient Space Permission, Not Chat Member, User Blocked) -> 403 Forbidden
+    // 2.2. Forbidden Errors (e.g. Insufficient Space Permission, Not Chat Member, User Blocked, Unauthorized Admin) -> 403 Forbidden
     if (
       err instanceof InsufficientSpacePermissionError ||
       err instanceof NotChannelMemberError ||
-      err instanceof UserBlockedError
+      err instanceof UserBlockedError ||
+      err instanceof UnauthorizedAdminActionError
     ) {
       const problem: RFC7807Problem = {
         type: 'https://api.acad.vn/errors/forbidden',

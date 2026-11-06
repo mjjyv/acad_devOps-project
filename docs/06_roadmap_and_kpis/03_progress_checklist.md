@@ -12,11 +12,11 @@
 
 | Luồng Phát Triển | Mục Tiêu Kỹ Thuật | Tỷ Lệ Hoàn Thành | Trạng Thái Thực Thi |
 | :--- | :--- | :---: | :---: |
-| **Stream B: Backend Engine** | Xây dựng hoàn chỉnh CSDL, Auth, Spaces, Ltree, Lua Voting, Chat, Admin | **85%** | 🔄 Đã xong B0, B1, B2, B3, B4 (Realtime Chat & Requests Queue), Sẵn sàng B5 |
-| **Stream F: Frontend Client** | Next.js 15 Brutalist Dark Mode, DOM ảo hóa cây bình luận, Floating Chat | **0%** | ⏸️ Tạm hoãn đến khi Stream B hoàn tất |
-| **Stream Q: QA & Load Testing** | Vitest 100% test suites passed, k6 stress test 5,000 RPS | **80%** | 🔄 120/120 Monorepo tests pass (100%), 16/16 Live cURL probes pass |
-| **Stream D: DevOps & Cloud** | Multi-stage Docker, GitHub Actions 4 Gates, Render & Supabase Live | **40%** | 🔄 Docker dev compose, Dockerfile.api.prod, migrations 000001, 000002, 000003, 000004 |
-| **TỔNG THỂ DỰ ÁN** | **Nền tảng Diễn đàn & Mạng xã hội chuyên sâu tốc độ cao** | **75.0%** | 🚀 **Hoàn tất Phase B0, B1, B2, B3, B4 -> Sẵn sàng bước vào Phase B5** |
+| **Stream B: Backend Engine** | Xây dựng hoàn chỉnh CSDL, Auth, Spaces, Ltree, Lua Voting, Chat, Admin | **100%** | ✅ Hoàn tất toàn diện Stream B (B0, B1, B2, B3, B4, B5)! Sẵn sàng Stream F |
+| **Stream F: Frontend Client** | Next.js 15 Brutalist Dark Mode, DOM ảo hóa cây bình luận, Floating Chat | **0%** | ⏸️ Sẵn sàng bước vào triển khai |
+| **Stream Q: QA & Load Testing** | Vitest 100% test suites passed, k6 stress test 5,000 RPS | **90%** | 🔄 162/162 Monorepo tests pass (100%), 18/18 Live cURL probes pass |
+| **Stream D: DevOps & Cloud** | Multi-stage Docker, GitHub Actions 4 Gates, Render & Supabase Live | **50%** | 🔄 Dockerfile.api.prod (8 services), migrations 000001-000005 up/down, Render Cloud live |
+| **TỔNG THỂ DỰ ÁN** | **Nền tảng Diễn đàn & Mạng xã hội chuyên sâu tốc độ cao** | **85.0%** | 🚀 **Hoàn tất 100% Backend-First Stream B -> Sẵn sàng sang Stream F (UI/UX)** |
 
 ---
 
@@ -54,10 +54,10 @@
 - [x] Phân nhánh đối thoại trong chat (Chat Threads qua `parent_message_id`).
 - [x] Cổng sự kiện thời gian thực (SSE RFC 8895 Gateway) duy trì heartbeat ping 15s.
 - [x] Trạng thái trực tuyến (Presence) TTL 15s và typing indicators TTL 5s trên Redis với in-memory fallback.
-- [ ] Phân quyền Admin Console bảo vệ bằng RBAC Admin Guard (`role === 'ADMIN'`).
-- [ ] Bảng `reports` (Mod Queue cho Space Moderators) và cơ chế cấm ngầm (Shadowban).
-- [ ] Bảng `audit_logs` lưu vết toàn bộ thao tác quản trị an ninh hệ thống.
-- [ ] API Quản trị: Thống kê hệ thống, tính toán số bài viết `threadsCount`, ghim bài, khóa comment, xóa space cascade.
+- [x] Phân quyền Admin Console bảo vệ bằng RBAC Admin Guard (`role === 'ADMIN' | 'GLOBAL_MOD'`).
+- [x] Bảng `reports` (Mod Queue tiếp nhận & xử lý báo cáo) và cơ chế cấm ngầm (Shadowban).
+- [x] Bảng `audit_logs` lưu vết bất biến toàn bộ thao tác quản trị an ninh hệ thống.
+- [x] API Quản trị: Thống kê hệ thống AdminStats, đổi vai trò/trạng thái người dùng kèm cưỡng chế thu hồi phiên, ghim bài, khóa comment, xóa space cascade.
 
 ### 2.2. Phân Hệ Frontend (Stream F: Phases F1 $\rightarrow$ F4)
 *(Bắt đầu sau khi hoàn thành và nghiệm thu 100% Stream B)*

@@ -17,6 +17,7 @@
     "@acad/chat-service": "workspace:*",
     "@acad/community-service": "workspace:*",
     "@acad/contracts": "workspace:*",
+    "@acad/moderation-service": "workspace:*",
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "ioredis": "^5.5.0",

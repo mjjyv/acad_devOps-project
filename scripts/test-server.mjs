@@ -18,6 +18,10 @@ import {
   VoteService,
   ZeroHopStorageService,
 } from '../services/community/dist/index.js';
+import {
+  InMemoryModerationRepository,
+  ModerationService,
+} from '../services/moderation/dist/index.js';
 
 const PORT = 3099;
 const userRepository = new InMemoryUserRepository();
@@ -41,6 +45,9 @@ const sseManager = new SseManager({ heartbeatIntervalMs: 15000 });
 sseManager.startHeartbeat();
 const chatService = new ChatService(chatRepo, sseManager, presenceManager);
 
+const moderationRepo = new InMemoryModerationRepository();
+const moderationService = new ModerationService(moderationRepo, sessionStore);
+
 const app = createApp({
   authService,
   communityServices: {
@@ -57,6 +64,7 @@ const app = createApp({
     presenceManager,
     sseManager,
   },
+  moderationService,
 });
 
 const server = http.createServer(app);

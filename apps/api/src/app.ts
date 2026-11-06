@@ -1,20 +1,25 @@
 import type { AuthService } from '@acad/auth-service';
 import { TokenManager } from '@acad/auth-service';
+import type { ModerationService } from '@acad/moderation-service';
 import express, { type Application } from 'express';
 import type { Redis } from 'ioredis';
 import type pg from 'pg';
+import { authGuard } from './middleware/auth-guard.js';
 import { configureCors } from './middleware/cors.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { requestIdMiddleware } from './middleware/request-id.js';
+import { createAdminRouter } from './routes/admin-router.js';
 import { createAuthRouter } from './routes/auth-router.js';
 import { type ChatServices, createChatRouter } from './routes/chat-router.js';
 import { type CommunityServices, createCommunityRouter } from './routes/community-router.js';
 import { createHealthzRouter } from './routes/healthz-router.js';
+import { createReportRouter } from './routes/report-router.js';
 
 export interface AppOptions {
   authService: AuthService;
   communityServices?: CommunityServices | undefined;
   chatServices?: ChatServices | undefined;
+  moderationService?: ModerationService | undefined;
   jwtSecret?: string | undefined;
   pool?: pg.Pool | undefined;
   redis?: Redis | undefined;
@@ -52,7 +57,18 @@ export function createApp(options: AppOptions): Application {
     app.use('/api/v1/chat', chatRouter);
   }
 
-  // 6. Centralized RFC 7807 Error Handler
+  // 6. Moderation & Admin Routers mounted on /reports, /admin and OpenAPI /api/v1 equivalents
+  if (options.moderationService) {
+    const reportRouter = createReportRouter(options.moderationService);
+    app.use('/reports', authGuard(jwtSecret), reportRouter);
+    app.use('/api/v1/reports', authGuard(jwtSecret), reportRouter);
+
+    const adminRouter = createAdminRouter(options.moderationService);
+    app.use('/admin', authGuard(jwtSecret), adminRouter);
+    app.use('/api/v1/admin', authGuard(jwtSecret), adminRouter);
+  }
+
+  // 7. Centralized RFC 7807 Error Handler
   app.use(errorHandler());
 
   return app;

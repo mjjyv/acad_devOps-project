@@ -15,6 +15,7 @@ COPY packages/auth-client/package.json ./packages/auth-client/
 COPY services/auth/package.json ./services/auth/
 COPY services/chat/package.json ./services/chat/
 COPY services/community/package.json ./services/community/
+COPY services/moderation/package.json ./services/moderation/
 COPY apps/api/package.json ./apps/api/
 COPY apps/web/package.json ./apps/web/
 

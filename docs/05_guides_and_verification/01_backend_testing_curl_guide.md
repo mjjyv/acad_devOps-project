@@ -170,3 +170,10 @@ Dự án đã tích hợp sẵn các kịch bản kiểm thử API khép kín (E
    # Kết quả tự động ghi vào docs/05_guides_and_verification/logs/log_B4_realtime_chat.md
    ```
 
+5. **Kiểm thử Phân hệ B5 (Reddit Moderation Queue, Shadowban Engine & Admin Hub):**
+   ```bash
+   chmod +x scripts/verify-admin-curl.sh
+   ./scripts/verify-admin-curl.sh
+   # Kết quả tự động ghi vào docs/05_guides_and_verification/logs/log_B5_moderation_admin.md
+   ```
+
