@@ -178,10 +178,10 @@ export function RightRail() {
             </div>
             <div style={{ paddingTop: '10px' }}>
               <h3 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-primary)' }}>
-                Acad DevOps Homelab
+                SYNAPSE Homelab Engine
               </h3>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                c/devops-ecosystem
+              <span style={{ fontSize: '11px', color: 'var(--color-brand)' }}>
+                s/synapse-network
               </span>
             </div>
           </div>
@@ -194,8 +194,8 @@ export function RightRail() {
               marginBottom: '14px',
             }}
           >
-            Nền tảng thảo luận phân tán & kỹ thuật DevOps hiệu năng cao. Vận hành 100% Self-Hosted
-            trên máy trạm Debian kết nối Cloudflare Zero Trust.
+            Nền tảng mạng lưới nơ-ron thảo luận kỹ thuật & DevOps hiệu năng cao. Vận hành 100%
+            Self-Hosted trên máy trạm Debian kết nối Cloudflare Zero Trust.
           </p>
 
           <div
@@ -284,7 +284,7 @@ export function RightRail() {
           <span>•</span>
           <span style={{ color: 'var(--text-muted)' }}>RFC 7807</span>
         </div>
-        <div>© 2026 Acad DevOps Platform. Zero-Base Clean Rebuild v2.0.</div>
+        <div>© 2026 SYNAPSE Platform. The Neural Network for Engineers.</div>
       </footer>
     </aside>
   );

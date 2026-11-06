@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type React from 'react';
 import { useEffect, useState } from 'react';
-import { RedditAlienLogo } from '@/components/ui/icons';
+import { SynapseLogo } from '@/components/ui/icons';
 import { useAuth } from '@/lib/auth/auth-context';
 import { useUI } from '@/lib/store/ui-context';
 
@@ -73,20 +73,23 @@ export default function LoginPage() {
       >
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
-            <RedditAlienLogo size={48} />
+            <SynapseLogo size={52} />
           </div>
           <h1
             style={{
-              fontSize: '20px',
-              fontWeight: 800,
-              color: 'var(--text-primary)',
+              fontSize: '22px',
+              fontWeight: 900,
+              letterSpacing: '0.04em',
+              background: 'linear-gradient(135deg, #f8fafc 0%, #06b6d4 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
               marginBottom: '4px',
             }}
           >
-            Đăng Nhập Acad Platform
+            Đăng Nhập SYNAPSE
           </h1>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-            Tiếp tục thảo luận và chia sẻ kiến thức DevOps
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            The Neural Network for Engineers & Architects
           </p>
         </div>
 

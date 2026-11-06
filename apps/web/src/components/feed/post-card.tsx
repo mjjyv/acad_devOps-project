@@ -167,7 +167,7 @@ export function PostCard({ post }: PostCardProps) {
             }}
           >
             <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-              r/{post.spaceSlug}
+              s/{post.spaceSlug}
             </span>
             <span>•</span>
             <span>{post.timeAgo}</span>
@@ -245,7 +245,7 @@ export function PostCard({ post }: PostCardProps) {
                 textDecoration: 'none',
               }}
             >
-              r/{post.spaceSlug}
+              s/{post.spaceSlug}
             </Link>
             <span style={{ color: 'var(--text-muted)' }}>•</span>
             <span style={{ color: 'var(--text-muted)' }}>{post.timeAgo}</span>

@@ -103,7 +103,7 @@ export function UserMenuDropdown({ isOpen, onClose, onOpenSessions }: UserMenuDr
             alignItems: 'center',
             gap: '4px',
             fontSize: '12px',
-            color: 'var(--color-brand)',
+            color: 'var(--color-success)',
           }}
         >
           <FireIcon size={14} />

@@ -3,7 +3,7 @@
 import { HttpError } from '@acad/auth-client';
 import type React from 'react';
 import { useEffect, useState } from 'react';
-import { CloseIcon, RedditAlienLogo } from '@/components/ui/icons';
+import { CloseIcon, SynapseLogo } from '@/components/ui/icons';
 import { useAuth } from '@/lib/auth/auth-context';
 import { useUI } from '@/lib/store/ui-context';
 
@@ -140,13 +140,13 @@ export function AuthModal() {
 
         {/* Modal Branding Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-          <RedditAlienLogo size={36} />
+          <SynapseLogo size={36} />
           <div>
             <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
               {authModalTitle || (mode === 'login' ? 'Đăng Nhập' : 'Tạo Tài Khoản')}
             </h2>
             <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              Acad DevOps Discussion Engine v2.0
+              Synapse Platform • The Neural Network for Engineers
             </p>
           </div>
         </div>

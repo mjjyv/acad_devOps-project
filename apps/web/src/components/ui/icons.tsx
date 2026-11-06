@@ -5,7 +5,7 @@ interface IconProps extends React.SVGProps<SVGSVGElement> {
   className?: string;
 }
 
-export function RedditAlienLogo({ size = 32, ...props }: IconProps) {
+export function SynapseLogo({ size = 32, ...props }: IconProps) {
   return (
     <svg
       width={size}
@@ -15,14 +15,57 @@ export function RedditAlienLogo({ size = 32, ...props }: IconProps) {
       xmlns="http://www.w3.org/2000/svg"
       {...props}
     >
-      <circle cx="20" cy="20" r="20" fill="#FF4500" />
-      <path
-        d="M31.2 18.8c0-1.3-.9-2.4-2.2-2.7.2-.6.4-1.3.4-2 0-3.3-3.9-6-8.8-6-.6 0-1.1 0-1.7.1l1.8-4.2c.1-.2 0-.5-.2-.6l-4.5-1.9c-.2-.1-.5 0-.6.2l-2.4 5.6c-1.8.8-3.3 2-4.2 3.6-.9-.3-1.8-.1-2.5.5-.9.8-1.2 2-1 3.1-.7.9-1.1 2-1.1 3.2 0 1.9 1 3.5 2.5 4.5-.1.5-.1 1.1-.1 1.6 0 4.8 5.4 8.7 12 8.7s12-3.9 12-8.7c0-.5 0-1-.1-1.5 1.7-.9 2.7-2.6 2.7-4.5zm-17.5 3.3c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm10.7 4.7c-1.8 1.5-4.4 1.5-6.2 0-.3-.2-.3-.6-.1-.9.2-.3.6-.3.9-.1 1.3 1.1 3.2 1.1 4.5 0 .3-.2.7-.2.9.1.2.3.2.7-.1.9zm-.4-4.7c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"
-        fill="#FFFFFF"
+      <defs>
+        <linearGradient
+          id="synapse-brand-grad"
+          x1="0"
+          y1="0"
+          x2="40"
+          y2="40"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop stopColor="#06b6d4" />
+          <stop offset="0.5" stopColor="#3b82f6" />
+          <stop offset="1" stopColor="#8b5cf6" />
+        </linearGradient>
+        <linearGradient
+          id="synapse-emerald-glow"
+          x1="14"
+          y1="14"
+          x2="26"
+          y2="26"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop stopColor="#10b981" />
+          <stop offset="1" stopColor="#06b6d4" />
+        </linearGradient>
+      </defs>
+      {/* Outer Hexagon Shield */}
+      <polygon
+        points="20,2 36,11 36,29 20,38 4,29 4,11"
+        fill="#12151f"
+        stroke="url(#synapse-brand-grad)"
+        strokeWidth="2.2"
+        strokeLinejoin="round"
       />
+      {/* Neural Core Rays */}
+      <path
+        d="M20 7 V20 M6 28 L20 20 M34 28 L20 20"
+        stroke="url(#synapse-brand-grad)"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      {/* Center Quantum Node */}
+      <polygon points="20,15 25,20 20,25 15,20" fill="url(#synapse-emerald-glow)" />
+      {/* 3 Convergent Neural Nodes */}
+      <circle cx="20" cy="7" r="2.2" fill="#06b6d4" />
+      <circle cx="6" cy="28" r="2.2" fill="#3b82f6" />
+      <circle cx="34" cy="28" r="2.2" fill="#8b5cf6" />
     </svg>
   );
 }
+
+export const RedditAlienLogo = SynapseLogo;
 
 export function SearchIcon({ size = 18, ...props }: IconProps) {
   return (

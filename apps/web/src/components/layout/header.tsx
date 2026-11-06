@@ -14,8 +14,8 @@ import {
   FireIcon,
   MenuIcon,
   PlusIcon,
-  RedditAlienLogo,
   SearchIcon,
+  SynapseLogo,
 } from '../ui/icons';
 
 export function Header() {
@@ -68,32 +68,35 @@ export function Header() {
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '10px',
             textDecoration: 'none',
             color: 'var(--text-primary)',
           }}
         >
-          <RedditAlienLogo size={32} />
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+          <SynapseLogo size={32} />
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '5px' }}>
             <span
               style={{
-                fontSize: '18px',
+                fontSize: '19px',
                 fontWeight: 900,
-                letterSpacing: '-0.03em',
-                color: '#ffffff',
+                letterSpacing: '0.04em',
+                background: 'linear-gradient(135deg, #f8fafc 0%, #06b6d4 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
               }}
             >
-              acad
+              SYNAPSE
             </span>
             <span
               style={{
-                fontSize: '12px',
-                fontWeight: 700,
+                fontSize: '11px',
+                fontWeight: 800,
                 color: 'var(--color-brand)',
+                letterSpacing: '0.08em',
                 textTransform: 'uppercase',
               }}
             >
-              devops
+              ENGINE
             </span>
           </div>
         </Link>

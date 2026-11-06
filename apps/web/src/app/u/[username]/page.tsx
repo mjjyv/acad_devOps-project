@@ -86,7 +86,8 @@ export default function UserProfilePage() {
             <div
               style={{
                 height: '110px',
-                background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 50%, #ff4500 150%)',
+                background:
+                  'linear-gradient(135deg, #090a0f 0%, #111420 40%, #06b6d4 120%, #10b981 180%)',
               }}
             />
 
@@ -166,7 +167,7 @@ export default function UserProfilePage() {
               <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
                 {isOwnProfile && currentUser?.bio
                   ? currentUser.bio
-                  : 'Kỹ sư hệ thống & Thành viên tích cực đóng góp trên cộng đồng thảo luận Acad DevOps Platform.'}
+                  : 'Kỹ sư hệ thống & Thành viên tích cực đóng góp trên cộng đồng SYNAPSE Platform.'}
               </p>
             </div>
 

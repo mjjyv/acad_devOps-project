@@ -5,9 +5,9 @@ import { AuthProvider } from '@/lib/auth/auth-context';
 import { UIProvider } from '@/lib/store/ui-context';
 
 export const metadata: Metadata = {
-  title: 'Acad DevOps Platform - Community & Discussions',
+  title: 'SYNAPSE - The Neural Network for Engineers & Architects',
   description:
-    'High-throughput modern minimalist Reddit-style discussion engine and social architecture',
+    'High-throughput distributed discussion engine, systems architecture & DevOps community platform',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

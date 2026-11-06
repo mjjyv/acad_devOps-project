@@ -12,8 +12,8 @@ const SAMPLE_POSTS: PostItem[] = [
   {
     id: 'post-1',
     spaceSlug: 'vozforums',
-    spaceName: 'Voz Forums',
-    spaceColor: '#ff4500',
+    spaceName: 's/vozforums',
+    spaceColor: '#06b6d4',
     author: 'khoaitaychien',
     timeAgo: '4 hr. ago',
     title:
@@ -28,7 +28,7 @@ const SAMPLE_POSTS: PostItem[] = [
   {
     id: 'post-2',
     spaceSlug: 'reviewnganluat',
-    spaceName: 'Review Ngành Luật & IT',
+    spaceName: 's/reviewnganluat',
     spaceColor: '#3b82f6',
     author: 'lawyer_tech',
     timeAgo: '6 hr. ago',
@@ -44,7 +44,7 @@ const SAMPLE_POSTS: PostItem[] = [
   {
     id: 'post-3',
     spaceSlug: 'devops-arch',
-    spaceName: 'DevOps Architecture',
+    spaceName: 's/devops-arch',
     spaceColor: '#10b981',
     author: 'cloud_architect',
     timeAgo: '12 hr. ago',
@@ -60,8 +60,8 @@ const SAMPLE_POSTS: PostItem[] = [
   {
     id: 'post-4',
     spaceSlug: 'kubernetes',
-    spaceName: 'Kubernetes Vietnam',
-    spaceColor: '#6366f1',
+    spaceName: 's/kubernetes',
+    spaceColor: '#8b5cf6',
     author: 'k8s_master',
     timeAgo: '1 day ago',
     title: 'Debug hiện tượng Pod OOMKilled bí ẩn khi Node vẫn còn dư 40% RAM - Do đâu?',

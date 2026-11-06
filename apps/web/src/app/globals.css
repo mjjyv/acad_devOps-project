@@ -1,42 +1,43 @@
 /* ==============================================================================
-   ACAD DEVOPS DISCUSSION PLATFORM - FRONTEND DESIGN SYSTEM
-   Modern Minimalist Reddit Dark Palette
+   SYNAPSE PLATFORM - THE NEURAL NETWORK FOR ENGINEERS & ARCHITECTS
+   Deep Tech Obsidian & Emerald Matrix Design System
    File: apps/web/src/app/globals.css
    ============================================================================== */
 
 :root {
-  /* 1. Nền tảng & Bề mặt (Canvas & Surfaces) */
-  --bg-canvas: #0e1113;
-  --bg-surface: #1a1a1b;
-  --bg-surface-hover: #272729;
-  --bg-subtle: #121213;
-  --bg-input: #272729;
-  --bg-input-focus: #1a1a1b;
-  --bg-badge: #2a2a2c;
-  --bg-pill: #272729;
-  --bg-pill-hover: #333336;
+  /* 1. Nền tảng & Bề mặt (Canvas & Surfaces - Obsidian Void) */
+  --bg-canvas: #090a0f;
+  --bg-surface: #12151f;
+  --bg-surface-hover: #1a1f30;
+  --bg-subtle: #0d1017;
+  --bg-input: #171b2b;
+  --bg-input-focus: #12151f;
+  --bg-badge: #1c2236;
+  --bg-pill: #171b2b;
+  --bg-pill-hover: #22283d;
 
-  /* 2. Đường kẻ & Viền (Borders & Dividers) */
-  --border-subtle: #272729;
-  --border-strong: #3e3e40;
-  --border-focus: #ff4500;
-  --border-divider: #1e1f20;
+  /* 2. Đường kẻ & Viền Kính Mờ (Borders & Glass Dividers) */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --border-focus: #06b6d4;
+  --border-divider: rgba(255, 255, 255, 0.05);
 
-  /* 3. Phân cấp Màu chữ (Typography Hierarchy) */
-  --text-primary: #f2f4f5;
-  --text-secondary: #a8aaab;
-  --text-muted: #737577;
-  --text-inverse: #0e1113;
+  /* 3. Phân cấp Màu chữ Công thái học (Typography Hierarchy - Slate) */
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-inverse: #090a0f;
 
-  /* 4. Gam màu Điểm nhấn Đặc trưng Reddit */
-  --color-upvote: #ff4500;
-  --color-downvote: #7193ff;
-  --color-brand: #ff4500;
-  --color-brand-hover: #e03d00;
-  --color-success: #22c55e;
-  --color-danger: #ef4444;
-  --color-warning: #eab308;
-  --color-mod: #22c55e;
+  /* 4. Gam màu Điểm nhấn Công nghệ (Emerald & Neon Cyan Matrix) */
+  --color-upvote: #10b981;
+  --color-downvote: #f43f5e;
+  --color-brand: #06b6d4;
+  --color-brand-secondary: #6366f1;
+  --color-brand-hover: #0891b2;
+  --color-success: #10b981;
+  --color-danger: #f43f5e;
+  --color-warning: #f59e0b;
+  --color-mod: #10b981;
 
   /* 5. Kích thước & Khoảng cách (Metrics) */
   --header-height: 56px;
@@ -51,10 +52,11 @@
   --radius-xl: 16px;
   --radius-full: 9999px;
 
-  /* 7. Đổ bóng Tinh tế (Shadows) */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
-  --shadow-dropdown: 0 8px 24px rgba(0, 0, 0, 0.7);
-  --shadow-floating: 0 12px 36px rgba(0, 0, 0, 0.85);
+  /* 7. Đổ bóng Chiều sâu (Obsidian Neon Shadows) */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.6);
+  --shadow-dropdown: 0 12px 32px rgba(0, 0, 0, 0.85);
+  --shadow-floating: 0 16px 48px rgba(0, 0, 0, 0.95);
+  --shadow-glow: 0 0 20px -3px rgba(6, 182, 212, 0.35);
 }
 
 /* Base Reset */
@@ -77,18 +79,18 @@ html, body {
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
 }
 ::-webkit-scrollbar-track {
   background: var(--bg-canvas);
 }
 ::-webkit-scrollbar-thumb {
-  background: #2a2a2d;
+  background: #1c2236;
   border-radius: var(--radius-full);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3e3e42;
+  background: #2a3452;
 }
 
 /* Layout Utilities */
@@ -115,8 +117,8 @@ html, body {
   top: 0;
   z-index: 50;
   height: var(--header-height);
-  background-color: rgba(26, 26, 27, 0.95);
-  backdrop-filter: blur(8px);
+  background-color: rgba(18, 21, 31, 0.92);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
@@ -134,43 +136,46 @@ html, body {
 
 .search-pill-input {
   width: 100%;
-  height: 40px;
+  height: 38px;
   background-color: var(--bg-input);
-  border: 1px solid transparent;
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-full);
   color: var(--text-primary);
   padding: 0 36px 0 40px;
-  font-size: 14px;
+  font-size: 13px;
   outline: none;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .search-pill-input:hover {
-  background-color: #2f2f32;
+  background-color: #1c2236;
+  border-color: var(--border-strong);
 }
 
 .search-pill-input:focus {
   background-color: var(--bg-surface);
   border-color: var(--color-brand);
-  box-shadow: 0 0 0 1px var(--color-brand);
+  box-shadow: 0 0 14px rgba(6, 182, 212, 0.25);
 }
 
-/* Card Component */
-.reddit-card {
+/* Card Component (Synapse Void Card) */
+.reddit-card, .synapse-card {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: 14px 16px;
   margin-bottom: 12px;
-  transition: border-color 0.15s ease;
+  box-shadow: 0 4px 18px -2px rgba(0, 0, 0, 0.45);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.reddit-card:hover {
-  border-color: #3e3e40;
+.reddit-card:hover, .synapse-card:hover {
+  border-color: rgba(6, 182, 212, 0.35);
+  box-shadow: 0 4px 22px -2px rgba(6, 182, 212, 0.08);
 }
 
 /* Pill Button */
-.reddit-pill-btn {
+.reddit-pill-btn, .synapse-pill-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -182,43 +187,48 @@ html, body {
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 600;
-  border: none;
+  border: 1px solid transparent;
   cursor: pointer;
   text-decoration: none;
   transition: all 0.15s ease;
 }
 
-.reddit-pill-btn:hover {
+.reddit-pill-btn:hover, .synapse-pill-btn:hover {
   background-color: var(--bg-pill-hover);
   color: var(--text-primary);
+  border-color: var(--border-subtle);
 }
 
-.reddit-pill-btn.primary {
-  background-color: var(--color-brand);
+.reddit-pill-btn.primary, .synapse-pill-btn.primary {
+  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #6366f1 100%);
   color: #ffffff;
+  border: none;
+  box-shadow: 0 0 14px -2px rgba(6, 182, 212, 0.4);
 }
 
-.reddit-pill-btn.primary:hover {
-  background-color: var(--color-brand-hover);
+.reddit-pill-btn.primary:hover, .synapse-pill-btn.primary:hover {
+  background: linear-gradient(135deg, #0891b2 0%, #2563eb 50%, #4f46e5 100%);
+  box-shadow: 0 0 18px -1px rgba(6, 182, 212, 0.6);
 }
 
-.reddit-pill-btn.joined {
+.reddit-pill-btn.joined, .synapse-pill-btn.joined {
   background-color: transparent;
   border: 1px solid var(--border-strong);
   color: var(--text-primary);
 }
 
-.reddit-pill-btn.joined:hover {
+.reddit-pill-btn.joined:hover, .synapse-pill-btn.joined:hover {
   border-color: var(--color-danger);
   color: var(--color-danger);
 }
 
-/* Vote Pill */
+/* Vote Pill (Emerald & Rose Red) */
 .vote-pill {
   display: inline-flex;
   align-items: center;
   height: 32px;
   background-color: var(--bg-pill);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-full);
   padding: 0 4px;
 }
@@ -266,7 +276,7 @@ html, body {
   color: var(--color-downvote);
 }
 
-/* Pulse indicator */
+/* Pulse indicator (Emerald Online) */
 .online-pulse {
   display: inline-block;
   width: 8px;
@@ -274,14 +284,14 @@ html, body {
   border-radius: 50%;
   background-color: var(--color-success);
   margin-right: 6px;
-  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
   animation: pulse 2s infinite;
 }
 
 @keyframes pulse {
-  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
-  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
-  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
 
 /* Responsive Media Queries */
@@ -293,12 +303,17 @@ html, body {
 
 @media (max-width: 768px) {
   .app-sidebar {
-    display: none !important;
+    position: fixed !important;
+    top: var(--header-height) !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    z-index: 99 !important;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.8) !important;
   }
   .app-container {
     padding: 8px 4px 64px 4px;
   }
-  .reddit-card {
+  .reddit-card, .synapse-card {
     border-radius: 0;
     border-left: none;
     border-right: none;
