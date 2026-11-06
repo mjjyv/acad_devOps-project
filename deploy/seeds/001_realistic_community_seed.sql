@@ -459,6 +459,105 @@ VALUES
     22,
     0,
     NOW() - INTERVAL '1 day'
+  ),
+
+  -- Thread 2 Comments (chia-se-kinh-nghiem-phong-van-devops-engineer-va-sre)
+  -- Root comment 1 (depth 1)
+  (
+    'e0000000-0000-0000-0000-000000000007',
+    'd0000000-0000-0000-0000-000000000002',
+    'a0000000-0000-0000-0000-000000000003',
+    NULL,
+    '0001',
+    1,
+    'Vòng phỏng vấn Linux Kernel có bị vặn sâu vào Socket buffer tuning và Cgroups v2 memory limit không bác? Đợt mình phỏng vấn ở Grab bị hỏi case Pod bị OOMKilled dù node vẫn còn 40% RAM trống, giải thích cơ chế `memory.max` và kernel cgroup limit rất căng.',
+    45,
+    0,
+    NOW() - INTERVAL '1 day 18 hours'
+  ),
+  -- Reply to comment 1 (depth 2)
+  (
+    'e0000000-0000-0000-0000-000000000008',
+    'd0000000-0000-0000-0000-000000000002',
+    'a0000000-0000-0000-0000-000000000004',
+    'e0000000-0000-0000-0000-000000000007',
+    '0001.0001',
+    2,
+    'Có hỏi kỹ nhé bác! Case OOMKilled đó là kinh điển: cgroup memory limit của container bị chạm ngưỡng trước khi node-level memory cạn. Phải kiểm tra file `/sys/fs/cgroup/memory.events` xem metric `oom_kill` để chứng minh. Ngoài ra họ hỏi thêm tham số sysctl `net.core.somaxconn` và `tcp_max_syn_backlog` khi xử lý SYN flood.',
+    38,
+    0,
+    NOW() - INTERVAL '1 day 14 hours'
+  ),
+  -- Root comment 2 (depth 1)
+  (
+    'e0000000-0000-0000-0000-000000000009',
+    'd0000000-0000-0000-0000-000000000002',
+    'a0000000-0000-0000-0000-000000000002',
+    NULL,
+    '0002',
+    1,
+    'Roadmap rất chất lượng. Đặc biệt phần Behavioral & Incident Postmortem: các công ty Big Tech đánh giá cực cao tư duy Blameless RCA và cách điều phối Incident Commander hơn là chỉ thuộc lòng cú pháp lệnh.',
+    52,
+    0,
+    NOW() - INTERVAL '1 day 10 hours'
+  ),
+
+  -- Thread 3 Comments (deep-dive-postgresql-16-ltree-cau-truc-cay-binh-luan-de-quy)
+  -- Root comment 1 (depth 1)
+  (
+    'e0000000-0000-0000-0000-000000000010',
+    'd0000000-0000-0000-0000-000000000003',
+    'a0000000-0000-0000-0000-000000000002',
+    NULL,
+    '0001',
+    1,
+    'Chỉ mục GiST trên cột ltree xử lý toán tử descendant `<@` cực kỳ xuất sắc. Lưu ý thêm là khi kích thước path vượt quá 10 cấp nên dùng Base36 để tiết kiệm không gian index, tránh bloat GiST tree.',
+    29,
+    0,
+    NOW() - INTERVAL '20 hours'
+  ),
+  -- Reply to comment 1 (depth 2)
+  (
+    'e0000000-0000-0000-0000-000000000011',
+    'd0000000-0000-0000-0000-000000000003',
+    'a0000000-0000-0000-0000-000000000005',
+    'e0000000-0000-0000-0000-000000000010',
+    '0001.0001',
+    2,
+    'Chuẩn bác, Base36 4 ký tự `000a` cho phép tới 1.6 triệu comment nhánh con mà mỗi node chỉ tốn 4 bytes UTF-8.',
+    18,
+    0,
+    NOW() - INTERVAL '16 hours'
+  ),
+
+  -- Thread 4 Comments (chien-luoc-bo-dem-karma-va-vote-fsm-nguyen-tu-voi-redis-lua-scripts)
+  -- Root comment 1 (depth 1)
+  (
+    'e0000000-0000-0000-0000-000000000012',
+    'd0000000-0000-0000-0000-000000000004',
+    'a0000000-0000-0000-0000-000000000004',
+    NULL,
+    '0001',
+    1,
+    'Lua script chạy atomic trên single thread Redis là giải pháp triệt tiêu race condition tốt nhất. Vừa nhanh vừa không cần distributed lock phức tạp như Redlock.',
+    21,
+    0,
+    NOW() - INTERVAL '14 hours'
+  ),
+
+  -- Thread 5 Comments (quy-dinh-moi-ve-bao-ve-du-lieu-ca-nhan-nghi-dinh-13)
+  -- Root comment 1 (depth 1)
+  (
+    'e0000000-0000-0000-0000-000000000013',
+    'd0000000-0000-0000-0000-000000000005',
+    'a0000000-0000-0000-0000-000000000001',
+    NULL,
+    '0001',
+    1,
+    'Chúng ta đã cấu hình IP Masking tự động trên Nginx/Cloudflare và cài đặt cron job tự động purge log sau 30 ngày để tuân thủ điều khoản Data Retention của Nghị định 13.',
+    34,
+    0,
+    NOW() - INTERVAL '8 hours'
   )
 ON CONFLICT (id) DO UPDATE
 SET content = EXCLUDED.content,

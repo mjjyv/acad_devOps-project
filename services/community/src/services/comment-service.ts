@@ -38,9 +38,9 @@ export class CommentService {
       contentAst: { text: entity.content },
       author: {
         id: entity.authorId,
-        username: '',
-        avatarUrl: null,
-        karmaScore: 0,
+        username: entity.authorUsername || '',
+        avatarUrl: entity.authorAvatarUrl || null,
+        karmaScore: entity.authorKarmaScore || 0,
       },
       netScore: entity.upvotesCount - entity.downvotesCount,
       upvotes: entity.upvotesCount,

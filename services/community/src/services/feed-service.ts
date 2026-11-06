@@ -111,18 +111,19 @@ export class FeedService {
     return {
       id: entity.id,
       spaceId: entity.spaceId,
-      spaceSlug: spaceSlug ?? '',
-      spaceName: spaceName ?? '',
+      spaceSlug: spaceSlug ?? entity.spaceSlug ?? '',
+      spaceName: spaceName ?? entity.spaceName ?? '',
       authorId: entity.authorId,
-      authorUsername: '',
+      authorUsername: entity.authorUsername ?? '',
+      authorAvatarUrl: entity.authorAvatarUrl ?? null,
       flair: entity.flairId
         ? {
             id: entity.flairId,
             spaceId: entity.spaceId,
-            name: '',
-            slug: '',
-            colorHex: '#FF4500',
-            backgroundHex: '#393E46',
+            name: entity.flairName ?? '',
+            slug: (entity.flairName ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            colorHex: entity.flairColor ?? '#DFD0B8',
+            backgroundHex: '#30364F',
             createdAt: entity.createdAt,
           }
         : null,

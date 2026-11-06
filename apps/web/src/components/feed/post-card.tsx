@@ -13,6 +13,7 @@ import {
   ShareIcon,
   UpvoteIcon,
 } from '@/components/ui/icons';
+import { CommunityApi } from '@/lib/api/community';
 import { useAuth } from '@/lib/auth/auth-context';
 import { useUIState } from '@/lib/store/ui-context';
 
@@ -76,10 +77,25 @@ export function PostCard({ post }: PostCardProps) {
 
   const handleJoinToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
-    requireAuth(() => {
-      setIsJoined(!isJoined);
-      showToast(!isJoined ? `Joined r/${post.spaceSlug}` : `Left r/${post.spaceSlug}`);
-    }, `Đăng nhập để tham gia r/${post.spaceSlug}`);
+    requireAuth(
+      async () => {
+        try {
+          if (!isJoined) {
+            await CommunityApi.joinSpace(post.spaceSlug || 'devops-arch');
+            setIsJoined(true);
+            showToast(`Đã tham gia s/${post.spaceSlug || 'devops-arch'}`);
+          } else {
+            await CommunityApi.leaveSpace(post.spaceSlug || 'devops-arch');
+            setIsJoined(false);
+            showToast(`Đã rời khỏi s/${post.spaceSlug || 'devops-arch'}`);
+          }
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : 'Lỗi cập nhật thành viên không gian';
+          showToast(msg);
+        }
+      },
+      `Đăng nhập để tham gia không gian s/${post.spaceSlug || 'devops-arch'}`,
+    );
   };
 
   const handleShare = async (e: React.MouseEvent) => {

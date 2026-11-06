@@ -89,6 +89,16 @@ export class PostgresCommunityRepository implements ICommunityRepository {
       isLocked: Boolean(row.is_locked),
       createdAt: new Date(String(row.created_at)).toISOString(),
       updatedAt: new Date(String(row.updated_at)).toISOString(),
+      spaceSlug: (row.space_slug as string | null) || (row.spaceSlug as string | null) || undefined,
+      spaceName: (row.space_name as string | null) || (row.spaceName as string | null) || undefined,
+      authorUsername:
+        (row.author_username as string | null) ||
+        (row.authorUsername as string | null) ||
+        undefined,
+      authorAvatarUrl:
+        (row.author_avatar_url as string | null) || (row.authorAvatarUrl as string | null) || null,
+      flairName: (row.flair_name as string | null) || (row.flairName as string | null) || null,
+      flairColor: (row.flair_color as string | null) || (row.flairColor as string | null) || null,
     };
   }
 
@@ -107,6 +117,13 @@ export class PostgresCommunityRepository implements ICommunityRepository {
       isDeleted: Boolean(row.is_deleted),
       createdAt: new Date(String(row.created_at)).toISOString(),
       updatedAt: new Date(String(row.updated_at)).toISOString(),
+      authorUsername:
+        (row.author_username as string | null) || (row.authorUsername as string | null) || undefined,
+      authorAvatarUrl:
+        (row.author_avatar_url as string | null) || (row.authorAvatarUrl as string | null) || null,
+      authorKarmaScore: row.author_karma_score
+        ? parseInt(String(row.author_karma_score), 10)
+        : undefined,
     };
   }
 
@@ -371,7 +388,21 @@ export class PostgresCommunityRepository implements ICommunityRepository {
   public async findThreadById(id: string): Promise<ThreadEntity | null> {
     if (!isUuid(id)) return null;
     try {
-      const res = await this.pool.query('SELECT * FROM threads WHERE id = $1 LIMIT 1;', [id]);
+      const res = await this.pool.query(
+        `SELECT t.*,
+                s.slug AS space_slug,
+                s.name AS space_name,
+                u.username AS author_username,
+                u.avatar_url AS author_avatar_url,
+                f.name AS flair_name,
+                f.color AS flair_color
+         FROM threads t
+         LEFT JOIN spaces s ON t.space_id = s.id
+         LEFT JOIN users u ON t.author_id = u.id
+         LEFT JOIN space_flairs f ON t.flair_id = f.id
+         WHERE t.id = $1 LIMIT 1;`,
+        [id],
+      );
       return res.rows[0] ? this.mapThreadRow(res.rows[0]) : null;
     } catch (err) {
       throw new DatabaseConnectionError('Lỗi tìm thread theo id', err);
@@ -380,7 +411,21 @@ export class PostgresCommunityRepository implements ICommunityRepository {
 
   public async findThreadBySlug(slug: string): Promise<ThreadEntity | null> {
     try {
-      const res = await this.pool.query('SELECT * FROM threads WHERE slug = $1 LIMIT 1;', [slug]);
+      const res = await this.pool.query(
+        `SELECT t.*,
+                s.slug AS space_slug,
+                s.name AS space_name,
+                u.username AS author_username,
+                u.avatar_url AS author_avatar_url,
+                f.name AS flair_name,
+                f.color AS flair_color
+         FROM threads t
+         LEFT JOIN spaces s ON t.space_id = s.id
+         LEFT JOIN users u ON t.author_id = u.id
+         LEFT JOIN space_flairs f ON t.flair_id = f.id
+         WHERE t.slug = $1 LIMIT 1;`,
+        [slug],
+      );
       return res.rows[0] ? this.mapThreadRow(res.rows[0]) : null;
     } catch (err) {
       throw new DatabaseConnectionError('Lỗi tìm thread theo slug', err);
@@ -396,16 +441,28 @@ export class PostgresCommunityRepository implements ICommunityRepository {
     try {
       const limit = options?.limit || 20;
       const offset = options?.offset || 0;
-      let query = 'SELECT * FROM threads WHERE space_id = $1';
+      let query = `
+        SELECT t.*,
+               s.slug AS space_slug,
+               s.name AS space_name,
+               u.username AS author_username,
+               u.avatar_url AS author_avatar_url,
+               f.name AS flair_name,
+               f.color AS flair_color
+        FROM threads t
+        LEFT JOIN spaces s ON t.space_id = s.id
+        LEFT JOIN users u ON t.author_id = u.id
+        LEFT JOIN space_flairs f ON t.flair_id = f.id
+        WHERE t.space_id = $1`;
       const params: unknown[] = [spaceId];
 
       if (options?.flairId) {
-        query += ' AND flair_id = $2';
+        query += ' AND t.flair_id = $2';
         params.push(options.flairId);
-        query += ` ORDER BY is_pinned DESC, created_at DESC LIMIT $3 OFFSET $4;`;
+        query += ` ORDER BY t.is_pinned DESC, t.created_at DESC LIMIT $3 OFFSET $4;`;
         params.push(limit, offset);
       } else {
-        query += ` ORDER BY is_pinned DESC, created_at DESC LIMIT $2 OFFSET $3;`;
+        query += ` ORDER BY t.is_pinned DESC, t.created_at DESC LIMIT $2 OFFSET $3;`;
         params.push(limit, offset);
       }
 
@@ -424,9 +481,19 @@ export class PostgresCommunityRepository implements ICommunityRepository {
     try {
       // Sử dụng toán tử Trigram similarity hoặc ILIKE kết hợp GIN index
       const res = await this.pool.query(
-        `SELECT * FROM threads
-         WHERE space_id = $1 AND title ILIKE $2
-         ORDER BY created_at DESC
+        `SELECT t.*,
+                s.slug AS space_slug,
+                s.name AS space_name,
+                u.username AS author_username,
+                u.avatar_url AS author_avatar_url,
+                f.name AS flair_name,
+                f.color AS flair_color
+         FROM threads t
+         LEFT JOIN spaces s ON t.space_id = s.id
+         LEFT JOIN users u ON t.author_id = u.id
+         LEFT JOIN space_flairs f ON t.flair_id = f.id
+         WHERE t.space_id = $1 AND t.title ILIKE $2
+         ORDER BY t.created_at DESC
          LIMIT $3;`,
         [spaceId, `%${query}%`, limit],
       );
@@ -490,9 +557,16 @@ export class PostgresCommunityRepository implements ICommunityRepository {
 
   public async listCommentsByThread(threadId: string): Promise<CommentEntity[]> {
     try {
-      // 1 câu truy vấn duy nhất sắp xếp theo path ltree tăng dần: < 1.2ms qua GiST index
+      // 1 câu truy vấn duy nhất JOIN users sắp xếp theo path ltree tăng dần: < 1.2ms qua GiST index
       const res = await this.pool.query(
-        'SELECT * FROM comments WHERE thread_id = $1 ORDER BY path ASC;',
+        `SELECT c.*,
+                u.username AS author_username,
+                u.avatar_url AS author_avatar_url,
+                u.karma_score AS author_karma_score
+         FROM comments c
+         LEFT JOIN users u ON c.author_id = u.id
+         WHERE c.thread_id = $1
+         ORDER BY c.path ASC;`,
         [threadId],
       );
       return res.rows.map((r) => this.mapCommentRow(r));
@@ -686,10 +760,20 @@ export class PostgresCommunityRepository implements ICommunityRepository {
   ): Promise<ThreadEntity[]> {
     try {
       const res = await this.pool.query(
-        `SELECT t.* FROM threads t
-         INNER JOIN user_saved_threads s ON s.thread_id = t.id
-         WHERE s.user_id = $1
-         ORDER BY s.created_at DESC
+        `SELECT t.*,
+                s.slug AS space_slug,
+                s.name AS space_name,
+                u.username AS author_username,
+                u.avatar_url AS author_avatar_url,
+                f.name AS flair_name,
+                f.color AS flair_color
+         FROM threads t
+         INNER JOIN user_saved_threads s_user ON s_user.thread_id = t.id
+         LEFT JOIN spaces s ON t.space_id = s.id
+         LEFT JOIN users u ON t.author_id = u.id
+         LEFT JOIN space_flairs f ON t.flair_id = f.id
+         WHERE s_user.user_id = $1
+         ORDER BY s_user.created_at DESC
          LIMIT $2 OFFSET $3;`,
         [userId, limit, offset],
       );
@@ -761,12 +845,21 @@ export class PostgresCommunityRepository implements ICommunityRepository {
 
     let sql = `
       SELECT t.*,
+             s.slug AS space_slug,
+             s.name AS space_name,
+             u.username AS author_username,
+             u.avatar_url AS author_avatar_url,
+             f.name AS flair_name,
+             f.color AS flair_color,
              COALESCE(tc.upvotes, t.upvotes_count) as c_upvotes,
              COALESCE(tc.downvotes, t.downvotes_count) as c_downvotes,
              COALESCE(tc.net_score, (t.upvotes_count - t.downvotes_count)) as c_net_score,
              COALESCE(tc.hot_score, 0) as c_hot_score,
              COALESCE(tc.wilson_score, 0) as c_wilson_score
       FROM threads t
+      LEFT JOIN spaces s ON t.space_id = s.id
+      LEFT JOIN users u ON t.author_id = u.id
+      LEFT JOIN space_flairs f ON t.flair_id = f.id
       LEFT JOIN thread_counters tc ON tc.thread_id = t.id
       WHERE 1=1
     `;

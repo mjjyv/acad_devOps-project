@@ -145,7 +145,7 @@ export function RightRail() {
         <div
           style={{
             height: '40px',
-            background: 'linear-gradient(90deg, #ff4500 0%, #ff8700 100%)',
+            background: 'linear-gradient(135deg, #30364F 0%, #444C6E 50%, #E1D9BC 100%)',
           }}
         />
         <div style={{ padding: '14px 16px' }}>

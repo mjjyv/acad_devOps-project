@@ -69,7 +69,7 @@ export function AuthModal() {
           email: email.trim(),
           password,
         });
-        showToast(`Chào mừng @${username.trim()} đến với Acad Platform!`);
+        showToast(`Chào mừng @${username.trim()} đến với SYNAPSE Platform!`);
       }
     } catch (err: unknown) {
       if (err instanceof HttpError) {

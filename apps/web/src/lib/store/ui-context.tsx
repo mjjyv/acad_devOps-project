@@ -45,46 +45,49 @@ const UIContext = createContext<UIContextType | undefined>(undefined);
 
 const INITIAL_RECENT_POSTS: RecentPostItem[] = [
   {
-    id: 'post-1',
+    id: 'd0000000-0000-0000-0000-000000000002',
     spaceSlug: 'vozforums',
-    spaceName: 'r/vozforums',
-    title: 'Ông chú Vịt teo tham vọng đá bay Zàlò ra chuồng gà',
-    timeAgo: '14h ago',
-    upvotes: 63,
-    comments: 40,
+    spaceName: 's/vozforums',
+    title:
+      'Chia sẻ kinh nghiệm phỏng vấn DevOps Engineer và SRE tại các công ty Big Tech & Unicorn',
+    timeAgo: '2d ago',
+    upvotes: 428,
+    comments: 3,
     thumbnailUrl:
       'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=60',
   },
   {
-    id: 'post-2',
+    id: 'd0000000-0000-0000-0000-000000000001',
     spaceSlug: 'devops-arch',
-    spaceName: 'r/devops-arch',
-    title: 'Triển khai Zero-Downtime Rolling Update trên Podman & Systemd Homelab',
-    timeAgo: '1d ago',
-    upvotes: 128,
-    comments: 32,
+    spaceName: 's/devops-arch',
+    title:
+      'Triển khai Self-Hosted Homelab Monorepo: Podman Rootless, Cloudflare Tunnel và Next.js 15 SSR High Availability',
+    timeAgo: '3d ago',
+    upvotes: 562,
+    comments: 6,
     thumbnailUrl:
       'https://images.unsplash.com/photo-1629654297299-c8506221ca97?w=100&auto=format&fit=crop&q=60',
   },
   {
-    id: 'post-3',
-    spaceSlug: 'vietnam',
-    spaceName: 'r/VietNam',
-    title: 'Hạ tầng cáp quang biển và giải pháp Cloudflare Tunnel vượt lũ băng thông',
-    timeAgo: '2d ago',
-    upvotes: 448,
-    comments: 281,
+    id: 'd0000000-0000-0000-0000-000000000003',
+    spaceSlug: 'system-design',
+    spaceName: 's/system-design',
+    title:
+      'Deep-dive PostgreSQL 16 ltree: Cấu trúc cây bình luận đệ quy tối ưu hóa cho hàng triệu nút',
+    timeAgo: '1d ago',
+    upvotes: 315,
+    comments: 2,
     thumbnailUrl:
       'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=100&auto=format&fit=crop&q=60',
   },
   {
-    id: 'post-4',
-    spaceSlug: 'database',
-    spaceName: 'r/database',
-    title: 'Tối ưu hóa PostgreSQL ltree Base36 index GiST cho diễn đàn 10 triệu comment',
-    timeAgo: '3d ago',
-    upvotes: 312,
-    comments: 94,
+    id: 'd0000000-0000-0000-0000-000000000004',
+    spaceSlug: 'kubernetes',
+    spaceName: 's/kubernetes',
+    title: 'Chiến lược bộ đếm Karma và Vote FSM nguyên tử với Redis Lua Scripts',
+    timeAgo: '18h ago',
+    upvotes: 289,
+    comments: 1,
     thumbnailUrl:
       'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=100&auto=format&fit=crop&q=60',
   },
@@ -110,7 +113,7 @@ export function UIProvider({ children }: { children: React.ReactNode }) {
         {
           ...post,
           timeAgo: post.timeAgo || 'Just now',
-          spaceName: post.spaceName || `r/${post.spaceSlug}`,
+          spaceName: post.spaceName || `s/${post.spaceSlug}`,
         },
         ...filtered,
       ].slice(0, 5);

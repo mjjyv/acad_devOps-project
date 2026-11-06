@@ -29,7 +29,11 @@ export class SpaceNotFoundError extends Error {
 export class SpaceService {
   constructor(private repo: ICommunityRepository) {}
 
-  private toSpaceContract(entity: SpaceEntity, isJoined = false, myRole?: string): Space {
+  private toSpaceContract(
+    entity: SpaceEntity,
+    isJoined = false,
+    myRole?: string | null | undefined,
+  ): Space {
     return {
       id: entity.id,
       slug: entity.slug,
@@ -84,9 +88,21 @@ export class SpaceService {
     return space ? this.toSpaceContract(space) : null;
   }
 
-  public async listSpaces(options?: { limit?: number; offset?: number }): Promise<Space[]> {
+  public async listSpaces(
+    options?: { limit?: number; offset?: number },
+    userId?: string,
+  ): Promise<Space[]> {
     const entities = await this.repo.listSpaces(options);
-    return entities.map((e) => this.toSpaceContract(e));
+    if (!userId) {
+      return entities.map((e) => this.toSpaceContract(e, false, null));
+    }
+    const spacesWithMembership = await Promise.all(
+      entities.map(async (e) => {
+        const membership = await this.repo.getMembership(e.id, userId);
+        return this.toSpaceContract(e, Boolean(membership), membership?.role || null);
+      }),
+    );
+    return spacesWithMembership;
   }
 
   public async joinSpace(spaceId: string, userId: string): Promise<void> {

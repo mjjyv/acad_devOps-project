@@ -79,6 +79,13 @@ export interface ThreadEntity {
   isLocked: boolean;
   createdAt: string;
   updatedAt: string;
+  // Joined fields from spaces, users, space_flairs
+  spaceSlug?: string | undefined;
+  spaceName?: string | undefined;
+  authorUsername?: string | undefined;
+  authorAvatarUrl?: string | null | undefined;
+  flairName?: string | null | undefined;
+  flairColor?: string | null | undefined;
 }
 
 export interface CommentEntity {
@@ -95,6 +102,10 @@ export interface CommentEntity {
   isDeleted: boolean;
   createdAt: string;
   updatedAt: string;
+  // Joined fields
+  authorUsername?: string | undefined;
+  authorAvatarUrl?: string | null | undefined;
+  authorKarmaScore?: number | undefined;
 }
 
 export interface ThreadCountersEntity {

@@ -142,7 +142,7 @@ export function FloatingChatWidget() {
               3
             </span>
           </div>
-          <span>Acad Chat</span>
+          <span>Synapse Chat</span>
           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>▲</span>
         </button>
       </div>
@@ -185,7 +185,7 @@ export function FloatingChatWidget() {
           <span className="online-pulse" style={{ width: '8px', height: '8px' }} />
           <div>
             <h4 style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-primary)' }}>
-              Acad Realtime Chat
+              Synapse Realtime Chat
             </h4>
             <span style={{ fontSize: '10px', color: 'var(--color-success)', fontWeight: 600 }}>
               SSE Stream Connected

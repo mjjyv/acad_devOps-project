@@ -141,7 +141,7 @@ export function Header() {
           id="global-search-input"
           type="text"
           className="search-pill-input"
-          placeholder="Search Acad DevOps (Press '/' to focus)"
+          placeholder="Search Synapse (Press '/' to focus)"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           onFocus={() => setSearchFocused(true)}
@@ -225,9 +225,9 @@ export function Header() {
                   cursor: 'pointer',
                   background: 'transparent',
                 }}
-                onMouseDown={() => setSearchQuery('r/devops-arch')}
+                onMouseDown={() => setSearchQuery('s/devops-arch')}
               >
-                <span style={{ color: 'var(--color-brand)', fontWeight: 700 }}>r/devops-arch</span>
+                <span style={{ color: 'var(--color-brand)', fontWeight: 700 }}>s/devops-arch</span>
                 <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                   • 1.2k engineers
                 </span>
@@ -242,9 +242,9 @@ export function Header() {
                   cursor: 'pointer',
                   background: 'transparent',
                 }}
-                onMouseDown={() => setSearchQuery('r/vozforums')}
+                onMouseDown={() => setSearchQuery('s/vozforums')}
               >
-                <span style={{ color: 'var(--color-brand)', fontWeight: 700 }}>r/vozforums</span>
+                <span style={{ color: 'var(--color-brand)', fontWeight: 700 }}>s/vozforums</span>
                 <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                   • 4.5k discussions
                 </span>

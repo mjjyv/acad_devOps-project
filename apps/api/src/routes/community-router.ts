@@ -82,7 +82,8 @@ export function createCommunityRouter(
     try {
       const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : 20;
       const offset = req.query.offset ? parseInt(String(req.query.offset), 10) : 0;
-      const spaces = await services.spaceService.listSpaces({ limit, offset });
+      const userId = getOptionalUserId(req, jwtSecret);
+      const spaces = await services.spaceService.listSpaces({ limit, offset }, userId);
       res.status(200).json({ spaces });
     } catch (err) {
       next(err);

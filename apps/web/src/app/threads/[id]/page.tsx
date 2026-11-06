@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { FloatingChatWidget } from '@/components/chat/floating-chat-widget';
 import { CommentTree } from '@/components/comments/comment-tree';
+import { MarkdownRenderer } from '@/components/common/markdown-renderer';
 import { BottomNav } from '@/components/layout/bottom-nav';
 import { Header } from '@/components/layout/header';
 import { LeftSidebar } from '@/components/layout/left-sidebar';
@@ -233,26 +234,41 @@ export default function ThreadDetailPage() {
                     }}
                   >
                     <Link
-                      href={`/s/${thread.spaceSlug}`}
+                      href={`/s/${thread.spaceSlug || 'devops-arch'}`}
                       style={{
                         color: 'var(--color-brand)',
                         fontWeight: 700,
                         textDecoration: 'none',
                       }}
                     >
-                      s/{thread.spaceSlug}
+                      s/{thread.spaceSlug || 'devops-arch'}
                     </Link>
+                    {thread.flair?.name && (
+                      <span
+                        style={{
+                          backgroundColor: `${thread.flair.colorHex || 'var(--color-brand)'}22`,
+                          color: thread.flair.colorHex || 'var(--color-brand)',
+                          border: `1px solid ${thread.flair.colorHex || 'var(--color-brand)'}44`,
+                          padding: '2px 8px',
+                          borderRadius: '9999px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                        }}
+                      >
+                        {thread.flair.name}
+                      </span>
+                    )}
                     <span>•</span>
                     <span>Đăng bởi</span>
                     <Link
-                      href={`/u/${thread.authorUsername}`}
+                      href={`/u/${thread.authorUsername || 'anonymous'}`}
                       style={{
                         color: 'var(--text-primary)',
                         fontWeight: 600,
                         textDecoration: 'none',
                       }}
                     >
-                      u/{thread.authorUsername}
+                      u/{thread.authorUsername || 'anonymous'}
                     </Link>
                     <span>•</span>
                     <span>{new Date(thread.createdAt).toLocaleDateString('vi-VN')}</span>
@@ -271,17 +287,9 @@ export default function ThreadDetailPage() {
                     {thread.title}
                   </h1>
 
-                  {/* Nội dung bài viết */}
-                  <div
-                    style={{
-                      fontSize: '14px',
-                      lineHeight: 1.7,
-                      color: 'var(--text-primary)',
-                      whiteSpace: 'pre-wrap',
-                      marginBottom: '20px',
-                    }}
-                  >
-                    {thread.contentText}
+                  {/* Nội dung bài viết với Markdown Renderer */}
+                  <div style={{ marginBottom: '24px' }}>
+                    <MarkdownRenderer content={thread.contentText || ''} />
                   </div>
 
                   {/* Action Bar Pills */}

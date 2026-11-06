@@ -24,7 +24,7 @@ const INITIAL_POSTS: PostItem[] = [
       'Tối ưu hóa tài nguyên phần cứng, triệt tiêu chi phí Cloud đắt đỏ với mô hình Zero Trust Cloudflare Tunnel kết hợp Systemd User Daemons và PostgreSQL 16 ltree nested tree CMS. Giảm 100% rủi ro bị tấn công trực diện vào IP công cộng...',
     upvotes: 562,
     comments: 6,
-    hasJoined: true,
+    hasJoined: false,
     userVote: null,
   },
   {
@@ -40,7 +40,7 @@ const INITIAL_POSTS: PostItem[] = [
       'Chào anh em, mình vừa kết thúc chuỗi phỏng vấn ở 4 công ty công nghệ lớn tại VN và Singapore. Muốn chia sẻ lại toàn bộ roadmap ôn tập từ Linux kernel internals, networking TCP/IP, Kubernetes architecture, và deep-dive distributed system...',
     upvotes: 428,
     comments: 3,
-    hasJoined: true,
+    hasJoined: false,
     userVote: null,
   },
   {
@@ -103,10 +103,10 @@ export default function HomePage() {
         if (isMounted && liveThreads && liveThreads.length > 0) {
           const mapped: PostItem[] = liveThreads.map((t) => ({
             id: t.id,
-            spaceSlug: t.spaceSlug,
-            spaceName: `s/${t.spaceSlug}`,
+            spaceSlug: t.spaceSlug || 'devops-arch',
+            spaceName: `s/${t.spaceSlug || 'devops-arch'}`,
             spaceColor: t.flair?.colorHex || '#E1D9BC',
-            author: t.authorUsername,
+            author: t.authorUsername || 'cloud_architect',
             timeAgo: new Date(t.createdAt).toLocaleDateString('vi-VN'),
             title: t.title,
             bodySnippet:
@@ -115,7 +115,7 @@ export default function HomePage() {
                 : '',
             upvotes: t.netScore || t.upvotes,
             comments: t.commentsCount,
-            hasJoined: t.isSaved || false,
+            hasJoined: false,
             userVote: t.userVote === 1 ? 1 : t.userVote === -1 ? -1 : null,
           }));
           setPosts(mapped);
