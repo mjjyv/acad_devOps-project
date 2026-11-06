@@ -18,37 +18,39 @@ Trong các hệ thống phân tán chịu tải cao có logic an ninh phức t�
 
 Do đó, toàn bộ dự án được tái thiết sạch từ đầu theo **4 Luồng Lớn (Major Streams)**:
 1. **STREAM B (Backend Engine Evolution):** Gồm Phase B0 (Nền tảng Monorepo) và 5 giai đoạn nghiệp vụ (Phases B1 $\rightarrow$ B5) từ cơ sở dữ liệu tới hoàn thiện 100% API, CSDL và Logic.
-2. **STREAM F (Frontend Integration):** Gồm 4 giai đoạn con (Phases F1 $\rightarrow$ F4) tích hợp giao diện Brutalist Dark Mode, DOM ảo hóa cây bình luận và Widgets.
+2. **STREAM F (Frontend Modern Reddit UI):** Gồm 6 giai đoạn (Phases F0 $\rightarrow$ F5) tích hợp giao diện hiện đại tối giản phong cách Reddit Dark Theme, DOM ảo hóa cây bình luận, cụm vote FSM 0ms và Floating Chat Widget.
 3. **STREAM Q (Quality Assurance & Load Testing):** Kiểm thử tự động Vitest 100%, k6 Stress Testing (5,000 RPS) và Audit bảo mật.
-4. **STREAM D (Production DevOps & Launch):** Đóng gói Docker Alpine, Supabase DB pooler, Render Cloud và duy trì Uptime.
+4. **STREAM D (Production DevOps & Launch):** Đóng gói Docker Alpine, Local Self-Hosted Homelab Podman Rootless, Cloudflare Zero Trust và Render Cloud fallback.
 
 ```mermaid
 flowchart TD
-    subgraph StreamB ["STREAM B: BACKEND ENGINE EVOLUTION (TÁI THIẾT TỪ NỀN TẢNG)"]
-        B0["Phase B0: Monorepo Foundation & Tooling<br/>(pnpm-workspace, Biome, TS 5.9, Docker Compose dev)"]
-        B1["Phase B1: Hạ Tầng CSDL & Phân Hệ Auth<br/>(Postgres 16, Redis 7, Argon2id, Token Rotation 30s Grace)"]
-        B2["Phase B2: Spaces, CMS Engine & Ltree Comments<br/>(Spaces /s/[slug], Post Flairs, Zero-hop Media, Ltree Base36)"]
-        B3["Phase B3: Bầu Chọn Nguyên Tử & Bảng Tin Feeds<br/>(execute_vote.lua, Gravity Decay, Wilson Best, Search)"]
-        B4["Phase B4: Reddit Realtime Chat & Message Queue<br/>(Direct 1-1, Group Chat, Chat Requests Queue, SSE)"]
-        B5["Phase B5: Kiểm Duyệt, Mod Queue & Admin Hub<br/>(Auto-moderation, Shadowban, Audit Logs, Stats)"]
+    subgraph StreamB ["STREAM B: BACKEND ENGINE EVOLUTION (HOÀN TẤT 100% ✅)"]
+        B0["Phase B0: Monorepo Foundation & Tooling (LOG-B0 ✅)"]
+        B1["Phase B1: Hạ Tầng CSDL & Phân Hệ Auth (LOG-B1 ✅)"]
+        B2["Phase B2: Spaces, CMS Engine & Ltree Comments (LOG-B2 ✅)"]
+        B3["Phase B3: Bầu Chọn Nguyên Tử & Bảng Tin Feeds (LOG-B3 ✅)"]
+        B4["Phase B4: Reddit Realtime Chat & Message Queue (LOG-B4 ✅)"]
+        B5["Phase B5: Kiểm Duyệt, Mod Queue & Admin Hub (LOG-B5 ✅)"]
         B0 --> B1 --> B2 --> B3 --> B4 --> B5
     end
 
-    subgraph StreamF ["STREAM F: FRONTEND INTEGRATION & BRUTALIST UI"]
-        F1["Phase F1: Layout Nền Tảng & Brutalist Design Tokens"]
-        F2["Phase F2: Bảng Tin, Lọc Flairs & Cây Bình Luận Ảo Hóa"]
-        F3["Phase F3: Trình Soạn Thảo Tiptap & Admin Console UI"]
-        F4["Phase F4: Floating Chat Widget & Quản Lý Chat Requests"]
-        F1 --> F2 --> F3 --> F4
+    subgraph StreamF ["STREAM F: FRONTEND MODERN REDDIT UI (SẴN SÀNG TRIỂN KHAI 🚀)"]
+        F0["Phase F0: App Shell, Tokens & Layout 3 Cột (Header + Sidebar + Rail)"]
+        F1["Phase F1: Hệ Thống Auth, Login/Register & Quản Lý Phiên"]
+        F2["Phase F2: Không Gian Spaces, Editor Tiptap & Cây Bình Luận Ltree"]
+        F3["Phase F3: Bảng Tin Đa Thuật Toán & Cụm Bỏ Phiếu FSM 0ms"]
+        F4["Phase F4: Reddit Floating Chat Widget & Kết Nối SSE Realtime"]
+        F5["Phase F5: Trung Tâm Kiểm Duyệt Mod Hub & Bảng Điều Khiển Admin"]
+        F0 --> F1 --> F2 --> F3 --> F4 --> F5
     end
 
     subgraph StreamD ["STREAM D: LAUNCH & PRODUCTION DEVOPS"]
         D1["Phase D1: k6 Load Test (5000 RPS) & Supabase Migration"]
-        D2["Phase D2: Render Cloud Production Launch & Keep-Alive"]
+        D2["Phase D2: Local Homelab Active & Render Cloud Production"]
     end
 
-    B5 --> F1
-    F4 --> D1 --> D2
+    B5 --> F0
+    F5 --> D1 --> D2
 ```
 
 ---

@@ -59,17 +59,32 @@
 - [x] Bảng `audit_logs` lưu vết bất biến toàn bộ thao tác quản trị an ninh hệ thống.
 - [x] API Quản trị: Thống kê hệ thống AdminStats, đổi vai trò/trạng thái người dùng kèm cưỡng chế thu hồi phiên, ghim bài, khóa comment, xóa space cascade.
 
-### 2.2. Phân Hệ Frontend (Stream F: Phases F1 $\rightarrow$ F4)
-*(Bắt đầu sau khi hoàn thành và nghiệm thu 100% Stream B)*
-- [ ] Cấu hình Next.js 15 App Router với Server Components (0KB JS bundle tĩnh).
-- [ ] Hệ thống Design Tokens Brutalist Dark Mode (`#222831`, `#393E46`, `#948979`, `#DFD0B8`, 3px 3px 0px shadows, 0px border radius).
-- [ ] Giao diện Đăng ký (`/register`), Đăng nhập (`/login`), Quản lý phiên (`/settings/sessions`).
-- [ ] Bảng tin trang chủ với tabs Hot, New, Top và Best; thanh tìm kiếm phím tắt `/`.
-- [ ] Giao diện trang không gian (`/s/[slug]`) với danh mục Post Flairs và nút Tham gia/Rời khỏi Space.
-- [ ] Thư viện `@acad/tree-virtualizer` trải phẳng mảng phân cấp cây bình luận $\mathcal{O}(N)$ gắn vào `/threads/[slug]`.
-- [ ] Trình soạn thảo Tiptap Editor hỗ trợ định dạng mã nguồn và tải ảnh qua Presigned URL.
-- [ ] Dashboard Quản trị (`/admin`) với Sub-Navbar 4 phân hệ (Dashboard, Users, Spaces, Threads).
-- [ ] Floating / Pop-out Chat Widget hỗ trợ nhắn tin 1-1, Group Chat, và hàng đợi duyệt Chat Requests.
+### 2.2. Phân Hệ Frontend (Stream F: Phases F0 $\rightarrow$ F5 - Giao Diện Reddit Hiện Đại Tối Giản)
+*(Sẵn sàng triển khai sau khi hoàn thành và nghiệm thu 100% Stream B)*
+- [ ] **Phase F0: Nền Tảng UI, Design Tokens & Bố Cục 3 Cột (App Shell)**
+  - Cấu hình Tailwind CSS v4, bộ Design Tokens Reddit Dark Palette (`#0e1113`, `#1a1a1b`, `#ff4500`).
+  - Thanh Header Bar cố định 56px với thanh tìm kiếm con nhộng (`/` shortcut) và cụm tác vụ nhanh.
+  - Bố cục 3 cột Holy Grail: Sidebar trái (260px), Bảng tin giữa (max 680px), Rail phải (316px).
+  - Thanh Bottom Navigation Bar 5 nút cho thiết bị di động (< 768px).
+- [ ] **Phase F1: Hệ Thống Xác Thực & Quản Lý Phiên Đa Thiết Bị**
+  - Giao diện Đăng ký (`/register`), Đăng nhập (`/login`), tích hợp `@acad/auth-client` Mutex Lock.
+  - Bảng quản trị phiên làm việc đa thiết bị (`/settings/sessions`) kèm hủy phiên từ xa.
+- [ ] **Phase F2: Không Gian Thảo Luận, Trình Soạn Thảo & Cây Bình Luận Ảo Hóa**
+  - Giao diện Không gian thảo luận (`/s/[slug]`) với banner, avatar, nút Join và Post Flairs.
+  - Trình soạn thảo Tiptap Editor (Rich text, Code highlight, tải ảnh Zero-Hop Cloudflare R2 / S3).
+  - Cây bình luận ảo hóa đa tầng `ltree` Base36 60 FPS, xử lý Flat Reply `@mention` tại Capped Depth.
+- [ ] **Phase F3: Bảng Tin Đa Thuật Toán & Bỏ Phiếu Lạc Quan 0ms**
+  - Nguồn cấp tin phân tầng (For You / Following, Hot / New / Top / Best).
+  - Thẻ bài viết hoàn chỉnh với cụm nút bỏ phiếu Optimistic FSM 0ms (+/- vote pills, comment, share).
+  - Cơ chế cuộn vô tận Infinite Scrolling với Cursor Keyset Pagination.
+- [ ] **Phase F4: Phân Hệ Chat Thời Gian Thực Chuẩn Reddit**
+  - Cửa sổ chat nổi góc dưới phải (`Floating Chat Widget`: Minimized, Docked 380x520px, Pop-out tab `/chat`).
+  - Hội thoại 1-1, Chat nhóm, Hàng đợi duyệt tin nhắn người lạ (`Chat Requests`: Accept / Ignore / Block).
+  - Kết nối Server-Sent Events (SSE) RFC 8895, chỉ báo gõ phím (`Typing...`) và chấm xanh trực tuyến (`Presence`).
+- [ ] **Phase F5: Trung Tâm Kiểm Duyệt & Quản Trị Hệ Thống (Mod Hub)**
+  - Bảng điều khiển quản trị `/admin`: Mod Queue xử lý báo cáo vi phạm (`Resolve` / `Dismiss`).
+  - Quản trị người dùng: Tra cứu, đổi vai trò (`GLOBAL_MOD`), áp dụng `SHADOWBANNED`, khóa tài khoản và cưỡng chế thu hồi phiên.
+  - Vết kiểm toán bất biến (Audit Logs Trail) và thống kê chỉ số hệ thống toàn cục.
 
 ### 2.3. Hạ Tầng, QA & Triển Khai (Stream Q & Stream D)
 - [ ] Pipeline GitHub Actions 4 Cổng kiểm định: Linting (Biome), Typecheck (tsc), Unit Tests (Vitest), Container Build.
