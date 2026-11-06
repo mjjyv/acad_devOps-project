@@ -118,46 +118,43 @@ pnpm install
 pnpm run build
 ```
 
-#### 2. Thiết lập Biến Môi Trường Production
-Tạo hoặc cập nhật file `.env.production`:
+#### 2. Thiết lập Biến Môi Trường Cục Bộ (.env.production)
+Hệ thống sử dụng trực tiếp PostgreSQL 16 và Redis 7 lưu trên ổ cứng cục bộ (`.data/postgres` và `.data/redis`):
 
 ```bash
 cat << 'EOF' > .env.production
 NODE_ENV=production
 PORT=10000
+API_PORT=10000
+WEB_PORT=3000
 
-# CSDL PostgreSQL & Redis (Sử dụng chuỗi kết nối Supabase & Upstash)
-DATABASE_URL=postgresql://postgres:[PASSWORD]@[HOST]:5432/postgres?sslmode=require
-REDIS_URL=rediss://default:[PASSWORD]@[UPSTASH_ENDPOINT]:6379
+# CSDL PostgreSQL & Redis Cục Bộ (Rootless Podman, lưu trữ tại .data/)
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/acad_dev?sslmode=disable
+DATABASE_SSL=false
+REDIS_URL=redis://localhost:6379
 
 # Khóa bảo mật ký token JWT (Tối thiểu 32 ký tự)
 JWT_SECRET=acad_super_secure_production_secret_key_2026_at_least_32_chars!
 
 # URL Frontend cho phép CORS
-CORS_ORIGIN=https://yourdomain.com,https://app.yourdomain.com,https://acad-web-client.onrender.com
+CORS_ORIGIN=https://yourdomain.com,https://app.yourdomain.com,http://localhost:3000
 EOF
 ```
 
-#### 3. Đóng gói Backend thành Systemd Service tự khởi động cùng máy tính
-Tạo file dịch vụ systemd để Backend tự động chạy khi bạn mở máy tính:
+#### 3. Quản trị Dịch vụ bằng Systemd User (Không cần mật khẩu sudo)
+Các dịch vụ nền được quản lý độc lập bằng Systemd User Units trong `~/.config/systemd/user/`:
+- `acad-api.service`: Vận hành Backend API Gateway tại `http://localhost:10000`.
+- `acad-web.service`: Vận hành Next.js 15 Web Client tại `http://localhost:3000`.
+- Podman Rootless: Tự động quản lý 2 container `acad-postgres` (Port 5432) và `acad-redis` (Port 6379).
 
+Bộ kịch bản quản trị 1 chạm `./scripts/manage-homelab.sh`:
 ```bash
-sudo tee /etc/systemd/system/acad-api.service << EOF
-[Unit]
-Description=Acad DevOps Platform - Core API Gateway
-After=network.target
-
-[Service]
-Type=simple
-User=debv
-WorkingDirectory=/home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project
-ExecStart=/home/debv/.local/bin/node apps/api/dist/server.js
-Restart=always
-RestartSec=5
-EnvironmentFile=/home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/.env.production
-
-[Install]
-WantedBy=multi-user.target
+./scripts/manage-homelab.sh start    # Bật toàn bộ Postgres, Redis, API Gateway và Web
+./scripts/manage-homelab.sh stop     # Dừng toàn bộ các dịch vụ
+./scripts/manage-homelab.sh restart  # Khởi động lại toàn bộ
+./scripts/manage-homelab.sh test     # Kiểm tra sức khỏe 4 phân hệ (Postgres, Redis, API, Web)
+./scripts/manage-homelab.sh status   # Xem trạng thái Systemd, Podman và Cloudflare Tunnel
+```
 EOF
 
 # Kích hoạt và khởi chạy dịch vụ
