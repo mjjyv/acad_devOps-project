@@ -14,8 +14,10 @@ start_containers() {
   mkdir -p "$PROJECT_DIR/.data/postgres" "$PROJECT_DIR/.data/redis"
 
   if ! podman ps -a --format "{{.Names}}" | grep -q "^acad-postgres$"; then
-    echo "Tạo container acad-postgres..."
+    echo "Tạo container acad-postgres (Hardened with Cgroups v2 & No-New-Privileges)..."
     podman run -d --name acad-postgres \
+      --security-opt=no-new-privileges \
+      --memory=1g --cpus=2 --pids-limit=200 \
       -e POSTGRES_USER=postgres \
       -e POSTGRES_PASSWORD=postgres \
       -e POSTGRES_DB=acad_dev \
@@ -28,8 +30,10 @@ start_containers() {
   fi
 
   if ! podman ps -a --format "{{.Names}}" | grep -q "^acad-redis$"; then
-    echo "Tạo container acad-redis..."
+    echo "Tạo container acad-redis (Hardened with Cgroups v2 & No-New-Privileges)..."
     podman run -d --name acad-redis \
+      --security-opt=no-new-privileges \
+      --memory=512m --cpus=1 --pids-limit=100 \
       -p 6379:6379 \
       -v "$PROJECT_DIR/.data/redis:/data:Z" \
       docker.io/library/redis:7-alpine redis-server --appendonly yes
