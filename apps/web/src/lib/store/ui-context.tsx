@@ -113,7 +113,10 @@ export function UIProvider({ children }: { children: React.ReactNode }) {
         {
           ...post,
           timeAgo: post.timeAgo || 'Just now',
-          spaceName: post.spaceName || `s/${post.spaceSlug}`,
+          spaceName:
+            post.spaceName && post.spaceName !== 's/'
+              ? post.spaceName
+              : `s/${post.spaceSlug || 'devops-arch'}`,
         },
         ...filtered,
       ].slice(0, 5);

@@ -56,6 +56,20 @@ function getAuthUserId(req: Request): string {
   return userId;
 }
 
+// Helper phân giải ID bài viết từ UUID hoặc Slug
+async function resolveThreadId(
+  services: CommunityServices,
+  idOrSlug: string,
+): Promise<string | null> {
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
+  if (isUuid) {
+    const thread = await services.threadService.getThreadById(idOrSlug);
+    return thread ? thread.id : null;
+  }
+  const thread = await services.threadService.getThreadBySlug(idOrSlug);
+  return thread ? thread.id : null;
+}
+
 // Helper lấy userId tùy chọn từ Bearer token (nếu có)
 function getOptionalUserId(req: Request, jwtSecret: string): string | undefined {
   const authHeader = req.headers.authorization;
@@ -310,7 +324,18 @@ export function createCommunityRouter(
     guard,
     async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const threadId = req.params.id as string;
+        const idParam = req.params.id as string;
+        const threadId = await resolveThreadId(services, idParam);
+        if (!threadId) {
+          res.status(404).json({
+            type: 'https://api.acad.vn/errors/not-found',
+            title: 'Resource Not Found',
+            status: 404,
+            detail: 'Không tìm thấy bài viết yêu cầu',
+            instance: req.originalUrl || req.url,
+          });
+          return;
+        }
         const body = VoteBodySchema.parse(req.body);
         const userId = getAuthUserId(req);
 
@@ -346,7 +371,18 @@ export function createCommunityRouter(
     guard,
     async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const threadId = req.params.id as string;
+        const idParam = req.params.id as string;
+        const threadId = await resolveThreadId(services, idParam);
+        if (!threadId) {
+          res.status(404).json({
+            type: 'https://api.acad.vn/errors/not-found',
+            title: 'Resource Not Found',
+            status: 404,
+            detail: 'Không tìm thấy bài viết yêu cầu',
+            instance: req.originalUrl || req.url,
+          });
+          return;
+        }
         const userId = getAuthUserId(req);
 
         const result = await services.voteService.toggleSaveThread(threadId, userId);
@@ -422,17 +458,10 @@ export function createCommunityRouter(
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         const threadIdParam = req.params.threadId as string;
-        let threadId = threadIdParam;
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-          threadIdParam,
-        );
-        if (!isUuid) {
-          const thread = await services.threadService.getThreadBySlug(threadIdParam);
-          if (!thread) {
-            res.status(200).json({ items: [], totalCount: 0 });
-            return;
-          }
-          threadId = thread.id;
+        const threadId = await resolveThreadId(services, threadIdParam);
+        if (!threadId) {
+          res.status(200).json({ items: [], totalCount: 0 });
+          return;
         }
         const tree = await services.commentService.getThreadComments(threadId);
         res.status(200).json(tree);
@@ -448,7 +477,18 @@ export function createCommunityRouter(
     guard,
     async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const threadId = req.params.threadId as string;
+        const threadIdParam = req.params.threadId as string;
+        const threadId = await resolveThreadId(services, threadIdParam);
+        if (!threadId) {
+          res.status(404).json({
+            type: 'https://api.acad.vn/errors/not-found',
+            title: 'Resource Not Found',
+            status: 404,
+            detail: 'Không tìm thấy bài viết yêu cầu',
+            instance: req.originalUrl || req.url,
+          });
+          return;
+        }
         const body = CreateCommentBodySchema.parse(req.body);
 
         const comment = await services.commentService.createComment({

@@ -34,6 +34,24 @@ export class VoteService {
     }
 
     const previousVote = await this.repo.getUserVote(threadId, 'THREAD', userId);
+
+    // Lazy-seed Redis counters từ PostgreSQL nếu chưa từng có trong Redis cache
+    const hasCounters = await this.voteEngine.hasCounters(threadId);
+    if (!hasCounters) {
+      await this.voteEngine.seedCounters(
+        threadId,
+        {
+          upvotes: thread.upvotesCount,
+          downvotes: thread.downvotesCount,
+          netScore: thread.upvotesCount - thread.downvotesCount,
+        },
+        {
+          userId,
+          direction: previousVote,
+        },
+      );
+    }
+
     const voteRes = await this.voteEngine.executeVote(threadId, userId, direction);
     const finalDirection = voteRes.finalDirection;
 
@@ -71,6 +89,24 @@ export class VoteService {
     }
 
     const previousVote = await this.repo.getUserVote(commentId, 'COMMENT', userId);
+
+    // Lazy-seed Redis counters từ PostgreSQL nếu chưa từng có trong Redis cache
+    const hasCounters = await this.voteEngine.hasCounters(commentId);
+    if (!hasCounters) {
+      await this.voteEngine.seedCounters(
+        commentId,
+        {
+          upvotes: comment.upvotesCount,
+          downvotes: comment.downvotesCount,
+          netScore: comment.upvotesCount - comment.downvotesCount,
+        },
+        {
+          userId,
+          direction: previousVote,
+        },
+      );
+    }
+
     const voteRes = await this.voteEngine.executeVote(commentId, userId, direction);
     const finalDirection = voteRes.finalDirection;
 

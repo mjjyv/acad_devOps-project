@@ -1,7 +1,7 @@
 'use client';
 
 import type { FlatCommentItem } from '@acad/contracts';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CommunityApi } from '@/lib/api/community';
 import { useAuth } from '@/lib/auth/auth-context';
 import { CommentItem } from './comment-item';
@@ -14,6 +14,11 @@ interface CommentTreeProps {
 export function CommentTree({ threadId, initialComments = [] }: CommentTreeProps) {
   const { user, openAuthModal } = useAuth();
   const [comments, setComments] = useState<FlatCommentItem[]>(initialComments);
+
+  // Đồng bộ danh sách bình luận khi component cha tải xong từ API
+  useEffect(() => {
+    setComments(initialComments);
+  }, [initialComments]);
 
   // Set các đường dẫn ltree (path) đang bị thu gọn
   const [collapsedPaths, setCollapsedPaths] = useState<Set<string>>(new Set());

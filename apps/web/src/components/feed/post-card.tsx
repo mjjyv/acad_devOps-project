@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type React from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   BookmarkIcon,
   CheckIcon,
@@ -42,38 +42,39 @@ export function PostCard({ post }: PostCardProps) {
   const { viewMode, showToast, addRecentPost } = useUIState();
   const { requireAuth } = useAuth();
   const [vote, setVote] = useState<1 | -1 | null>(post.userVote || null);
-  const [baseVotes, _setBaseVotes] = useState<number>(post.upvotes);
+  const [baseVotes, setBaseVotes] = useState<number>(post.upvotes);
   const [isJoined, setIsJoined] = useState<boolean>(!!post.hasJoined);
   const [isBookmarked, setIsBookmarked] = useState<boolean>(false);
 
-  // 0ms Optimistic Voting State Machine protected by Action Guard
+  useEffect(() => {
+    setBaseVotes(post.upvotes);
+    setVote(post.userVote ?? null);
+  }, [post.upvotes, post.userVote]);
+
+  // 0ms Optimistic Voting State Machine connected to Real Community API
   const handleVote = (direction: 1 | -1, e: React.MouseEvent) => {
     e.stopPropagation();
-    requireAuth(() => {
-      if (vote === direction) {
-        // Toggle off
-        setVote(null);
-      } else {
-        setVote(direction);
+    requireAuth(async () => {
+      const prevVote = vote;
+      const prevBaseVotes = baseVotes;
+      const delta = vote === direction ? -direction : vote === null ? direction : direction * 2;
+      const newVote = vote === direction ? null : direction;
+      setVote(newVote);
+      setBaseVotes((v) => v + delta);
+
+      try {
+        const res = await CommunityApi.voteThread(post.id, direction);
+        setBaseVotes(res.netScore);
+        setVote(res.userVote === 1 ? 1 : res.userVote === -1 ? -1 : null);
+      } catch (err) {
+        setVote(prevVote);
+        setBaseVotes(prevBaseVotes);
+        showToast(err instanceof Error ? err.message : 'Lỗi cập nhật phiếu bầu');
       }
     }, 'Đăng nhập để bình chọn bài thảo luận');
   };
 
-  const calculatedVotes =
-    baseVotes +
-    (vote === 1
-      ? post.userVote === 1
-        ? 0
-        : 1
-      : vote === -1
-        ? post.userVote === -1
-          ? 0
-          : -1
-        : post.userVote === 1
-          ? -1
-          : post.userVote === -1
-            ? 1
-            : 0);
+  const calculatedVotes = baseVotes;
 
   const handleJoinToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -186,7 +187,7 @@ export function PostCard({ post }: PostCardProps) {
             }}
           >
             <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-              s/{post.spaceSlug}
+              s/{post.spaceSlug || 'devops-arch'}
             </span>
             <span>•</span>
             <span>{post.timeAgo}</span>
@@ -251,12 +252,12 @@ export function PostCard({ post }: PostCardProps) {
               fontSize: 12,
             }}
           >
-            {post.spaceSlug.charAt(0).toUpperCase()}
+            {(post.spaceSlug || 'd').charAt(0).toUpperCase()}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
             <Link
-              href={`/s/${post.spaceSlug}`}
+              href={`/s/${post.spaceSlug || 'devops-arch'}`}
               onClick={(e) => e.stopPropagation()}
               style={{
                 fontWeight: 700,
@@ -264,7 +265,7 @@ export function PostCard({ post }: PostCardProps) {
                 textDecoration: 'none',
               }}
             >
-              s/{post.spaceSlug}
+              s/{post.spaceSlug || 'devops-arch'}
             </Link>
             <span style={{ color: 'var(--text-muted)' }}>•</span>
             <span style={{ color: 'var(--text-muted)' }}>{post.timeAgo}</span>

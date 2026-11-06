@@ -113,7 +113,7 @@ export default function HomePage() {
               'contentText' in t && typeof t.contentText === 'string'
                 ? `${t.contentText.slice(0, 180)}...`
                 : '',
-            upvotes: t.netScore || t.upvotes,
+            upvotes: t.netScore ?? t.upvotes ?? 0,
             comments: t.commentsCount,
             hasJoined: false,
             userVote: t.userVote === 1 ? 1 : t.userVote === -1 ? -1 : null,

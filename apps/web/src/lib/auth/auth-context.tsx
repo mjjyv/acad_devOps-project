@@ -3,7 +3,12 @@
 import { HttpError } from '@acad/auth-client';
 import type { LoginInput, RegisterInput, UserProfile } from '@acad/contracts';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
-import { getApiClient, resetApiClient, STORAGE_KEY_REFRESH_TOKEN } from '@/lib/api/client';
+import {
+  getApiClient,
+  resetApiClient,
+  STORAGE_KEY_ACCESS_TOKEN,
+  STORAGE_KEY_REFRESH_TOKEN,
+} from '@/lib/api/client';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -78,6 +83,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password: payload.password,
       });
 
+      if (res.tokens && typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY_ACCESS_TOKEN, res.tokens.accessToken);
+        localStorage.setItem(STORAGE_KEY_REFRESH_TOKEN, res.tokens.refreshToken);
+      }
+
       if (res.user) {
         setUser(res.user);
       } else {
@@ -107,6 +117,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: payload.email,
         password: payload.password,
       });
+
+      if (res.tokens && typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY_ACCESS_TOKEN, res.tokens.accessToken);
+        localStorage.setItem(STORAGE_KEY_REFRESH_TOKEN, res.tokens.refreshToken);
+      }
 
       if (res.user) {
         setUser(res.user);

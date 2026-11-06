@@ -81,7 +81,7 @@ export class VoteFlushWorker {
           netScore: counters.netScore,
           hotScore,
           wilsonScore,
-          commentCount: 0,
+          commentCount: thread.commentCount,
           updatedAt: new Date(),
         });
       }

@@ -118,7 +118,9 @@ export class PostgresCommunityRepository implements ICommunityRepository {
       createdAt: new Date(String(row.created_at)).toISOString(),
       updatedAt: new Date(String(row.updated_at)).toISOString(),
       authorUsername:
-        (row.author_username as string | null) || (row.authorUsername as string | null) || undefined,
+        (row.author_username as string | null) ||
+        (row.authorUsername as string | null) ||
+        undefined,
       authorAvatarUrl:
         (row.author_avatar_url as string | null) || (row.authorAvatarUrl as string | null) || null,
       authorKarmaScore: row.author_karma_score
@@ -518,9 +520,17 @@ export class PostgresCommunityRepository implements ICommunityRepository {
     try {
       await client.query('BEGIN');
       const res = await client.query(
-        `INSERT INTO comments (thread_id, author_id, parent_id, path, depth, content, reply_to_user_id)
-         VALUES ($1, $2, $3, text2ltree($4), $5, $6, $7)
-         RETURNING *;`,
+        `WITH inserted AS (
+           INSERT INTO comments (thread_id, author_id, parent_id, path, depth, content, reply_to_user_id)
+           VALUES ($1, $2, $3, text2ltree($4), $5, $6, $7)
+           RETURNING *
+         )
+         SELECT i.*,
+                u.username AS author_username,
+                u.avatar_url AS author_avatar_url,
+                u.karma_score AS author_karma_score
+         FROM inserted i
+         LEFT JOIN users u ON i.author_id = u.id;`,
         [
           data.threadId,
           data.authorId,

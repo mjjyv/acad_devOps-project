@@ -73,9 +73,20 @@ export class AcadClient {
     });
   }
 
-  public setTokens(tokens: { accessToken: string; refreshToken: string }): void {
+  public setTokens(tokens: {
+    accessToken: string;
+    refreshToken: string;
+    tokenType?: string;
+    expiresIn?: number;
+  }): void {
     this.accessToken = tokens.accessToken;
     this.refreshToken = tokens.refreshToken;
+    this.onTokensUpdated?.({
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      tokenType: tokens.tokenType || 'Bearer',
+      expiresIn: tokens.expiresIn || 900,
+    });
   }
 
   public clearTokens(): void {
@@ -188,7 +199,16 @@ export class AcadClient {
       skipAuth: true,
       body: JSON.stringify(payload),
     });
-    return this.handleJsonResponse<AuthResponse & { tokens?: TokenPair }>(res);
+    const data = await this.handleJsonResponse<AuthResponse & { tokens?: TokenPair }>(res);
+    if (data.tokens) {
+      this.setTokens({
+        accessToken: data.tokens.accessToken,
+        refreshToken: data.tokens.refreshToken,
+        tokenType: data.tokens.tokenType,
+        expiresIn: data.tokens.expiresIn,
+      });
+    }
+    return data;
   }
 
   public async login(payload: {

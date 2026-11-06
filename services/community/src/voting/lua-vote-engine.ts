@@ -31,6 +31,12 @@ export interface IVoteStorageEngine {
   getUserVote(targetId: string, userId: string): Promise<number>;
   getDirtyTargetIds(): Promise<string[]>;
   clearDirtyTargetIds(targetIds: string[]): Promise<void>;
+  hasCounters(targetId: string): Promise<boolean>;
+  seedCounters(
+    targetId: string,
+    counters: VoteCounterState,
+    existingUserVote?: { userId: string; direction: number },
+  ): Promise<void>;
 }
 
 /**
@@ -130,11 +136,27 @@ export class AtomicVoteEngine implements IVoteStorageEngine {
     }
   }
 
+  public async hasCounters(targetId: string): Promise<boolean> {
+    return this.counters.has(targetId);
+  }
+
   /**
    * Helper nạp trước bộ đếm ban đầu cho target (phục vụ đồng bộ từ CSDL)
    */
-  public seedCounters(targetId: string, counters: VoteCounterState): void {
+  public async seedCounters(
+    targetId: string,
+    counters: VoteCounterState,
+    existingUserVote?: { userId: string; direction: number },
+  ): Promise<void> {
     this.counters.set(targetId, { ...counters });
+    if (existingUserVote && existingUserVote.direction !== 0) {
+      let targetVoters = this.voters.get(targetId);
+      if (!targetVoters) {
+        targetVoters = new Map<string, number>();
+        this.voters.set(targetId, targetVoters);
+      }
+      targetVoters.set(existingUserVote.userId, existingUserVote.direction);
+    }
   }
 }
 
@@ -274,6 +296,33 @@ export class RedisVoteEngine implements IVoteStorageEngine {
   public async clearDirtyTargetIds(targetIds: string[]): Promise<void> {
     if (targetIds.length > 0) {
       await this.redis.srem(this.DIRTY_KEY, ...targetIds);
+    }
+  }
+
+  public async hasCounters(targetId: string): Promise<boolean> {
+    const countersKey = `target:${targetId}:counters`;
+    const exists = await this.redis.exists(countersKey);
+    return exists === 1;
+  }
+
+  public async seedCounters(
+    targetId: string,
+    counters: VoteCounterState,
+    existingUserVote?: { userId: string; direction: number },
+  ): Promise<void> {
+    const countersKey = `target:${targetId}:counters`;
+    await this.redis.hset(countersKey, {
+      upvotes: counters.upvotes.toString(),
+      downvotes: counters.downvotes.toString(),
+      net_score: counters.netScore.toString(),
+    });
+    if (existingUserVote && existingUserVote.direction !== 0) {
+      const votersKey = `target:${targetId}:voters`;
+      await this.redis.hset(
+        votersKey,
+        existingUserVote.userId,
+        existingUserVote.direction.toString(),
+      );
     }
   }
 }
