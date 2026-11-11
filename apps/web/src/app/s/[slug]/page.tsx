@@ -2,7 +2,7 @@
 
 import type { Space, SpaceFlair } from '@acad/contracts';
 import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { FloatingChatWidget } from '@/components/chat/floating-chat-widget';
 import { PostCard, type PostItem } from '@/components/feed/post-card';
 import { BottomNav } from '@/components/layout/bottom-nav';
@@ -10,7 +10,7 @@ import { Header } from '@/components/layout/header';
 import { LeftSidebar } from '@/components/layout/left-sidebar';
 import { SpaceHeader } from '@/components/spaces/space-header';
 import { SpaceSidebar } from '@/components/spaces/space-sidebar';
-import { ApiHttpError, CommunityApi } from '@/lib/api/community';
+import { ApiHttpError, CommunityApi, type FeedSortOption } from '@/lib/api/community';
 import { useAuth } from '@/lib/auth/auth-context';
 import { mapThreadSummaryToPostItem } from '@/lib/utils/thread-mapper';
 
@@ -21,6 +21,10 @@ export default function SpacePage() {
 
   const [activeTab, setActiveTab] = useState<'posts' | 'about'>('posts');
   const [selectedFlairId, setSelectedFlairId] = useState<string | undefined>();
+  const [spaceSort, setSpaceSort] = useState<FeedSortOption>('hot');
+  const [spaceSearch, setSpaceSearch] = useState('');
+  const [activeQuery, setActiveQuery] = useState('');
+
   const [space, setSpace] = useState<Space | null>(null);
   const [flairs, setFlairs] = useState<SpaceFlair[]>([]);
   const [posts, setPosts] = useState<PostItem[]>([]);
@@ -29,8 +33,12 @@ export default function SpacePage() {
 
   const [loadingSpace, setLoadingSpace] = useState(true);
   const [loadingPosts, setLoadingPosts] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [isForbidden, setIsForbidden] = useState(false);
   const [notFoundError, setNotFoundError] = useState<string | null>(null);
+
+  const loadingMoreRef = useRef(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     void isAuthenticated;
@@ -66,20 +74,43 @@ export default function SpacePage() {
     };
   }, [slug, isAuthenticated]);
 
-  useEffect(() => {
-    void isAuthenticated;
-    let isMounted = true;
-    async function loadThreads() {
+  const loadThreads = useCallback(
+    async (cursor?: string) => {
       if (!slug) return;
-      try {
+      const isAppend = Boolean(cursor);
+      const joinedSlugs = space?.isJoined ? new Set([slug]) : undefined;
+
+      if (activeQuery && !isAppend) {
+        try {
+          setLoadingPosts(true);
+          const searched = await CommunityApi.searchSpaceThreads(slug, activeQuery, 25);
+          setPosts(searched.map((item) => mapThreadSummaryToPostItem(item, { joinedSlugs })));
+          setNextCursor(null);
+          setHasMore(false);
+        } catch {
+          setPosts([]);
+        } finally {
+          setLoadingPosts(false);
+        }
+        return;
+      }
+
+      if (isAppend) {
+        if (loadingMoreRef.current) return;
+        loadingMoreRef.current = true;
+        setLoadingMore(true);
+      } else {
         setLoadingPosts(true);
         setIsForbidden(false);
+      }
+
+      try {
         const feedRes = await CommunityApi.getSpaceThreads(slug, {
-          sort: 'hot',
+          sort: spaceSort,
           limit: 25,
+          cursor,
           flairId: selectedFlairId,
         });
-        if (!isMounted) return;
 
         if (feedRes.forbidden) {
           setIsForbidden(true);
@@ -89,40 +120,47 @@ export default function SpacePage() {
           return;
         }
 
-        const joinedSlugs = space?.isJoined ? new Set([slug]) : undefined;
-        setPosts(feedRes.items.map((item) => mapThreadSummaryToPostItem(item, { joinedSlugs })));
+        const mapped = feedRes.items.map((item) =>
+          mapThreadSummaryToPostItem(item, { joinedSlugs }),
+        );
+        setPosts((prev) => {
+          if (!isAppend) return mapped;
+          const seen = new Set(prev.map((p) => p.id));
+          return [...prev, ...mapped.filter((m) => !seen.has(m.id))];
+        });
         setNextCursor(feedRes.nextCursor);
         setHasMore(feedRes.hasMore);
       } catch {
-        if (isMounted) {
-          setPosts([]);
-        }
+        if (!isAppend) setPosts([]);
       } finally {
-        if (isMounted) setLoadingPosts(false);
+        loadingMoreRef.current = false;
+        setLoadingPosts(false);
+        setLoadingMore(false);
       }
-    }
-    void loadThreads();
-    return () => {
-      isMounted = false;
-    };
-  }, [slug, selectedFlairId, isAuthenticated, space?.isJoined]);
+    },
+    [slug, space?.isJoined, activeQuery, spaceSort, selectedFlairId],
+  );
 
-  const handleLoadMore = async () => {
-    if (!nextCursor || !slug) return;
-    const feedRes = await CommunityApi.getSpaceThreads(slug, {
-      sort: 'hot',
-      limit: 25,
-      cursor: nextCursor,
-      flairId: selectedFlairId,
-    });
-    const joinedSlugs = space?.isJoined ? new Set([slug]) : undefined;
-    setPosts((prev) => [
-      ...prev,
-      ...feedRes.items.map((item) => mapThreadSummaryToPostItem(item, { joinedSlugs })),
-    ]);
-    setNextCursor(feedRes.nextCursor);
-    setHasMore(feedRes.hasMore);
-  };
+  useEffect(() => {
+    void isAuthenticated;
+    void loadThreads();
+  }, [isAuthenticated, loadThreads]);
+
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node || !hasMore || !nextCursor || loadingPosts || loadingMore || activeQuery) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && nextCursor && !loadingMoreRef.current) {
+          void loadThreads(nextCursor);
+        }
+      },
+      { rootMargin: '240px' },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasMore, nextCursor, loadingPosts, loadingMore, activeQuery, loadThreads]);
 
   return (
     <div className="app-shell">
@@ -149,7 +187,6 @@ export default function SpacePage() {
             </div>
           ) : (
             <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
-              {/* Cột Chính */}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <SpaceHeader
                   key={`${space.id}-${Boolean(space.isJoined)}-${space.membersCount}`}
@@ -160,6 +197,84 @@ export default function SpacePage() {
 
                 {activeTab === 'posts' ? (
                   <div>
+                    {/* Sort Bar + In-Space pg_trgm Search */}
+                    {!isForbidden && (
+                      <div
+                        className="reddit-card"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          flexWrap: 'wrap',
+                          gap: '10px',
+                          padding: '10px 14px',
+                          marginBottom: '12px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          {(['hot', 'new', 'top', 'best'] as const).map((sOpt) => (
+                            <button
+                              key={sOpt}
+                              type="button"
+                              onClick={() => {
+                                setActiveQuery('');
+                                setSpaceSort(sOpt);
+                              }}
+                              className={`reddit-pill-btn ${spaceSort === sOpt && !activeQuery ? 'primary' : ''}`}
+                              style={{
+                                height: '28px',
+                                fontSize: '12px',
+                                textTransform: 'capitalize',
+                              }}
+                            >
+                              {sOpt}
+                            </button>
+                          ))}
+                        </div>
+
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            setActiveQuery(spaceSearch.trim());
+                          }}
+                          style={{
+                            display: 'flex',
+                            gap: '6px',
+                            flex: '1 1 200px',
+                            maxWidth: '280px',
+                          }}
+                        >
+                          <input
+                            type="text"
+                            placeholder={`Tìm trong s/${space.slug}...`}
+                            value={spaceSearch}
+                            onChange={(e) => {
+                              setSpaceSearch(e.target.value);
+                              if (!e.target.value.trim() && activeQuery) {
+                                setActiveQuery('');
+                              }
+                            }}
+                            style={{
+                              flex: 1,
+                              padding: '5px 10px',
+                              borderRadius: 'var(--radius-full)',
+                              border: '1px solid var(--border-subtle)',
+                              backgroundColor: 'var(--bg-input)',
+                              color: 'var(--text-primary)',
+                              fontSize: '12px',
+                            }}
+                          />
+                          <button
+                            type="submit"
+                            className="reddit-pill-btn"
+                            style={{ height: '28px', fontSize: '11px' }}
+                          >
+                            Tìm
+                          </button>
+                        </form>
+                      </div>
+                    )}
+
                     {isForbidden ? (
                       <div className="reddit-card" style={{ padding: '32px', textAlign: 'center' }}>
                         <h3
@@ -204,23 +319,26 @@ export default function SpacePage() {
                         style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}
                       >
                         Chưa có bài viết nào trong không gian này
-                        {selectedFlairId ? ' theo nhãn đã chọn' : ''}.
+                        {selectedFlairId ? ' theo nhãn đã chọn' : ''}
+                        {activeQuery ? ` khớp "${activeQuery}"` : ''}.
                       </div>
                     ) : (
                       <>
                         {posts.map((post) => (
                           <PostCard key={post.id} post={post} />
                         ))}
-                        {hasMore && nextCursor && (
+                        {hasMore && nextCursor && !activeQuery && (
                           <div
+                            ref={sentinelRef}
                             style={{ display: 'flex', justifyContent: 'center', padding: '12px 0' }}
                           >
                             <button
                               type="button"
+                              disabled={loadingMore}
                               className="reddit-pill-btn"
-                              onClick={() => void handleLoadMore()}
+                              onClick={() => void loadThreads(nextCursor)}
                             >
-                              Tải thêm bài viết
+                              {loadingMore ? 'Đang tải thêm...' : 'Tải thêm bài viết'}
                             </button>
                           </div>
                         )}
@@ -313,7 +431,6 @@ export default function SpacePage() {
                 )}
               </div>
 
-              {/* Cột Phải Đặc Thù Không Gian */}
               <div className="desktop-only-rail">
                 <SpaceSidebar
                   space={space}

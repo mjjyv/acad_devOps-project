@@ -1,7 +1,7 @@
 'use client';
 
 import type { FlatCommentItem } from '@acad/contracts';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CommunityApi } from '@/lib/api/community';
 import { useAuth } from '@/lib/auth/auth-context';
 import { CommentItem } from './comment-item';
@@ -11,19 +11,21 @@ interface CommentTreeProps {
   initialComments?: FlatCommentItem[];
 }
 
+type CommentSortMode = 'tree' | 'top' | 'new';
+
 export function CommentTree({ threadId, initialComments = [] }: CommentTreeProps) {
   const { user, openAuthModal } = useAuth();
   const [comments, setComments] = useState<FlatCommentItem[]>(initialComments);
+  const [sortMode, setSortMode] = useState<CommentSortMode>('tree');
+  const [visibleLimit, setVisibleLimit] = useState<number>(80);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
-  // Đồng bộ danh sách bình luận khi component cha tải xong từ API
   useEffect(() => {
     setComments(initialComments);
+    setVisibleLimit(80);
   }, [initialComments]);
 
-  // Set các đường dẫn ltree (path) đang bị thu gọn
   const [collapsedPaths, setCollapsedPaths] = useState<Set<string>>(new Set());
-
-  // Root comment input
   const [rootText, setRootText] = useState('');
   const [isSubmittingRoot, setIsSubmittingRoot] = useState(false);
   const [errorRoot, setErrorRoot] = useState<string | null>(null);
@@ -55,7 +57,7 @@ export function CommentTree({ threadId, initialComments = [] }: CommentTreeProps
 
     try {
       const newComment = await CommunityApi.createComment(threadId, rootText.trim());
-      setComments((prev) => [newComment, ...prev]);
+      setComments((prev) => [...prev, newComment]);
       setRootText('');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Lỗi khi gửi bình luận';
@@ -67,7 +69,6 @@ export function CommentTree({ threadId, initialComments = [] }: CommentTreeProps
 
   const handleChildCommentAdded = (newComment: FlatCommentItem) => {
     setComments((prev) => {
-      // Tìm vị trí của parent để chèn ngay sau nó hoặc ở đúng cây
       const parentIdx = prev.findIndex((c) => c.id === newComment.parentId);
       if (parentIdx !== -1) {
         const next = [...prev];
@@ -92,15 +93,51 @@ export function CommentTree({ threadId, initialComments = [] }: CommentTreeProps
     );
   };
 
-  // Lọc các bình luận con có tiền tố path nằm trong collapsedPaths
-  const isHiddenByParentCollapse = (itemPath: string): boolean => {
-    for (const collapsedPath of collapsedPaths) {
-      if (itemPath !== collapsedPath && itemPath.startsWith(`${collapsedPath}.`)) {
-        return true;
-      }
+  const orderedComments = useMemo(() => {
+    if (sortMode === 'tree') return comments;
+    const copy = [...comments];
+    if (sortMode === 'top') {
+      return copy.sort((a, b) => b.netScore - a.netScore || a.path.localeCompare(b.path));
     }
-    return false;
-  };
+    return copy.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [comments, sortMode]);
+
+  const eligibleComments = useMemo(() => {
+    if (sortMode !== 'tree' || collapsedPaths.size === 0) {
+      return orderedComments;
+    }
+    return orderedComments.filter((c) => {
+      for (const collapsedPath of collapsedPaths) {
+        if (c.path !== collapsedPath && c.path.startsWith(`${collapsedPath}.`)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [orderedComments, sortMode, collapsedPaths]);
+
+  const totalEligible = eligibleComments.length;
+
+  const visibleComments = useMemo(
+    () => eligibleComments.slice(0, visibleLimit),
+    [eligibleComments, visibleLimit],
+  );
+
+  // Progressive windowed reveal via IntersectionObserver
+  useEffect(() => {
+    const node = loadMoreRef.current;
+    if (!node || visibleLimit >= totalEligible) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleLimit((prev) => prev + 80);
+        }
+      },
+      { rootMargin: '120px' },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [visibleLimit, totalEligible]);
 
   return (
     <div
@@ -115,34 +152,50 @@ export function CommentTree({ threadId, initialComments = [] }: CommentTreeProps
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '10px',
           marginBottom: '16px',
         }}
       >
-        <h3
-          style={{
-            fontSize: '16px',
-            fontWeight: 800,
-            color: 'var(--text-primary)',
-            margin: 0,
-          }}
-        >
+        <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
           Bình Luận ({comments.length})
         </h3>
+
+        <div style={{ display: 'flex', gap: '6px' }}>
+          {(
+            [
+              { id: 'tree', label: 'Theo nhánh' },
+              { id: 'top', label: 'Nổi bật' },
+              { id: 'new', label: 'Mới nhất' },
+            ] as const
+          ).map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => setSortMode(opt.id)}
+              className={`reddit-pill-btn ${sortMode === opt.id ? 'primary' : ''}`}
+              style={{ height: '26px', fontSize: '11px', padding: '0 10px' }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Hộp Soạn Bình Luận Cấp 1 (Root Box) */}
+      {/* Khung viết bình luận gốc (Root Comment Box) */}
       <div
         style={{
+          backgroundColor: 'var(--bg-subtle)',
+          padding: '14px',
           borderRadius: 'var(--radius-lg)',
           border: '1px solid var(--border-subtle)',
-          backgroundColor: 'var(--bg-surface)',
-          padding: '14px',
           marginBottom: '24px',
         }}
       >
         {errorRoot && (
           <div style={{ color: '#f43f5e', fontSize: '12px', marginBottom: '8px' }}>{errorRoot}</div>
         )}
+
         <textarea
           placeholder={
             user
@@ -151,16 +204,18 @@ export function CommentTree({ threadId, initialComments = [] }: CommentTreeProps
           }
           value={rootText}
           onChange={(e) => setRootText(e.target.value)}
+          onClick={() => {
+            if (!user) openAuthModal('login');
+          }}
           rows={3}
           style={{
             width: '100%',
             padding: '10px',
             borderRadius: 'var(--radius-md)',
             border: '1px solid var(--border-subtle)',
-            backgroundColor: 'var(--bg-subtle)',
+            backgroundColor: 'var(--bg-surface)',
             color: 'var(--text-primary)',
             fontSize: '13px',
-            lineHeight: 1.5,
             outline: 'none',
             resize: 'vertical',
             marginBottom: '10px',
@@ -192,7 +247,7 @@ export function CommentTree({ threadId, initialComments = [] }: CommentTreeProps
         </div>
       </div>
 
-      {/* Cây Bình Luận Đa Tầng Lồng Nhau */}
+      {/* Cây Bình Luận Đa Tầng Windowed */}
       {comments.length === 0 ? (
         <div
           style={{
@@ -209,12 +264,8 @@ export function CommentTree({ threadId, initialComments = [] }: CommentTreeProps
         </div>
       ) : (
         <div>
-          {comments.map((comment) => {
-            if (isHiddenByParentCollapse(comment.path)) {
-              return null;
-            }
-            const isSelfCollapsed = collapsedPaths.has(comment.path);
-
+          {visibleComments.map((comment) => {
+            const isSelfCollapsed = sortMode === 'tree' && collapsedPaths.has(comment.path);
             return (
               <CommentItem
                 key={comment.id}
@@ -227,6 +278,21 @@ export function CommentTree({ threadId, initialComments = [] }: CommentTreeProps
               />
             );
           })}
+
+          {visibleLimit < totalEligible && (
+            <div
+              ref={loadMoreRef}
+              style={{ display: 'flex', justifyContent: 'center', padding: '14px 0' }}
+            >
+              <button
+                type="button"
+                className="reddit-pill-btn"
+                onClick={() => setVisibleLimit((prev) => prev + 80)}
+              >
+                Hiển thị thêm ({totalEligible - visibleLimit} bình luận còn lại)
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

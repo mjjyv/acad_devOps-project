@@ -119,6 +119,25 @@ export class ChatApi {
     return data.channel || data;
   }
 
+  public static async sendTyping(channelId: string, isTyping: boolean): Promise<void> {
+    const client = getApiClient();
+    await client
+      .request(`/api/v1/chat/channels/${encodeURIComponent(channelId)}/typing`, {
+        method: 'POST',
+        body: JSON.stringify({ isTyping }),
+      })
+      .catch(() => undefined);
+  }
+
+  public static async sendPresenceHeartbeat(): Promise<void> {
+    const client = getApiClient();
+    await client
+      .request('/api/v1/chat/presence/heartbeat', {
+        method: 'POST',
+      })
+      .catch(() => undefined);
+  }
+
   public static openEventStream(): EventSource | null {
     if (typeof window === 'undefined') return null;
     const token = localStorage.getItem(STORAGE_KEY_ACCESS_TOKEN);

@@ -170,7 +170,22 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
       flushList(`${i}`);
     }
 
-    // 4. Empty line
+    // 4. Horizontal rule
+    if (trimmed === '---' || trimmed === '***') {
+      blocks.push(
+        <hr
+          key={`hr-${i}`}
+          style={{
+            border: 'none',
+            borderTop: '1px solid var(--border-subtle)',
+            margin: '18px 0',
+          }}
+        />,
+      );
+      continue;
+    }
+
+    // 5. Empty line
     if (!trimmed) {
       continue;
     }
@@ -325,17 +340,49 @@ function CodeBlockWidget({ code, language }: { code: string; language?: string }
   );
 }
 
+function isSafeMediaOrLinkUrl(raw: string): boolean {
+  const trimmed = raw.trim();
+  return (
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('/') ||
+    trimmed.startsWith('#')
+  );
+}
+
 /**
- * Phân tích cú pháp inline markdown (Bold, Italic, Inline Code, Links)
+ * Phân tích cú pháp inline markdown (Images, Bold, Italic, Inline Code, Links)
  */
 let inlineTokenCounter = 0;
 function renderInline(text: string): React.ReactNode {
-  // Regex to match: **bold**, `code`, [link](url), *italic*
-  const tokenRegex = /(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)]+\)|\*[^*]+\*)/g;
+  // Regex to match: ![alt](url), **bold**, `code`, [link](url), *italic*
+  const tokenRegex = /(!\[[^\]]*\]\([^)]+\)|\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)]+\)|\*[^*]+\*)/g;
   const parts = text.split(tokenRegex);
 
   return parts.map((part) => {
     const tokenKey = `token-${++inlineTokenCounter}-${part.slice(0, 10)}`;
+    if (part.startsWith('![') && part.includes('](') && part.endsWith(')')) {
+      const imgMatch = part.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+      if (imgMatch && isSafeMediaOrLinkUrl(imgMatch[2])) {
+        return (
+          <img
+            key={tokenKey}
+            src={imgMatch[2]}
+            alt={imgMatch[1] || 'embedded image'}
+            loading="lazy"
+            style={{
+              display: 'block',
+              maxWidth: '100%',
+              maxHeight: '460px',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border-subtle)',
+              margin: '10px 0',
+              objectFit: 'contain',
+            }}
+          />
+        );
+      }
+    }
     if (part.startsWith('**') && part.endsWith('**')) {
       return (
         <strong key={tokenKey} style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
@@ -362,7 +409,7 @@ function renderInline(text: string): React.ReactNode {
     }
     if (part.startsWith('[') && part.includes('](') && part.endsWith(')')) {
       const match = part.match(/\[([^\]]+)\]\(([^)]+)\)/);
-      if (match) {
+      if (match && isSafeMediaOrLinkUrl(match[2])) {
         return (
           <a
             key={tokenKey}

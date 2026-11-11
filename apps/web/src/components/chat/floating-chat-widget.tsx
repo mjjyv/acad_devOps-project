@@ -1,133 +1,40 @@
 'use client';
 
-import type { ChatChannel, ChatMessage, ChatRequest } from '@acad/contracts';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import type React from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChatApi } from '@/lib/api/chat';
+import { useState } from 'react';
+import { useRealtimeChat } from '@/lib/hooks/use-realtime-chat';
 import { useAuth } from '../../lib/auth/auth-context';
 import { useUI } from '../../lib/store/ui-context';
-import { ChatBubbleIcon, CheckIcon, CloseIcon } from '../ui/icons';
+import { ChatBubbleIcon, CheckIcon, CloseIcon, ExternalLinkIcon } from '../ui/icons';
 
 export function FloatingChatWidget() {
+  const pathname = usePathname();
   const { chatWidgetState, setChatWidgetState, showToast } = useUI();
   const { user, isAuthenticated, requireAuth } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'direct' | 'groups' | 'requests'>('direct');
-  const [channels, setChannels] = useState<ChatChannel[]>([]);
-  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [requests, setRequests] = useState<ChatRequest[]>([]);
   const [inputText, setInputText] = useState('');
-  const [sseConnected, setSseConnected] = useState(false);
-  const [loadingMessages, setLoadingMessages] = useState(false);
-  const [sending, setSending] = useState(false);
+  const [threadDraft, setThreadDraft] = useState('');
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [groupName, setGroupName] = useState('');
+  const [groupMembersInput, setGroupMembersInput] = useState('');
+  const [creatingGroup, setCreatingGroup] = useState(false);
 
-  const selectedChannelIdRef = useRef<string | null>(null);
-  selectedChannelIdRef.current = selectedChannelId;
+  const chat = useRealtimeChat({
+    isAuthenticated,
+    currentUserId: user?.id,
+    enabled: chatWidgetState === 'docked' && pathname !== '/chat',
+  });
 
-  const refreshChatMetadata = useCallback(async () => {
-    if (!isAuthenticated) {
-      setChannels([]);
-      setRequests([]);
-      setMessages([]);
-      setSelectedChannelId(null);
-      return;
-    }
-    try {
-      const [loadedChannels, loadedRequests] = await Promise.all([
-        ChatApi.listChannels(),
-        ChatApi.listRequests(),
-      ]);
-      setChannels(loadedChannels);
-      setRequests(loadedRequests);
+  if (pathname === '/chat' || chatWidgetState === 'closed') return null;
 
-      if (!selectedChannelIdRef.current && loadedChannels.length > 0) {
-        setSelectedChannelId(loadedChannels[0]?.id ?? null);
-      }
-    } catch {
-      // Keep quiet on background sync errors
-    }
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    void refreshChatMetadata();
-  }, [refreshChatMetadata]);
-
-  useEffect(() => {
-    if (!isAuthenticated || chatWidgetState !== 'docked' || !selectedChannelId) {
-      return;
-    }
-    let isMounted = true;
-    async function loadChannelMessages(channelId: string) {
-      try {
-        setLoadingMessages(true);
-        const res = await ChatApi.listMessages(channelId, { limit: 50 });
-        if (isMounted) {
-          setMessages([...res.messages].reverse());
-        }
-      } catch {
-        if (isMounted) setMessages([]);
-      } finally {
-        if (isMounted) setLoadingMessages(false);
-      }
-    }
-    void loadChannelMessages(selectedChannelId);
-    return () => {
-      isMounted = false;
-    };
-  }, [isAuthenticated, chatWidgetState, selectedChannelId]);
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setSseConnected(false);
-      return;
-    }
-
-    const es = ChatApi.openEventStream();
-    if (!es) return;
-
-    es.addEventListener('connected', () => {
-      setSseConnected(true);
-    });
-
-    es.addEventListener('chat:message_new', (event) => {
-      try {
-        const msg = JSON.parse((event as MessageEvent).data) as ChatMessage;
-        if (msg.channelId === selectedChannelIdRef.current) {
-          setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
-        }
-        void refreshChatMetadata();
-      } catch {
-        // Ignore malformed SSE payload
-      }
-    });
-
-    es.addEventListener('chat_request:new', (event) => {
-      try {
-        const reqItem = JSON.parse((event as MessageEvent).data) as ChatRequest;
-        setRequests((prev) => (prev.some((r) => r.id === reqItem.id) ? prev : [reqItem, ...prev]));
-      } catch {
-        // Ignore malformed SSE payload
-      }
-    });
-
-    es.onerror = () => {
-      setSseConnected(false);
-    };
-
-    return () => {
-      setSseConnected(false);
-      es.close();
-    };
-  }, [isAuthenticated, refreshChatMetadata]);
-
-  if (chatWidgetState === 'closed') return null;
-
-  const directChannels = channels.filter((c) => c.type === 'DIRECT');
-  const groupChannels = channels.filter((c) => c.type === 'GROUP');
+  const directChannels = chat.channels.filter((c) => c.type === 'DIRECT');
+  const groupChannels = chat.channels.filter((c) => c.type === 'GROUP');
   const visibleChannels = activeTab === 'groups' ? groupChannels : directChannels;
-  const totalUnread = channels.reduce((sum, ch) => sum + (ch.unreadCount || 0), 0);
-  const badgeCount = totalUnread + requests.length;
+  const totalUnread = chat.channels.reduce((sum, ch) => sum + (ch.unreadCount || 0), 0);
+  const badgeCount = totalUnread + chat.requests.length;
 
   const handleOpenDock = () => {
     requireAuth(() => {
@@ -137,21 +44,26 @@ export function FloatingChatWidget() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputText.trim() || !selectedChannelId || sending) return;
+    if (!inputText.trim() || !chat.selectedChannelId) return;
+    const text = inputText.trim();
+    try {
+      await chat.sendMessage(text);
+      setInputText('');
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Không thể gửi tin nhắn');
+    }
+  };
 
-    const targetText = inputText.trim();
-    requireAuth(async () => {
-      try {
-        setSending(true);
-        const created = await ChatApi.sendMessage(selectedChannelId, targetText);
-        setMessages((prev) => (prev.some((m) => m.id === created.id) ? prev : [...prev, created]));
-        setInputText('');
-      } catch (err: unknown) {
-        showToast(err instanceof Error ? err.message : 'Không thể gửi tin nhắn');
-      } finally {
-        setSending(false);
-      }
-    }, 'Đăng nhập để gửi tin nhắn');
+  const handleSendThreadReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!threadDraft.trim() || !chat.threadParent) return;
+    const text = threadDraft.trim();
+    try {
+      await chat.sendMessage(text, chat.threadParent.id);
+      setThreadDraft('');
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Không thể gửi phản hồi nhánh');
+    }
   };
 
   const handleRespondRequest = async (
@@ -159,11 +71,8 @@ export function FloatingChatWidget() {
     status: 'ACCEPTED' | 'IGNORED' | 'BLOCKED',
   ) => {
     try {
-      const res = await ChatApi.respondRequest(requestId, status);
-      setRequests((prev) => prev.filter((r) => r.id !== requestId));
-      await refreshChatMetadata();
+      const res = await chat.respondRequest(requestId, status);
       if (status === 'ACCEPTED' && res.channel) {
-        setSelectedChannelId(res.channel.id);
         setActiveTab('direct');
       }
       showToast(
@@ -178,15 +87,28 @@ export function FloatingChatWidget() {
     }
   };
 
+  const handleCreateGroup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!groupName.trim()) return;
+    try {
+      setCreatingGroup(true);
+      await chat.createGroupByUsernames(groupName, groupMembersInput);
+      setGroupName('');
+      setGroupMembersInput('');
+      setShowCreateGroup(false);
+      setActiveTab('groups');
+      showToast('Đã tạo nhóm chat mới');
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Không thể tạo nhóm chat');
+    } finally {
+      setCreatingGroup(false);
+    }
+  };
+
   if (chatWidgetState === 'minimized') {
     return (
       <div
-        style={{
-          position: 'fixed',
-          bottom: '16px',
-          right: '24px',
-          zIndex: 40,
-        }}
+        style={{ position: 'fixed', bottom: '16px', right: '24px', zIndex: 40 }}
         className="floating-chat-container"
       >
         <button
@@ -205,7 +127,6 @@ export function FloatingChatWidget() {
             cursor: 'pointer',
             fontWeight: 700,
             fontSize: '13px',
-            transition: 'all 0.15s ease',
           }}
         >
           <div style={{ position: 'relative' }}>
@@ -245,8 +166,8 @@ export function FloatingChatWidget() {
         position: 'fixed',
         bottom: 0,
         right: '24px',
-        width: '380px',
-        height: '520px',
+        width: '390px',
+        height: '540px',
         backgroundColor: 'var(--bg-surface)',
         border: '1px solid var(--border-strong)',
         borderBottom: 'none',
@@ -279,16 +200,28 @@ export function FloatingChatWidget() {
             <span
               style={{
                 fontSize: '10px',
-                color: sseConnected ? 'var(--color-success)' : 'var(--text-muted)',
+                color: chat.sseConnected ? 'var(--color-success)' : 'var(--text-muted)',
                 fontWeight: 600,
               }}
             >
-              {sseConnected ? 'SSE Stream Connected' : isAuthenticated ? 'Connecting...' : 'Guest'}
+              {chat.sseConnected
+                ? 'SSE Stream Connected'
+                : isAuthenticated
+                  ? 'Connecting...'
+                  : 'Guest'}
             </span>
           </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Link
+            href="/chat"
+            onClick={() => setChatWidgetState('minimized')}
+            style={{ color: 'var(--text-muted)', padding: '4px', display: 'flex' }}
+            title="Mở toàn màn hình (/chat)"
+          >
+            <ExternalLinkIcon size={14} />
+          </Link>
           <button
             type="button"
             onClick={() => setChatWidgetState('minimized')}
@@ -335,7 +268,8 @@ export function FloatingChatWidget() {
           type="button"
           onClick={() => {
             setActiveTab('direct');
-            if (directChannels[0]) setSelectedChannelId(directChannels[0].id);
+            setShowCreateGroup(false);
+            if (directChannels[0]) chat.setSelectedChannelId(directChannels[0].id);
           }}
           style={{
             flex: 1,
@@ -355,7 +289,7 @@ export function FloatingChatWidget() {
           type="button"
           onClick={() => {
             setActiveTab('groups');
-            if (groupChannels[0]) setSelectedChannelId(groupChannels[0].id);
+            if (groupChannels[0]) chat.setSelectedChannelId(groupChannels[0].id);
           }}
           style={{
             flex: 1,
@@ -373,7 +307,10 @@ export function FloatingChatWidget() {
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('requests')}
+          onClick={() => {
+            setActiveTab('requests');
+            setShowCreateGroup(false);
+          }}
           style={{
             flex: 1,
             padding: '8px 0',
@@ -391,7 +328,7 @@ export function FloatingChatWidget() {
           }}
         >
           <span>Requests</span>
-          {requests.length > 0 && (
+          {chat.requests.length > 0 && (
             <span
               style={{
                 backgroundColor: 'var(--color-brand)',
@@ -402,14 +339,14 @@ export function FloatingChatWidget() {
                 borderRadius: '9999px',
               }}
             >
-              {requests.length}
+              {chat.requests.length}
             </span>
           )}
         </button>
       </div>
 
       {/* Channel selector strip */}
-      {activeTab !== 'requests' && visibleChannels.length > 0 && (
+      {isAuthenticated && activeTab !== 'requests' && (
         <div
           style={{
             display: 'flex',
@@ -418,15 +355,35 @@ export function FloatingChatWidget() {
             overflowX: 'auto',
             borderBottom: '1px solid var(--border-subtle)',
             backgroundColor: 'var(--bg-surface)',
+            alignItems: 'center',
           }}
         >
+          {activeTab === 'groups' && (
+            <button
+              type="button"
+              onClick={() => setShowCreateGroup((p) => !p)}
+              style={{
+                padding: '4px 10px',
+                borderRadius: '9999px',
+                border: '1px dashed var(--color-brand)',
+                backgroundColor: 'transparent',
+                color: 'var(--color-brand)',
+                fontSize: '11px',
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+                cursor: 'pointer',
+              }}
+            >
+              + Nhóm
+            </button>
+          )}
           {visibleChannels.map((ch) => {
-            const isSelected = ch.id === selectedChannelId;
+            const isSelected = ch.id === chat.selectedChannelId;
             return (
               <button
                 key={ch.id}
                 type="button"
-                onClick={() => setSelectedChannelId(ch.id)}
+                onClick={() => chat.setSelectedChannelId(ch.id)}
                 style={{
                   padding: '4px 10px',
                   borderRadius: '9999px',
@@ -440,13 +397,78 @@ export function FloatingChatWidget() {
                 }}
               >
                 {ch.name || (ch.type === 'DIRECT' ? 'Direct Chat' : 'Group Chat')}
+                {ch.unreadCount > 0 ? ` (${ch.unreadCount})` : ''}
               </button>
             );
           })}
         </div>
       )}
 
-      {/* Content body */}
+      {/* Create Group inline drawer */}
+      {showCreateGroup && activeTab === 'groups' && (
+        <form
+          onSubmit={handleCreateGroup}
+          style={{
+            padding: '10px 12px',
+            backgroundColor: 'var(--bg-input)',
+            borderBottom: '1px solid var(--border-subtle)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '6px',
+          }}
+        >
+          <input
+            type="text"
+            required
+            placeholder="Tên phòng chat nhóm..."
+            value={groupName}
+            onChange={(e) => setGroupName(e.target.value)}
+            style={{
+              padding: '6px 10px',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border-subtle)',
+              backgroundColor: 'var(--bg-surface)',
+              color: 'var(--text-primary)',
+              fontSize: '12px',
+            }}
+          />
+          <input
+            type="text"
+            required
+            placeholder="Thành viên (vd: admin_pro, devops_coder)"
+            value={groupMembersInput}
+            onChange={(e) => setGroupMembersInput(e.target.value)}
+            style={{
+              padding: '6px 10px',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border-subtle)',
+              backgroundColor: 'var(--bg-surface)',
+              color: 'var(--text-primary)',
+              fontSize: '12px',
+            }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
+            <button
+              type="button"
+              className="reddit-pill-btn"
+              style={{ height: '26px', fontSize: '11px' }}
+              onClick={() => setShowCreateGroup(false)}
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              disabled={creatingGroup}
+              className="reddit-pill-btn primary"
+              style={{ height: '26px', fontSize: '11px' }}
+            >
+              {creatingGroup ? 'Đang tạo...' : 'Tạo nhóm'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Body */}
       {!isAuthenticated ? (
         <div
           style={{
@@ -479,12 +501,12 @@ export function FloatingChatWidget() {
             backgroundColor: 'var(--bg-canvas)',
           }}
         >
-          {requests.length === 0 ? (
+          {chat.requests.length === 0 ? (
             <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
               Không có yêu cầu trò chuyện nào đang chờ duyệt.
             </div>
           ) : (
-            requests.map((reqItem) => (
+            chat.requests.map((reqItem) => (
               <div
                 key={reqItem.id}
                 style={{
@@ -552,6 +574,126 @@ export function FloatingChatWidget() {
             ))
           )}
         </div>
+      ) : chat.threadParent ? (
+        /* Sub-thread Drawer */
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div
+            style={{
+              padding: '8px 12px',
+              backgroundColor: 'var(--bg-input)',
+              borderBottom: '1px solid var(--border-subtle)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              fontSize: '12px',
+            }}
+          >
+            <strong style={{ color: 'var(--color-brand)' }}>
+              Nhánh của u/{chat.threadParent.senderUsername}
+            </strong>
+            <button
+              type="button"
+              onClick={chat.closeThread}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                fontSize: '11px',
+              }}
+            >
+              ← Quay lại kênh
+            </button>
+          </div>
+          <div
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+              backgroundColor: 'var(--bg-canvas)',
+            }}
+          >
+            <div
+              style={{
+                padding: '8px 10px',
+                borderLeft: '2px solid var(--color-brand)',
+                backgroundColor: 'var(--bg-surface)',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '12px',
+              }}
+            >
+              <strong style={{ color: 'var(--text-primary)' }}>
+                u/{chat.threadParent.senderUsername}:
+              </strong>{' '}
+              {chat.threadParent.content}
+            </div>
+            {chat.loadingThread ? (
+              <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
+                Đang tải nhánh phản hồi...
+              </div>
+            ) : chat.threadReplies.length === 0 ? (
+              <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
+                Chưa có phản hồi trong nhánh này.
+              </div>
+            ) : (
+              chat.threadReplies.map((r) => (
+                <div
+                  key={r.id}
+                  style={{
+                    padding: '6px 10px',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: 'var(--bg-surface)',
+                    border: '1px solid var(--border-subtle)',
+                    fontSize: '12px',
+                  }}
+                >
+                  <div
+                    style={{ color: 'var(--text-muted)', fontSize: '10px', marginBottom: '2px' }}
+                  >
+                    u/{r.senderUsername}
+                  </div>
+                  <div style={{ color: 'var(--text-primary)' }}>{r.content}</div>
+                </div>
+              ))
+            )}
+          </div>
+          <form
+            onSubmit={handleSendThreadReply}
+            style={{
+              display: 'flex',
+              gap: '6px',
+              padding: '8px 10px',
+              borderTop: '1px solid var(--border-subtle)',
+            }}
+          >
+            <input
+              type="text"
+              placeholder="Trả lời trong nhánh..."
+              value={threadDraft}
+              onChange={(e) => setThreadDraft(e.target.value)}
+              style={{
+                flex: 1,
+                padding: '6px 10px',
+                borderRadius: 'var(--radius-full)',
+                border: '1px solid var(--border-subtle)',
+                backgroundColor: 'var(--bg-input)',
+                color: 'var(--text-primary)',
+                fontSize: '12px',
+              }}
+            />
+            <button
+              type="submit"
+              disabled={chat.sending || !threadDraft.trim()}
+              className="reddit-pill-btn primary"
+              style={{ height: '30px', fontSize: '11px' }}
+            >
+              Gửi
+            </button>
+          </form>
+        </div>
       ) : (
         <div
           style={{
@@ -564,18 +706,18 @@ export function FloatingChatWidget() {
             backgroundColor: 'var(--bg-canvas)',
           }}
         >
-          {loadingMessages ? (
+          {chat.loadingMessages ? (
             <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
               Đang tải lịch sử trò chuyện...
             </div>
-          ) : messages.length === 0 ? (
+          ) : chat.messages.length === 0 ? (
             <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
-              {selectedChannelId
+              {chat.selectedChannelId
                 ? 'Chưa có tin nhắn nào trong kênh này.'
                 : 'Bạn chưa tham gia kênh chat nào.'}
             </div>
           ) : (
-            messages.map((m) => {
+            chat.messages.map((m) => {
               const isSelf = m.senderId === user?.id;
               return (
                 <div
@@ -607,7 +749,7 @@ export function FloatingChatWidget() {
                   </div>
                   <div
                     style={{
-                      maxWidth: '80%',
+                      maxWidth: '82%',
                       padding: '8px 12px',
                       borderRadius: isSelf ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
                       backgroundColor: isSelf ? 'var(--color-brand)' : 'var(--bg-surface)',
@@ -619,6 +761,20 @@ export function FloatingChatWidget() {
                   >
                     {m.content}
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => void chat.openThread(m)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      color: 'var(--text-muted)',
+                      fontSize: '10px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {m.repliesCount > 0 ? `💬 ${m.repliesCount} phản hồi` : 'Trả lời nhánh'}
+                  </button>
                 </div>
               );
             })
@@ -626,46 +782,65 @@ export function FloatingChatWidget() {
         </div>
       )}
 
-      {/* Input Bar */}
-      {isAuthenticated && activeTab !== 'requests' && (
-        <form
-          onSubmit={handleSendMessage}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '10px 12px',
-            borderTop: '1px solid var(--border-subtle)',
-            backgroundColor: 'var(--bg-surface)',
-          }}
-        >
-          <input
-            type="text"
-            placeholder={selectedChannelId ? 'Nhập tin nhắn...' : 'Chọn kênh chat trước'}
-            value={inputText}
-            disabled={!selectedChannelId || sending}
-            onChange={(e) => setInputText(e.target.value)}
+      {/* Typing bar & Input Bar */}
+      {isAuthenticated && activeTab !== 'requests' && !chat.threadParent && (
+        <>
+          {chat.activeTypingUsers.length > 0 && (
+            <div
+              style={{
+                padding: '3px 14px',
+                fontSize: '11px',
+                color: 'var(--color-brand)',
+                backgroundColor: 'var(--bg-canvas)',
+              }}
+            >
+              {chat.activeTypingUsers.map((u) => `u/${u}`).join(', ')} đang nhập...
+            </div>
+          )}
+          <form
+            onSubmit={handleSendMessage}
             style={{
-              flex: 1,
-              height: '36px',
-              backgroundColor: 'var(--bg-input)',
-              border: '1px solid transparent',
-              borderRadius: 'var(--radius-full)',
-              color: 'var(--text-primary)',
-              padding: '0 14px',
-              fontSize: '13px',
-              outline: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 12px',
+              borderTop: '1px solid var(--border-subtle)',
+              backgroundColor: 'var(--bg-surface)',
             }}
-          />
-          <button
-            type="submit"
-            disabled={!selectedChannelId || sending || !inputText.trim()}
-            className="reddit-pill-btn primary"
-            style={{ height: '36px', padding: '0 14px', fontSize: '12px' }}
           >
-            Send
-          </button>
-        </form>
+            <input
+              type="text"
+              placeholder={chat.selectedChannelId ? 'Nhập tin nhắn...' : 'Chọn kênh chat trước'}
+              value={inputText}
+              disabled={!chat.selectedChannelId || chat.sending}
+              onChange={(e) => {
+                setInputText(e.target.value);
+                if (chat.selectedChannelId && e.target.value.trim()) {
+                  chat.notifyTyping(chat.selectedChannelId);
+                }
+              }}
+              style={{
+                flex: 1,
+                height: '36px',
+                backgroundColor: 'var(--bg-input)',
+                border: '1px solid transparent',
+                borderRadius: 'var(--radius-full)',
+                color: 'var(--text-primary)',
+                padding: '0 14px',
+                fontSize: '13px',
+                outline: 'none',
+              }}
+            />
+            <button
+              type="submit"
+              disabled={!chat.selectedChannelId || chat.sending || !inputText.trim()}
+              className="reddit-pill-btn primary"
+              style={{ height: '36px', padding: '0 14px', fontSize: '12px' }}
+            >
+              Send
+            </button>
+          </form>
+        </>
       )}
     </div>
   );

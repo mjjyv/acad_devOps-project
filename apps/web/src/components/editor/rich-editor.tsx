@@ -3,6 +3,7 @@
 import type { Space, SpaceFlair } from '@acad/contracts';
 import { useRouter } from 'next/navigation';
 import { type ChangeEvent, type DragEvent, useEffect, useState } from 'react';
+import { MarkdownRenderer } from '@/components/common/markdown-renderer';
 import { CommunityApi } from '@/lib/api/community';
 
 interface RichEditorProps {
@@ -624,7 +625,7 @@ export function RichEditor({ spaces, initialSpaceSlug, flairs = [] }: RichEditor
               }}
             >
               {content ? (
-                <div>{content}</div>
+                <MarkdownRenderer content={content} />
               ) : (
                 <div style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>
                   Chưa có nội dung để xem trước...

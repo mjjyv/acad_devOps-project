@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useAuth } from '../../lib/auth/auth-context';
 import { useUI } from '../../lib/store/ui-context';
@@ -19,6 +20,8 @@ import {
 } from '../ui/icons';
 
 export function Header() {
+  const router = useRouter();
+  const pathname = usePathname();
   const {
     toggleSidebar,
     chatWidgetState,
@@ -144,6 +147,19 @@ export function Header() {
           placeholder="Search Synapse (Press '/' to focus)"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              const trimmed = searchQuery.trim();
+              const targetUrl = trimmed ? `/?q=${encodeURIComponent(trimmed)}` : '/';
+              if (pathname !== '/') {
+                router.push(targetUrl);
+              } else {
+                router.replace(targetUrl, { scroll: false });
+              }
+              setSearchFocused(false);
+            }
+          }}
           onFocus={() => setSearchFocused(true)}
           onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
         />

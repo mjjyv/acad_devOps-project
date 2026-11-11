@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { FloatingChatWidget } from '@/components/chat/floating-chat-widget';
 import { FeedHeader } from '@/components/feed/feed-header';
 import { PostCard, type PostItem } from '@/components/feed/post-card';
@@ -10,11 +10,15 @@ import { LeftSidebar } from '@/components/layout/left-sidebar';
 import { RightRail } from '@/components/layout/right-rail';
 import { CommunityApi } from '@/lib/api/community';
 import { useAuth } from '@/lib/auth/auth-context';
-import { useUI } from '@/lib/store/ui-context';
+import { type FeedSort, type FeedTab, useUI } from '@/lib/store/ui-context';
 import { mapThreadSummaryToPostItem } from '@/lib/utils/thread-mapper';
 
+const VALID_SORTS = new Set<FeedSort>(['hot', 'new', 'top', 'best']);
+const VALID_TABS = new Set<FeedTab>(['for_you', 'following']);
+
 export default function HomePage() {
-  const { activeFeedTab, feedSort, searchQuery, setActiveFeedTab } = useUI();
+  const { activeFeedTab, feedSort, searchQuery, setActiveFeedTab, setFeedSort, setSearchQuery } =
+    useUI();
   const { isAuthenticated, openAuthModal } = useAuth();
 
   const [posts, setPosts] = useState<PostItem[]>([]);
@@ -23,9 +27,47 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [urlHydrated, setUrlHydrated] = useState(false);
+
+  const loadingMoreRef = useRef(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // Hydrate initial URL query params (?tab=following&sort=new&q=...)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const qs = new URLSearchParams(window.location.search);
+    const tabParam = qs.get('tab') as FeedTab | null;
+    const sortParam = qs.get('sort') as FeedSort | null;
+    const qParam = qs.get('q');
+
+    if (tabParam && VALID_TABS.has(tabParam)) {
+      setActiveFeedTab(tabParam);
+    }
+    if (sortParam && VALID_SORTS.has(sortParam)) {
+      setFeedSort(sortParam);
+    }
+    if (qParam !== null) {
+      setSearchQuery(qParam);
+    }
+    setUrlHydrated(true);
+  }, [setActiveFeedTab, setFeedSort, setSearchQuery]);
+
+  // Synchronize URL query state cleanly
+  useEffect(() => {
+    if (!urlHydrated || typeof window === 'undefined') return;
+    const qs = new URLSearchParams();
+    if (activeFeedTab !== 'for_you') qs.set('tab', activeFeedTab);
+    if (feedSort !== 'hot') qs.set('sort', feedSort);
+    if (searchQuery.trim()) qs.set('q', searchQuery.trim());
+    const nextSearch = qs.toString();
+    const nextUrl = nextSearch ? `/?${nextSearch}` : '/';
+    window.history.replaceState(null, '', nextUrl);
+  }, [urlHydrated, activeFeedTab, feedSort, searchQuery]);
 
   const loadFeed = useCallback(
     async (cursor?: string) => {
+      if (!urlHydrated) return;
+
       if (activeFeedTab === 'following' && !isAuthenticated) {
         setPosts([]);
         setNextCursor(null);
@@ -37,6 +79,8 @@ export default function HomePage() {
 
       const isAppend = Boolean(cursor);
       if (isAppend) {
+        if (loadingMoreRef.current) return;
+        loadingMoreRef.current = true;
         setLoadingMore(true);
       } else {
         setLoading(true);
@@ -60,22 +104,45 @@ export default function HomePage() {
           }),
         );
 
-        setPosts((prev) => (isAppend ? [...prev, ...mapped] : mapped));
+        setPosts((prev) => {
+          if (!isAppend) return mapped;
+          const seen = new Set(prev.map((p) => p.id));
+          return [...prev, ...mapped.filter((m) => !seen.has(m.id))];
+        });
         setNextCursor(feedRes.nextCursor);
         setHasMore(feedRes.hasMore);
       } catch (err: unknown) {
         setErrorMsg(err instanceof Error ? err.message : 'Không thể tải bảng tin từ máy chủ');
       } finally {
+        loadingMoreRef.current = false;
         setLoading(false);
         setLoadingMore(false);
       }
     },
-    [activeFeedTab, feedSort, isAuthenticated],
+    [urlHydrated, activeFeedTab, feedSort, isAuthenticated],
   );
 
   useEffect(() => {
     void loadFeed();
   }, [loadFeed]);
+
+  // Infinite Scrolling via IntersectionObserver
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node || !hasMore || !nextCursor || loading || loadingMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && nextCursor && !loadingMoreRef.current) {
+          void loadFeed(nextCursor);
+        }
+      },
+      { rootMargin: '250px' },
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasMore, nextCursor, loading, loadingMore, loadFeed]);
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const visiblePosts = normalizedQuery
@@ -170,7 +237,10 @@ export default function HomePage() {
               ))}
 
               {hasMore && nextCursor && (
-                <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0' }}>
+                <div
+                  ref={sentinelRef}
+                  style={{ display: 'flex', justifyContent: 'center', padding: '16px 0' }}
+                >
                   <button
                     type="button"
                     disabled={loadingMore}
