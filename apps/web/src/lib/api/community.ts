@@ -1,6 +1,7 @@
 import type {
   CreateSpaceInput,
   FlatCommentItem,
+  PublicUserProfile,
   Space,
   SpaceFlair,
   ThreadDetail,
@@ -406,6 +407,41 @@ export class CommunityApi {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new ApiHttpError(res.status, err.detail || 'Lỗi cập nhật phiếu bầu bình luận');
+    }
+    return await res.json();
+  }
+
+  /**
+   * Lấy hồ sơ công khai (không PII email) của một người dùng theo username
+   */
+  public static async getPublicUserProfile(username: string): Promise<PublicUserProfile | null> {
+    const client = getApiClient();
+    const res = await client.request(`/api/v1/auth/users/${encodeURIComponent(username)}`, {
+      method: 'GET',
+    });
+    if (res.status === 404) return null;
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new ApiHttpError(res.status, err.detail || 'Không thể tải hồ sơ người dùng');
+    }
+    return await res.json();
+  }
+
+  /**
+   * Xin Presigned PUT URL để tải ảnh Zero-hop
+   */
+  public static async getPresignedUploadUrl(
+    fileName: string,
+    fileType: string,
+  ): Promise<{ uploadUrl: string; publicUrl: string; key: string }> {
+    const client = getApiClient();
+    const res = await client.request('/api/v1/media/presigned-url', {
+      method: 'POST',
+      body: JSON.stringify({ fileName, fileType }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new ApiHttpError(res.status, err.detail || 'Không thể cấp Presigned URL');
     }
     return await res.json();
   }

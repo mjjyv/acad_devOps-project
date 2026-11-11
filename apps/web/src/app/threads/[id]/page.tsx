@@ -11,6 +11,7 @@ import { BottomNav } from '@/components/layout/bottom-nav';
 import { Header } from '@/components/layout/header';
 import { LeftSidebar } from '@/components/layout/left-sidebar';
 import { RightRail } from '@/components/layout/right-rail';
+import { ReportModal } from '@/components/moderation/report-modal';
 import { ApiHttpError, CommunityApi } from '@/lib/api/community';
 import { useAuth } from '@/lib/auth/auth-context';
 import { useUI } from '@/lib/store/ui-context';
@@ -31,6 +32,7 @@ export default function ThreadDetailPage() {
   const [vote, setVote] = useState<number>(0);
   const [score, setScore] = useState<number>(0);
   const [copied, setCopied] = useState(false);
+  const [isReportOpen, setIsReportOpen] = useState(false);
 
   useEffect(() => {
     void isAuthenticated;
@@ -343,7 +345,42 @@ export default function ThreadDetailPage() {
                       <span>🔗</span>
                       <span>{copied ? 'Đã sao chép link!' : 'Chia sẻ'}</span>
                     </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!user) {
+                          openAuthModal('login');
+                        } else {
+                          setIsReportOpen(true);
+                        }
+                      }}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                        borderRadius: '9999px',
+                        border: 'none',
+                        padding: '6px 14px',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        color: 'var(--text-muted)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <span>🚩</span>
+                      <span>Báo cáo</span>
+                    </button>
                   </div>
+
+                  <ReportModal
+                    isOpen={isReportOpen}
+                    targetType="THREAD"
+                    targetId={thread.id}
+                    targetLabel={thread.title}
+                    onClose={() => setIsReportOpen(false)}
+                  />
 
                   {/* Cây Bình Luận Đa Tầng ltree */}
                   <CommentTree threadId={thread.id} initialComments={comments} />

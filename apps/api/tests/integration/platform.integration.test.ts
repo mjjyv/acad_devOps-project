@@ -186,6 +186,32 @@ describe('Real PostgreSQL 16 + Redis 7 Integration Tests (Subsystems 1-5)', () =
     expect(seedLogin.body.user.username).toBe('admin_pro');
     expect(seedLogin.body.tokens.accessToken).toBeTruthy();
 
+    // Public user profile endpoint (must NOT leak email/passwordHash)
+    const pubProfileRes = await request(app).get('/api/v1/auth/users/admin_pro');
+    expect(pubProfileRes.status).toBe(200);
+    expect(pubProfileRes.body.username).toBe('admin_pro');
+    expect(pubProfileRes.body).not.toHaveProperty('email');
+    expect(pubProfileRes.body).not.toHaveProperty('passwordHash');
+
+    // Admin endpoints on real Postgres (stats/spaces/threads/reports)
+    const adminStatsRes = await request(app)
+      .get('/api/v1/admin/stats')
+      .set('Authorization', `Bearer ${seedLogin.body.tokens.accessToken}`);
+    expect(adminStatsRes.status).toBe(200);
+    expect(adminStatsRes.body.spacesCount).toBeGreaterThanOrEqual(1);
+
+    const adminSpacesRes = await request(app)
+      .get('/api/v1/admin/spaces')
+      .set('Authorization', `Bearer ${seedLogin.body.tokens.accessToken}`);
+    expect(adminSpacesRes.status).toBe(200);
+    expect(Array.isArray(adminSpacesRes.body)).toBe(true);
+
+    const adminThreadsRes = await request(app)
+      .get('/api/v1/admin/threads?limit=5')
+      .set('Authorization', `Bearer ${seedLogin.body.tokens.accessToken}`);
+    expect(adminThreadsRes.status).toBe(200);
+    expect(Array.isArray(adminThreadsRes.body.threads)).toBe(true);
+
     // Register user tạm để test Rotation + Grace + Reuse
     const reg = await request(app)
       .post('/api/v1/auth/register')

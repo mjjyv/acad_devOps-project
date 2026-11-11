@@ -2,7 +2,7 @@
 
 import type { Space, SpaceFlair } from '@acad/contracts';
 import { useRouter } from 'next/navigation';
-import { type ChangeEvent, type DragEvent, useState } from 'react';
+import { type ChangeEvent, type DragEvent, useEffect, useState } from 'react';
 import { CommunityApi } from '@/lib/api/community';
 
 interface RichEditorProps {
@@ -17,6 +17,7 @@ export function RichEditor({ spaces, initialSpaceSlug, flairs = [] }: RichEditor
   const [selectedSpaceSlug, setSelectedSpaceSlug] = useState(
     initialSpaceSlug || (spaces[0]?.slug ?? ''),
   );
+  const [spaceFlairs, setSpaceFlairs] = useState<SpaceFlair[]>(flairs);
   const [activeTypeTab, setActiveTypeTab] = useState<'text' | 'media' | 'link'>('text');
   const [editorMode, setEditorMode] = useState<'write' | 'preview'>('write');
 
@@ -27,11 +28,28 @@ export function RichEditor({ spaces, initialSpaceSlug, flairs = [] }: RichEditor
   const [mediaFile, setMediaFile] = useState<{
     name: string;
     size: number;
-    previewUrl: string;
+    publicUrl: string;
   } | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!selectedSpaceSlug) return;
+    let isMounted = true;
+    CommunityApi.getSpace(selectedSpaceSlug)
+      .then((data) => {
+        if (!isMounted) return;
+        setSpaceFlairs(data.flairs);
+        setSelectedFlairId((prev) => (data.flairs.some((f) => f.id === prev) ? prev : undefined));
+      })
+      .catch(() => {
+        if (isMounted) setSpaceFlairs([]);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedSpaceSlug]);
 
   // Thêm cú pháp định dạng nhanh vào textarea
   const insertFormatting = (prefix: string, suffix = '') => {
@@ -79,9 +97,33 @@ export function RichEditor({ spaces, initialSpaceSlug, flairs = [] }: RichEditor
       return;
     }
 
-    const previewUrl = URL.createObjectURL(file);
-    setMediaFile({ name: file.name, size: file.size, previewUrl });
-    setContent((prev) => `${prev}\n\n![${file.name}](${previewUrl})`);
+    try {
+      const presigned = await CommunityApi.getPresignedUploadUrl(
+        file.name,
+        file.type || 'image/png',
+      );
+      const isDirectStorageConfigured = !presigned.uploadUrl.includes('s3.amazonaws.com');
+      if (!isDirectStorageConfigured) {
+        setErrorMessage(
+          'Zero-Hop Object Storage (R2/S3) chưa cấu hình trong .env; vui lòng dùng URL ảnh HTTPS công khai trong nội dung Markdown.',
+        );
+        return;
+      }
+
+      const uploadRes = await fetch(presigned.uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type || 'image/png' },
+        body: file,
+      });
+      if (!uploadRes.ok) {
+        throw new Error(`Upload failed (${uploadRes.status})`);
+      }
+
+      setMediaFile({ name: file.name, size: file.size, publicUrl: presigned.publicUrl });
+      setContent((prev) => `${prev}\n\n![${file.name}](${presigned.publicUrl})`.trim());
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : 'Không thể tải ảnh lên Object Storage.');
+    }
   };
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
@@ -292,13 +334,13 @@ export function RichEditor({ spaces, initialSpaceSlug, flairs = [] }: RichEditor
       </div>
 
       {/* 4. Chọn Post Flair nếu có */}
-      {flairs.length > 0 && (
+      {spaceFlairs.length > 0 && (
         <div style={{ marginBottom: '16px' }}>
           <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>
             Nhãn bài viết (Post Flair):
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {flairs.map((f) => (
+            {spaceFlairs.map((f) => (
               <button
                 key={f.id}
                 type="button"

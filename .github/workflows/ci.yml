@@ -112,15 +112,91 @@ jobs:
       - name: Build shared libraries and services
         run: pnpm run build
 
-      - name: Run all automated test suites
+      - name: Run all automated unit test suites
         run: pnpm test
+
+  # ============================================================================
+  # CỔNG 3B: KIỂM THỬ TÍCH HỢP THỰC TẾ TRÊN POSTGRESQL 16 + REDIS 7
+  # ============================================================================
+  integration:
+    name: "Cổng 3B: Real PostgreSQL 16 + Redis 7 Integration Tests"
+    needs: [lint, typecheck]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: acad_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Install dependencies and build libraries
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build
+
+      - name: Apply PostgreSQL 16 Migrations & Modular Seeds
+        env:
+          PGPASSWORD: postgres
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-client redis-tools
+          for f in deploy/migrations/*.up.sql; do
+            psql -h 127.0.0.1 -U postgres -d acad_dev -v ON_ERROR_STOP=1 -f "$f"
+          done
+          for s in deploy/seeds/001_auth_seed.sql deploy/seeds/002_community_seed.sql deploy/seeds/003_voting_feed_seed.sql deploy/seeds/004_chat_mod_seed.sql; do
+            psql -h 127.0.0.1 -U postgres -d acad_dev -v ON_ERROR_STOP=1 -f "$s"
+          done
+
+      - name: Run Integration Tests against PostgreSQL & Redis
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/acad_dev?sslmode=disable
+          REDIS_URL: redis://127.0.0.1:6379
+          JWT_SECRET: ci-test-super-secret-key-at-least-32-chars!!
+        run: pnpm run test:integration
 
   # ============================================================================
   # CỔNG 4: THỬ NGHIỆM ĐÓNG GÓI DOCKER (CONTAINER BUILD VERIFICATION)
   # ============================================================================
   docker-check:
     name: "Cổng 4: Dockerfiles Syntax & Build Check"
-    needs: [lint, typecheck, test]
+    needs: [lint, typecheck, test, integration]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code

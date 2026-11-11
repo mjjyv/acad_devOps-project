@@ -165,6 +165,28 @@ export function createAuthRouter(
     }
   });
 
+  // GET /auth/users/:username (Public Profile without PII email)
+  router.get('/users/:username', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const username = (req.params.username as string) || '';
+      const publicProfile = await authService.getPublicProfileByUsername(username);
+      if (!publicProfile) {
+        res.status(404).json({
+          type: 'https://api.acad.vn/errors/not-found',
+          title: 'User Not Found',
+          status: 404,
+          detail: `Không tìm thấy người dùng u/${username}.`,
+          instance: req.originalUrl || req.url,
+        });
+        return;
+      }
+
+      res.status(200).json(publicProfile);
+    } catch (err) {
+      next(err);
+    }
+  });
+
   // GET /auth/sessions
   router.get('/sessions', guard, async (req: Request, res: Response, next: NextFunction) => {
     try {

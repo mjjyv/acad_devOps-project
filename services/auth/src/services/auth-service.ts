@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type {
   AuthResponse,
   LoginInput,
+  PublicUserProfile,
   RegisterInput,
   SessionInfo,
   UserProfile,
@@ -216,6 +217,15 @@ export class AuthService {
   public async getProfile(userId: string): Promise<UserProfile | null> {
     const user = await this.userRepository.findById(userId);
     return user ? this.toProfile(user) : null;
+  }
+
+  public async getPublicProfileByUsername(username: string): Promise<PublicUserProfile | null> {
+    const user = await this.userRepository.findByUsername(username);
+    if (!user || user.status === 'DELETED') {
+      return null;
+    }
+    const { email: _email, passwordHash: _passwordHash, ...publicProfile } = user;
+    return publicProfile;
   }
 
   public async listSessions(userId: string, currentSessionId?: string): Promise<SessionInfo[]> {

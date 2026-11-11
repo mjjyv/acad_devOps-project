@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type React from 'react';
 import { useEffect, useState } from 'react';
+import { ReportModal } from '@/components/moderation/report-modal';
 import {
   BookmarkIcon,
   CheckIcon,
@@ -51,6 +52,7 @@ export function PostCard({ post }: PostCardProps) {
   const [baseVotes, setBaseVotes] = useState<number>(post.upvotes);
   const [isJoined, setIsJoined] = useState<boolean>(!!post.hasJoined);
   const [isBookmarked, setIsBookmarked] = useState<boolean>(!!post.isSaved);
+  const [isReportOpen, setIsReportOpen] = useState<boolean>(false);
 
   useEffect(() => {
     setBaseVotes(post.upvotes);
@@ -149,320 +151,348 @@ export function PostCard({ post }: PostCardProps) {
   };
 
   // Compact View rendering
+  const reportModalNode = (
+    <ReportModal
+      isOpen={isReportOpen}
+      targetType="THREAD"
+      targetId={post.id}
+      targetLabel={post.title}
+      onClose={() => setIsReportOpen(false)}
+    />
+  );
+
   if (viewMode === 'compact') {
     return (
-      <article
-        onClick={handlePostClick}
-        className="reddit-card"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          padding: '8px 12px',
-          cursor: 'pointer',
-        }}
-      >
-        {/* Vote Pill */}
-        <div className="vote-pill" style={{ height: 28 }}>
-          <button
-            type="button"
-            onClick={(e) => handleVote(1, e)}
-            className={`vote-btn up ${vote === 1 ? 'active' : ''}`}
-            aria-label="Upvote"
-          >
-            <UpvoteIcon size={14} />
-          </button>
-          <span
-            className={`vote-count ${vote === 1 ? 'up' : vote === -1 ? 'down' : ''}`}
-            style={{ fontSize: 11 }}
-          >
-            {calculatedVotes}
-          </span>
-          <button
-            type="button"
-            onClick={(e) => handleVote(-1, e)}
-            className={`vote-btn down ${vote === -1 ? 'active' : ''}`}
-            aria-label="Downvote"
-          >
-            <DownvoteIcon size={14} />
-          </button>
-        </div>
+      <>
+        <article
+          onClick={handlePostClick}
+          className="reddit-card"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '8px 12px',
+            cursor: 'pointer',
+          }}
+        >
+          {/* Vote Pill */}
+          <div className="vote-pill" style={{ height: 28 }}>
+            <button
+              type="button"
+              onClick={(e) => handleVote(1, e)}
+              className={`vote-btn up ${vote === 1 ? 'active' : ''}`}
+              aria-label="Upvote"
+            >
+              <UpvoteIcon size={14} />
+            </button>
+            <span
+              className={`vote-count ${vote === 1 ? 'up' : vote === -1 ? 'down' : ''}`}
+              style={{ fontSize: 11 }}
+            >
+              {calculatedVotes}
+            </span>
+            <button
+              type="button"
+              onClick={(e) => handleVote(-1, e)}
+              className={`vote-btn down ${vote === -1 ? 'active' : ''}`}
+              aria-label="Downvote"
+            >
+              <DownvoteIcon size={14} />
+            </button>
+          </div>
 
-        {/* Content */}
-        <div style={{ flex: 1, minWidth: 0 }}>
+          {/* Content */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 12,
+                color: 'var(--text-muted)',
+              }}
+            >
+              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                s/{post.spaceSlug || 'devops-arch'}
+              </span>
+              <span>•</span>
+              <span>{post.timeAgo}</span>
+            </div>
+            <h2
+              style={{
+                fontSize: 14,
+                fontWeight: 600,
+                color: 'var(--text-primary)',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                margin: '2px 0 0 0',
+              }}
+            >
+              {post.title}
+            </h2>
+          </div>
+
+          {/* Comments count */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 6,
+              gap: 4,
+              color: 'var(--text-secondary)',
               fontSize: 12,
-              color: 'var(--text-muted)',
             }}
           >
-            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-              s/{post.spaceSlug || 'devops-arch'}
-            </span>
-            <span>•</span>
-            <span>{post.timeAgo}</span>
+            <CommentIcon size={14} />
+            <span>{post.comments}</span>
           </div>
-          <h2
-            style={{
-              fontSize: 14,
-              fontWeight: 600,
-              color: 'var(--text-primary)',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              margin: '2px 0 0 0',
-            }}
-          >
-            {post.title}
-          </h2>
-        </div>
-
-        {/* Comments count */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            color: 'var(--text-secondary)',
-            fontSize: 12,
-          }}
-        >
-          <CommentIcon size={14} />
-          <span>{post.comments}</span>
-        </div>
-      </article>
+        </article>
+        {reportModalNode}
+      </>
     );
   }
 
   // Standard Card View rendering (matching docs/reddit.png)
   return (
-    <article onClick={handlePostClick} className="reddit-card" style={{ cursor: 'pointer' }}>
-      {/* Top Header: Community info & metadata */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 8,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* Space Avatar Icon */}
-          <div
+    <>
+      <article onClick={handlePostClick} className="reddit-card" style={{ cursor: 'pointer' }}>
+        {/* Top Header: Community info & metadata */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 8,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* Space Avatar Icon */}
+            <div
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: '50%',
+                backgroundColor: post.spaceColor || 'var(--color-brand)',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 700,
+                fontSize: 12,
+              }}
+            >
+              {(post.spaceSlug || 'd').charAt(0).toUpperCase()}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+              <Link
+                href={`/s/${post.spaceSlug || 'devops-arch'}`}
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  fontWeight: 700,
+                  color: 'var(--text-primary)',
+                  textDecoration: 'none',
+                }}
+              >
+                s/{post.spaceSlug || 'devops-arch'}
+              </Link>
+              <span style={{ color: 'var(--text-muted)' }}>•</span>
+              <span style={{ color: 'var(--text-muted)' }}>{post.timeAgo}</span>
+            </div>
+
+            {/* Join / Joined Pill */}
+            <button
+              type="button"
+              onClick={handleJoinToggle}
+              className={`reddit-pill-btn ${isJoined ? 'joined' : 'primary'}`}
+              style={{
+                height: 24,
+                fontSize: 11,
+                padding: '0 10px',
+                marginLeft: 4,
+              }}
+            >
+              {isJoined ? (
+                <>
+                  <CheckIcon size={12} />
+                  <span>Joined</span>
+                </>
+              ) : (
+                <span>Join</span>
+              )}
+            </button>
+          </div>
+
+          {/* Overflow Menu */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              showToast('Options menu opened');
+            }}
             style={{
-              width: 24,
-              height: 24,
-              borderRadius: '50%',
-              backgroundColor: post.spaceColor || 'var(--color-brand)',
-              color: '#ffffff',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--text-muted)',
+              padding: 4,
+              borderRadius: 4,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontWeight: 700,
-              fontSize: 12,
             }}
+            aria-label="Post options"
           >
-            {(post.spaceSlug || 'd').charAt(0).toUpperCase()}
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-            <Link
-              href={`/s/${post.spaceSlug || 'devops-arch'}`}
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-                textDecoration: 'none',
-              }}
-            >
-              s/{post.spaceSlug || 'devops-arch'}
-            </Link>
-            <span style={{ color: 'var(--text-muted)' }}>•</span>
-            <span style={{ color: 'var(--text-muted)' }}>{post.timeAgo}</span>
-          </div>
-
-          {/* Join / Joined Pill */}
-          <button
-            type="button"
-            onClick={handleJoinToggle}
-            className={`reddit-pill-btn ${isJoined ? 'joined' : 'primary'}`}
-            style={{
-              height: 24,
-              fontSize: 11,
-              padding: '0 10px',
-              marginLeft: 4,
-            }}
-          >
-            {isJoined ? (
-              <>
-                <CheckIcon size={12} />
-                <span>Joined</span>
-              </>
-            ) : (
-              <span>Join</span>
-            )}
+            <MoreHorizontalIcon size={18} />
           </button>
         </div>
 
-        {/* Overflow Menu */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            showToast('Options menu opened');
-          }}
+        {/* Post Title */}
+        <h2
           style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            color: 'var(--text-muted)',
-            padding: 4,
-            borderRadius: 4,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          aria-label="Post options"
-        >
-          <MoreHorizontalIcon size={18} />
-        </button>
-      </div>
-
-      {/* Post Title */}
-      <h2
-        style={{
-          fontSize: 16,
-          fontWeight: 600,
-          lineHeight: 1.35,
-          color: 'var(--text-primary)',
-          margin: '0 0 8px 0',
-        }}
-      >
-        <Link
-          href={`/threads/${post.id}`}
-          onClick={(e) => e.stopPropagation()}
-          style={{ color: 'var(--text-primary)', textDecoration: 'none' }}
-        >
-          {post.title}
-        </Link>
-      </h2>
-
-      {/* Post Text Body snippet if present */}
-      {post.bodySnippet && (
-        <p
-          style={{
-            fontSize: 14,
-            color: 'var(--text-secondary)',
-            lineHeight: 1.5,
-            marginBottom: 10,
-            display: '-webkit-box',
-            WebkitLineClamp: 3,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
+            fontSize: 16,
+            fontWeight: 600,
+            lineHeight: 1.35,
+            color: 'var(--text-primary)',
+            margin: '0 0 8px 0',
           }}
         >
-          {post.bodySnippet}
-        </p>
-      )}
+          <Link
+            href={`/threads/${post.id}`}
+            onClick={(e) => e.stopPropagation()}
+            style={{ color: 'var(--text-primary)', textDecoration: 'none' }}
+          >
+            {post.title}
+          </Link>
+        </h2>
 
-      {/* Media Image Container if present */}
-      {post.imageUrl && (
-        <div
-          style={{
-            width: '100%',
-            maxHeight: 460,
-            backgroundColor: '#000000',
-            borderRadius: 'var(--radius-md)',
-            overflow: 'hidden',
-            marginBottom: 12,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            border: '1px solid var(--border-subtle)',
-          }}
-        >
-          <img
-            src={post.imageUrl}
-            alt={post.title}
+        {/* Post Text Body snippet if present */}
+        {post.bodySnippet && (
+          <p
+            style={{
+              fontSize: 14,
+              color: 'var(--text-secondary)',
+              lineHeight: 1.5,
+              marginBottom: 10,
+              display: '-webkit-box',
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}
+          >
+            {post.bodySnippet}
+          </p>
+        )}
+
+        {/* Media Image Container if present */}
+        {post.imageUrl && (
+          <div
             style={{
               width: '100%',
-              height: 'auto',
               maxHeight: 460,
-              objectFit: 'cover',
+              backgroundColor: '#000000',
+              borderRadius: 'var(--radius-md)',
+              overflow: 'hidden',
+              marginBottom: 12,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '1px solid var(--border-subtle)',
             }}
-            loading="lazy"
-          />
-        </div>
-      )}
-
-      {/* Action Bar */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          marginTop: 6,
-        }}
-      >
-        {/* Optimistic Vote Pill */}
-        <div className="vote-pill">
-          <button
-            type="button"
-            onClick={(e) => handleVote(1, e)}
-            className={`vote-btn up ${vote === 1 ? 'active' : ''}`}
-            aria-label="Upvote"
           >
-            <UpvoteIcon size={16} />
-          </button>
-          <span className={`vote-count ${vote === 1 ? 'up' : vote === -1 ? 'down' : ''}`}>
-            {calculatedVotes}
-          </span>
-          <button
-            type="button"
-            onClick={(e) => handleVote(-1, e)}
-            className={`vote-btn down ${vote === -1 ? 'active' : ''}`}
-            aria-label="Downvote"
-          >
-            <DownvoteIcon size={16} />
-          </button>
-        </div>
+            <img
+              src={post.imageUrl}
+              alt={post.title}
+              style={{
+                width: '100%',
+                height: 'auto',
+                maxHeight: 460,
+                objectFit: 'cover',
+              }}
+              loading="lazy"
+            />
+          </div>
+        )}
 
-        {/* Comments Pill */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            handlePostClick();
-          }}
-          className="reddit-pill-btn"
-        >
-          <CommentIcon size={15} />
-          <span>{post.comments}</span>
-        </button>
-
-        {/* Share Pill */}
-        <button type="button" onClick={handleShare} className="reddit-pill-btn">
-          <ShareIcon size={15} />
-          <span>Share</span>
-        </button>
-
-        {/* Save/Bookmark Pill */}
-        <button
-          type="button"
-          onClick={handleBookmarkToggle}
-          className="reddit-pill-btn"
+        {/* Action Bar */}
+        <div
           style={{
-            marginLeft: 'auto',
-            color: isBookmarked ? 'var(--color-brand)' : 'var(--text-secondary)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginTop: 6,
           }}
-          aria-label="Save post"
         >
-          <BookmarkIcon size={15} />
-        </button>
-      </div>
-    </article>
+          {/* Optimistic Vote Pill */}
+          <div className="vote-pill">
+            <button
+              type="button"
+              onClick={(e) => handleVote(1, e)}
+              className={`vote-btn up ${vote === 1 ? 'active' : ''}`}
+              aria-label="Upvote"
+            >
+              <UpvoteIcon size={16} />
+            </button>
+            <span className={`vote-count ${vote === 1 ? 'up' : vote === -1 ? 'down' : ''}`}>
+              {calculatedVotes}
+            </span>
+            <button
+              type="button"
+              onClick={(e) => handleVote(-1, e)}
+              className={`vote-btn down ${vote === -1 ? 'active' : ''}`}
+              aria-label="Downvote"
+            >
+              <DownvoteIcon size={16} />
+            </button>
+          </div>
+
+          {/* Comments Pill */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handlePostClick();
+            }}
+            className="reddit-pill-btn"
+          >
+            <CommentIcon size={15} />
+            <span>{post.comments}</span>
+          </button>
+
+          {/* Share Pill */}
+          <button type="button" onClick={handleShare} className="reddit-pill-btn">
+            <ShareIcon size={15} />
+            <span>Share</span>
+          </button>
+
+          {/* Report Pill */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              requireAuth(() => setIsReportOpen(true), 'Đăng nhập để báo cáo bài viết');
+            }}
+            className="reddit-pill-btn"
+          >
+            <span>Báo cáo</span>
+          </button>
+
+          {/* Save/Bookmark Pill */}
+          <button
+            type="button"
+            onClick={handleBookmarkToggle}
+            className="reddit-pill-btn"
+            style={{
+              marginLeft: 'auto',
+              color: isBookmarked ? 'var(--color-brand)' : 'var(--text-secondary)',
+            }}
+            aria-label="Save post"
+          >
+            <BookmarkIcon size={15} />
+          </button>
+        </div>
+      </article>
+      {reportModalNode}
+    </>
   );
 }

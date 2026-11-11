@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { CommunityApi } from '../../lib/api/community';
 import { useAuth } from '../../lib/auth/auth-context';
 import { useUI } from '../../lib/store/ui-context';
+import { CreateSpaceModal } from '../spaces/create-space-modal';
 import { ExploreIcon, HomeIcon, PlusIcon, PopularIcon, ShieldIcon } from '../ui/icons';
 
 export function LeftSidebar() {
@@ -17,6 +18,7 @@ export function LeftSidebar() {
   const [communitiesExpanded, setCommunitiesExpanded] = useState(true);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [loadingSpaces, setLoadingSpaces] = useState(true);
+  const [isCreateSpaceOpen, setIsCreateSpaceOpen] = useState(false);
 
   useEffect(() => {
     void isAuthenticated;
@@ -134,8 +136,8 @@ export function LeftSidebar() {
         </Link>
       </div>
 
-      {/* 2. Quick Action: Create Post / Space */}
-      <div>
+      {/* 2. Quick Action: Create Post & Start a Community */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <button
           type="button"
           onClick={() =>
@@ -168,6 +170,35 @@ export function LeftSidebar() {
         >
           <PlusIcon size={16} />
           <span>Đăng bài mới</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            requireAuth(
+              () => setIsCreateSpaceOpen(true),
+              'Đăng nhập để tạo Không gian thảo luận mới',
+            )
+          }
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            padding: '8px',
+            borderRadius: 'var(--radius-full)',
+            backgroundColor: 'var(--bg-surface)',
+            border: '1px solid var(--border-subtle)',
+            color: 'var(--text-secondary)',
+            fontWeight: 600,
+            fontSize: '12px',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <PlusIcon size={14} />
+          <span>Tạo cộng đồng</span>
         </button>
       </div>
 
@@ -384,30 +415,67 @@ export function LeftSidebar() {
         )}
       </div>
 
-      {/* 5. Moderation Quick Link for Admins & Mods */}
+      {/* 5. Moderation Quick Links for Admins & Mods */}
       {(user?.role === 'ADMIN' || user?.role === 'GLOBAL_MOD' || user?.role === 'SPACE_MOD') && (
-        <div style={{ marginTop: 'auto', paddingTop: '16px' }}>
+        <div
+          style={{
+            marginTop: 'auto',
+            paddingTop: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+          }}
+        >
+          {(user.role === 'ADMIN' || user.role === 'GLOBAL_MOD') && (
+            <Link
+              href="/admin"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '10px 14px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: '#1b2920',
+                border: '1px solid #285432',
+                color: '#46d160',
+                textDecoration: 'none',
+                fontWeight: 700,
+                fontSize: '12px',
+              }}
+            >
+              <ShieldIcon size={16} />
+              <span>Admin & Mod Hub</span>
+            </Link>
+          )}
           <Link
             href="/s/incident-vault"
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '10px',
-              padding: '10px 14px',
+              padding: '8px 14px',
               borderRadius: 'var(--radius-md)',
-              backgroundColor: '#1b2920',
-              border: '1px solid #285432',
-              color: '#46d160',
+              backgroundColor: 'var(--bg-surface)',
+              border: '1px solid var(--border-subtle)',
+              color: 'var(--text-secondary)',
               textDecoration: 'none',
-              fontWeight: 700,
+              fontWeight: 600,
               fontSize: '12px',
             }}
           >
-            <ShieldIcon size={16} />
-            <span>Incident Vault (Mod/Admin)</span>
+            <ShieldIcon size={14} />
+            <span>Incident Vault</span>
           </Link>
         </div>
       )}
+
+      <CreateSpaceModal
+        isOpen={isCreateSpaceOpen}
+        onClose={() => setIsCreateSpaceOpen(false)}
+        onCreated={(created) => {
+          setSpaces((prev) => [created, ...prev.filter((s) => s.id !== created.id)]);
+        }}
+      />
     </aside>
   );
 }

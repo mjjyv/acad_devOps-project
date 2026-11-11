@@ -84,6 +84,41 @@ export class ChatApi {
     return await res.json();
   }
 
+  public static async initiateDirectChat(
+    recipientId: string,
+    initialMessage?: string,
+  ): Promise<
+    { isRequest: true; request: ChatRequest } | { isRequest: false; channel: ChatChannel }
+  > {
+    const client = getApiClient();
+    const res = await client.request('/api/v1/chat/channels/direct', {
+      method: 'POST',
+      body: JSON.stringify({
+        recipientId,
+        ...(initialMessage ? { initialMessage } : {}),
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Không thể khởi tạo cuộc trò chuyện');
+    }
+    return await res.json();
+  }
+
+  public static async createGroupChannel(name: string, memberIds: string[]): Promise<ChatChannel> {
+    const client = getApiClient();
+    const res = await client.request('/api/v1/chat/channels/group', {
+      method: 'POST',
+      body: JSON.stringify({ name, memberIds }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Không thể tạo nhóm chat');
+    }
+    const data = await res.json();
+    return data.channel || data;
+  }
+
   public static openEventStream(): EventSource | null {
     if (typeof window === 'undefined') return null;
     const token = localStorage.getItem(STORAGE_KEY_ACCESS_TOKEN);

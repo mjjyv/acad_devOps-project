@@ -50,6 +50,9 @@ export const UserProfileSchema = z.object({
 });
 export type UserProfile = z.infer<typeof UserProfileSchema>;
 
+export const PublicUserProfileSchema = UserProfileSchema.omit({ email: true });
+export type PublicUserProfile = z.infer<typeof PublicUserProfileSchema>;
+
 export const SessionInfoSchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),

@@ -2,6 +2,7 @@
 
 import type { FlatCommentItem } from '@acad/contracts';
 import { useEffect, useState } from 'react';
+import { ReportModal } from '@/components/moderation/report-modal';
 import { CommunityApi } from '@/lib/api/community';
 import { useAuth } from '@/lib/auth/auth-context';
 
@@ -27,6 +28,7 @@ export function CommentItem({
   const [vote, setVote] = useState<number>(comment.userVote || 0);
   const [score, setScore] = useState<number>(comment.netScore || 0);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isReportOpen, setIsReportOpen] = useState(false);
 
   useEffect(() => {
     setVote(comment.userVote || 0);
@@ -357,7 +359,39 @@ export function CommentItem({
                 {isDeleting ? 'Đang xóa...' : 'Xóa'}
               </button>
             )}
+
+            {!comment.isDeleted && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!user) {
+                    openAuthModal('login');
+                  } else {
+                    setIsReportOpen(true);
+                  }
+                }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: '4px 6px',
+                  borderRadius: '4px',
+                }}
+              >
+                Báo cáo
+              </button>
+            )}
           </div>
+
+          <ReportModal
+            isOpen={isReportOpen}
+            targetType="COMMENT"
+            targetId={comment.id}
+            targetLabel={`Bình luận của u/${comment.author.username}`}
+            onClose={() => setIsReportOpen(false)}
+          />
 
           {/* Form Trả Lời Inline nếu mở */}
           {isReplying && (
