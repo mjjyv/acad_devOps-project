@@ -1,17 +1,20 @@
 'use client';
 
+import Link from 'next/link';
+import { useAuth } from '../../lib/auth/auth-context';
 import { useUI } from '../../lib/store/ui-context';
 import { ChatBubbleIcon, ExploreIcon, HomeIcon, PlusIcon } from '../ui/icons';
 
 export function BottomNav() {
-  const { chatWidgetState, setChatWidgetState, showToast } = useUI();
+  const { chatWidgetState, setChatWidgetState, setActiveFeedTab } = useUI();
+  const { user, isAuthenticated, openAuthModal } = useAuth();
 
   const handleChatClick = () => {
-    if (chatWidgetState === 'docked') {
-      setChatWidgetState('minimized');
-    } else {
-      setChatWidgetState('docked');
+    if (!isAuthenticated) {
+      openAuthModal('login');
+      return;
     }
+    setChatWidgetState(chatWidgetState === 'docked' ? 'minimized' : 'docked');
   };
 
   return (
@@ -34,12 +37,13 @@ export function BottomNav() {
       className="app-bottom-nav"
     >
       {/* 1. Home */}
-      <button
-        type="button"
-        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      <Link
+        href="/"
+        onClick={() => {
+          setActiveFeedTab(isAuthenticated ? 'following' : 'for_you');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
         style={{
-          background: 'transparent',
-          border: 'none',
           color: 'var(--color-brand)',
           display: 'flex',
           flexDirection: 'column',
@@ -47,21 +51,22 @@ export function BottomNav() {
           gap: '2px',
           fontSize: '10px',
           fontWeight: 700,
-          cursor: 'pointer',
+          textDecoration: 'none',
           padding: '4px 12px',
         }}
       >
         <HomeIcon size={20} />
         <span>Home</span>
-      </button>
+      </Link>
 
       {/* 2. Explore */}
-      <button
-        type="button"
-        onClick={() => showToast('Khám phá danh mục Space sẽ mở trong Phase F2')}
+      <Link
+        href="/"
+        onClick={() => {
+          setActiveFeedTab('for_you');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
         style={{
-          background: 'transparent',
-          border: 'none',
           color: 'var(--text-secondary)',
           display: 'flex',
           flexDirection: 'column',
@@ -69,37 +74,36 @@ export function BottomNav() {
           gap: '2px',
           fontSize: '10px',
           fontWeight: 600,
-          cursor: 'pointer',
+          textDecoration: 'none',
           padding: '4px 12px',
         }}
       >
         <ExploreIcon size={20} />
         <span>Explore</span>
-      </button>
+      </Link>
 
       {/* 3. Create (Elevated Center Button) */}
-      <button
-        type="button"
-        onClick={() => showToast('Mở trình soạn thảo Tiptap Editor (Phase F2)')}
+      <Link
+        href="/submit"
+        aria-label="Tạo bài viết mới"
         style={{
           width: '42px',
           height: '42px',
           borderRadius: '50%',
           backgroundColor: 'var(--color-brand)',
-          border: 'none',
-          color: '#ffffff',
+          color: '#30364F',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          cursor: 'pointer',
-          boxShadow: '0 4px 12px rgba(255, 69, 0, 0.4)',
+          textDecoration: 'none',
+          boxShadow: '0 4px 12px rgba(225, 217, 188, 0.3)',
           transform: 'translateY(-6px)',
         }}
       >
         <PlusIcon size={22} />
-      </button>
+      </Link>
 
-      {/* 4. Chat with Red Badge */}
+      {/* 4. Chat */}
       <button
         type="button"
         onClick={handleChatClick}
@@ -118,67 +122,81 @@ export function BottomNav() {
           position: 'relative',
         }}
       >
-        <div style={{ position: 'relative' }}>
-          <ChatBubbleIcon size={20} />
-          <span
+        <ChatBubbleIcon size={20} />
+        <span>Chat</span>
+      </button>
+
+      {/* 5. Profile */}
+      {isAuthenticated && user ? (
+        <Link
+          href={`/u/${user.username}`}
+          style={{
+            color: 'var(--text-secondary)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '2px',
+            fontSize: '10px',
+            fontWeight: 600,
+            textDecoration: 'none',
+            padding: '4px 12px',
+          }}
+        >
+          <div
             style={{
-              position: 'absolute',
-              top: '-4px',
-              right: '-6px',
-              backgroundColor: '#ff4500',
-              color: '#ffffff',
-              fontSize: '9px',
-              fontWeight: 800,
-              width: '14px',
-              height: '14px',
+              width: '20px',
+              height: '20px',
               borderRadius: '50%',
+              backgroundColor: '#30364F',
+              color: '#F0F0DB',
+              fontSize: '10px',
+              fontWeight: 800,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            3
-          </span>
-        </div>
-        <span>Chat</span>
-      </button>
-
-      {/* 5. Profile */}
-      <button
-        type="button"
-        onClick={() => showToast('Hồ sơ cá nhân & Phiên làm việc (Phase F1)')}
-        style={{
-          background: 'transparent',
-          border: 'none',
-          color: 'var(--text-secondary)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '2px',
-          fontSize: '10px',
-          fontWeight: 600,
-          cursor: 'pointer',
-          padding: '4px 12px',
-        }}
-      >
-        <div
+            {user.username.charAt(0).toUpperCase()}
+          </div>
+          <span>Profile</span>
+        </Link>
+      ) : (
+        <button
+          type="button"
+          onClick={() => openAuthModal('login')}
           style={{
-            width: '20px',
-            height: '20px',
-            borderRadius: '50%',
-            backgroundColor: '#393e46',
-            color: '#dfd0b8',
-            fontSize: '10px',
-            fontWeight: 800,
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--text-secondary)',
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'center',
+            gap: '2px',
+            fontSize: '10px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            padding: '4px 12px',
           }}
         >
-          AD
-        </div>
-        <span>Profile</span>
-      </button>
+          <div
+            style={{
+              width: '20px',
+              height: '20px',
+              borderRadius: '50%',
+              backgroundColor: '#30364F',
+              color: '#E1D9BC',
+              fontSize: '10px',
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            ?
+          </div>
+          <span>Login</span>
+        </button>
+      )}
     </nav>
   );
 }

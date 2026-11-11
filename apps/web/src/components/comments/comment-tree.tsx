@@ -78,6 +78,20 @@ export function CommentTree({ threadId, initialComments = [] }: CommentTreeProps
     });
   };
 
+  const handleCommentDeleted = (commentId: string) => {
+    setComments((prev) =>
+      prev.map((c) =>
+        c.id === commentId
+          ? {
+              ...c,
+              isDeleted: true,
+              contentAst: { text: '[Bình luận này đã bị xóa bởi tác giả]' },
+            }
+          : c,
+      ),
+    );
+  };
+
   // Lọc các bình luận con có tiền tố path nằm trong collapsedPaths
   const isHiddenByParentCollapse = (itemPath: string): boolean => {
     for (const collapsedPath of collapsedPaths) {
@@ -209,6 +223,7 @@ export function CommentTree({ threadId, initialComments = [] }: CommentTreeProps
                 isCollapsed={isSelfCollapsed}
                 onToggleCollapse={handleToggleCollapse}
                 onCommentAdded={handleChildCommentAdded}
+                onCommentDeleted={handleCommentDeleted}
               />
             );
           })}

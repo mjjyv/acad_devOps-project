@@ -2,44 +2,47 @@
 
 import type { Space } from '@acad/contracts';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { CommunityApi } from '../../lib/api/community';
 import { useAuth } from '../../lib/auth/auth-context';
 import { useUI } from '../../lib/store/ui-context';
 import { ExploreIcon, HomeIcon, PlusIcon, PopularIcon, ShieldIcon } from '../ui/icons';
 
-const FALLBACK_SPACES = [
-  { slug: 'devops-arch', name: 's/devops-arch', memberCount: 1240, color: '#30364F' },
-  { slug: 'vozforums', name: 's/vozforums', memberCount: 4500, color: '#ACBAC4' },
-  { slug: 'kubernetes', name: 's/kubernetes', memberCount: 2100, color: '#E1D9BC' },
-  { slug: 'system-design', name: 's/system-design', memberCount: 1420, color: '#30364F' },
-  { slug: 'security-shield', name: 's/security-shield', memberCount: 670, color: '#F0F0DB' },
-];
-
 export function LeftSidebar() {
-  const { sidebarOpen, showToast } = useUI();
-  const { isAuthenticated, requireAuth } = useAuth();
+  const router = useRouter();
+  const { sidebarOpen, setActiveFeedTab, showToast } = useUI();
+  const { isAuthenticated, requireAuth, user } = useAuth();
   const [topicsExpanded, setTopicsExpanded] = useState(true);
   const [communitiesExpanded, setCommunitiesExpanded] = useState(true);
   const [spaces, setSpaces] = useState<Space[]>([]);
+  const [loadingSpaces, setLoadingSpaces] = useState(true);
 
   useEffect(() => {
+    void isAuthenticated;
     let isMounted = true;
     async function fetchSpaces() {
       try {
-        const liveSpaces = await CommunityApi.getSpaces(20);
-        if (isMounted && liveSpaces && liveSpaces.length > 0) {
-          setSpaces(liveSpaces);
+        setLoadingSpaces(true);
+        const liveSpaces = await CommunityApi.getSpaces(50, 0);
+        if (isMounted) {
+          setSpaces(Array.isArray(liveSpaces) ? liveSpaces : []);
         }
       } catch {
-        // Keep fallback
+        if (isMounted) {
+          setSpaces([]);
+        }
+      } finally {
+        if (isMounted) {
+          setLoadingSpaces(false);
+        }
       }
     }
     fetchSpaces();
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isAuthenticated]);
 
   const joinedSpaces = spaces.filter((s) => s.isJoined);
   const unjoinedSpaces = spaces.filter((s) => !s.isJoined);
@@ -108,11 +111,8 @@ export function LeftSidebar() {
         </Link>
 
         <Link
-          href="/explore"
-          onClick={(e) => {
-            e.preventDefault();
-            showToast('Trang Khám Phá Không Gian sẽ kích hoạt trong Phase F2');
-          }}
+          href="/"
+          onClick={() => setActiveFeedTab('for_you')}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -134,15 +134,12 @@ export function LeftSidebar() {
         </Link>
       </div>
 
-      {/* 2. Quick Action: Start a community */}
+      {/* 2. Quick Action: Create Post / Space */}
       <div>
         <button
           type="button"
           onClick={() =>
-            requireAuth(
-              () => showToast('Hộp thoại Tạo Không Gian sẽ kích hoạt trong Phase F2'),
-              'Đăng nhập để khởi tạo cộng đồng mới',
-            )
+            requireAuth(() => router.push('/submit'), 'Đăng nhập để tạo bài viết thảo luận mới')
           }
           style={{
             width: '100%',
@@ -170,7 +167,7 @@ export function LeftSidebar() {
           }}
         >
           <PlusIcon size={16} />
-          <span>Start a community</span>
+          <span>Đăng bài mới</span>
         </button>
       </div>
 
@@ -258,12 +255,7 @@ export function LeftSidebar() {
         >
           <span>
             {isAuthenticated ? 'CỘNG ĐỒNG CỦA BẠN' : 'KHÁM PHÁ CỘNG ĐỒNG'} (
-            {isAuthenticated
-              ? joinedSpaces.length
-              : spaces.length > 0
-                ? spaces.length
-                : FALLBACK_SPACES.length}
-            )
+            {isAuthenticated ? joinedSpaces.length : spaces.length})
           </span>
           <span style={{ fontSize: '10px' }}>{communitiesExpanded ? '▲' : '▼'}</span>
         </button>
@@ -335,8 +327,12 @@ export function LeftSidebar() {
             ) : null}
 
             {/* Other Spaces / Discover Spaces */}
-            {(isAuthenticated ? unjoinedSpaces : spaces.length > 0 ? spaces : FALLBACK_SPACES).map(
-              (space) => (
+            {loadingSpaces && spaces.length === 0 ? (
+              <div style={{ padding: '8px 12px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                Đang tải danh sách không gian...
+              </div>
+            ) : (
+              (isAuthenticated ? unjoinedSpaces : spaces).map((space) => (
                 <Link
                   key={space.slug}
                   href={`/s/${space.slug}`}
@@ -379,45 +375,39 @@ export function LeftSidebar() {
                     </span>
                   </div>
                   <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                    {'membersCount' in space
-                      ? `${space.membersCount}`
-                      : 'memberCount' in space
-                        ? `${space.memberCount}`
-                        : ''}
+                    {space.membersCount}
                   </span>
                 </Link>
-              ),
+              ))
             )}
           </div>
         )}
       </div>
 
-      {/* 5. Moderation Quick Link for Admins */}
-      <div style={{ marginTop: 'auto', paddingTop: '16px' }}>
-        <a
-          href="/admin"
-          onClick={(e) => {
-            e.preventDefault();
-            showToast('Bảng điều khiển Quản Trị Mod Hub sẽ kích hoạt trong Phase F5');
-          }}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            padding: '10px 14px',
-            borderRadius: 'var(--radius-md)',
-            backgroundColor: '#1b2920',
-            border: '1px solid #285432',
-            color: '#46d160',
-            textDecoration: 'none',
-            fontWeight: 700,
-            fontSize: '12px',
-          }}
-        >
-          <ShieldIcon size={16} />
-          <span>Mod Hub & Admin Console</span>
-        </a>
-      </div>
+      {/* 5. Moderation Quick Link for Admins & Mods */}
+      {(user?.role === 'ADMIN' || user?.role === 'GLOBAL_MOD' || user?.role === 'SPACE_MOD') && (
+        <div style={{ marginTop: 'auto', paddingTop: '16px' }}>
+          <Link
+            href="/s/incident-vault"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '10px 14px',
+              borderRadius: 'var(--radius-md)',
+              backgroundColor: '#1b2920',
+              border: '1px solid #285432',
+              color: '#46d160',
+              textDecoration: 'none',
+              fontWeight: 700,
+              fontSize: '12px',
+            }}
+          >
+            <ShieldIcon size={16} />
+            <span>Incident Vault (Mod/Admin)</span>
+          </Link>
+        </div>
+      )}
     </aside>
   );
 }

@@ -1,4 +1,5 @@
 import type {
+  CreateSpaceInput,
   FlatCommentItem,
   Space,
   SpaceFlair,
@@ -17,6 +18,26 @@ export interface CommentTreeData {
   totalCount: number;
 }
 
+export interface FeedPageResult {
+  items: ThreadSummary[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  forbidden?: boolean;
+}
+
+export type FeedSortOption = 'hot' | 'new' | 'top' | 'best';
+export type FeedTimeOption = 'day' | 'week' | 'month' | 'year' | 'all';
+
+export class ApiHttpError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'ApiHttpError';
+  }
+}
+
 export class CommunityApi {
   /**
    * Lấy danh sách các Không gian thảo luận (Spaces)
@@ -27,24 +48,56 @@ export class CommunityApi {
       method: 'GET',
     });
     if (!res.ok) {
-      throw new Error(`Lỗi tải danh sách Space: HTTP ${res.status}`);
+      throw new ApiHttpError(res.status, `Lỗi tải danh sách Space: HTTP ${res.status}`);
     }
     const data = await res.json();
     return data.spaces || [];
   }
 
   /**
-   * Lấy thông tin chi tiết một Không gian thảo luận theo slug
+   * Tạo mới Không gian thảo luận
+   */
+  public static async createSpace(input: CreateSpaceInput): Promise<Space> {
+    const client = getApiClient();
+    const res = await client.request('/api/v1/spaces', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new ApiHttpError(res.status, err.detail || 'Không thể tạo không gian mới');
+    }
+    return await res.json();
+  }
+
+  /**
+   * Lấy thông tin chi tiết một Không gian thảo luận kèm danh sách Flairs thật
    */
   public static async getSpace(slug: string): Promise<SpaceWithFlairs> {
     const client = getApiClient();
-    const res = await client.request(`/api/v1/spaces/${encodeURIComponent(slug)}`, {
-      method: 'GET',
-    });
-    if (!res.ok) {
-      throw new Error(`Không tìm thấy không gian s/${slug} (HTTP ${res.status})`);
+    const encodedSlug = encodeURIComponent(slug);
+    const [spaceRes, flairsRes] = await Promise.all([
+      client.request(`/api/v1/spaces/${encodedSlug}`, { method: 'GET' }),
+      client.request(`/api/v1/spaces/${encodedSlug}/flairs`, { method: 'GET' }),
+    ]);
+
+    if (!spaceRes.ok) {
+      const err = await spaceRes.json().catch(() => ({}));
+      throw new ApiHttpError(
+        spaceRes.status,
+        err.detail || `Không tìm thấy không gian s/${slug} (HTTP ${spaceRes.status})`,
+      );
     }
-    return await res.json();
+
+    const space: Space = await spaceRes.json();
+    const flairsPayload = flairsRes.ok
+      ? await flairsRes.json().catch(() => ({ flairs: [] }))
+      : { flairs: [] };
+
+    return {
+      space,
+      flairs: Array.isArray(flairsPayload.flairs) ? flairsPayload.flairs : [],
+    };
   }
 
   /**
@@ -57,7 +110,7 @@ export class CommunityApi {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || 'Không thể tham gia không gian này');
+      throw new ApiHttpError(res.status, err.detail || 'Không thể tham gia không gian này');
     }
   }
 
@@ -67,47 +120,128 @@ export class CommunityApi {
   public static async leaveSpace(slug: string): Promise<void> {
     const client = getApiClient();
     const res = await client.request(`/api/v1/spaces/${encodeURIComponent(slug)}/leave`, {
-      method: 'DELETE',
+      method: 'POST',
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || 'Không thể rời không gian');
+      throw new ApiHttpError(res.status, err.detail || 'Không thể rời không gian');
     }
   }
 
   /**
-   * Lấy danh sách bài viết thuộc một Không gian thảo luận
+   * Lấy danh sách bài viết thuộc một Không gian thảo luận (hỗ trợ sort, cursor, flairId)
    */
   public static async getSpaceThreads(
     slug: string,
-    sort: 'hot' | 'new' | 'top' = 'hot',
-    limit = 25,
+    options: {
+      sort?: FeedSortOption;
+      time?: FeedTimeOption;
+      limit?: number;
+      cursor?: string;
+      flairId?: string;
+    } = {},
+  ): Promise<FeedPageResult> {
+    const client = getApiClient();
+    const params = new URLSearchParams();
+    params.set('sort', options.sort ?? 'hot');
+    params.set('limit', String(options.limit ?? 25));
+    if (options.time) params.set('time', options.time);
+    if (options.cursor) params.set('cursor', options.cursor);
+    if (options.flairId) params.set('flairId', options.flairId);
+
+    const res = await client.request(
+      `/api/v1/spaces/${encodeURIComponent(slug)}/threads?${params.toString()}`,
+      { method: 'GET' },
+    );
+
+    if (res.status === 403) {
+      return { items: [], nextCursor: null, hasMore: false, forbidden: true };
+    }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new ApiHttpError(res.status, err.detail || 'Lỗi tải bài viết của không gian');
+    }
+
+    const data = await res.json();
+    return {
+      items: data.items || [],
+      nextCursor: data.pagination?.nextCursor ?? null,
+      hasMore: Boolean(data.pagination?.hasMore),
+    };
+  }
+
+  /**
+   * Tìm kiếm bài viết trong không gian
+   */
+  public static async searchSpaceThreads(
+    slug: string,
+    q: string,
+    limit = 20,
   ): Promise<ThreadSummary[]> {
     const client = getApiClient();
     const res = await client.request(
-      `/api/v1/spaces/${encodeURIComponent(slug)}/threads?sort=${sort}&limit=${limit}`,
+      `/api/v1/spaces/${encodeURIComponent(slug)}/search?q=${encodeURIComponent(q)}&limit=${limit}`,
       { method: 'GET' },
     );
     if (!res.ok) {
       return [];
     }
     const data = await res.json();
-    return data.items || [];
+    return data.threads || [];
+  }
+
+  /**
+   * Lấy Home Feed (chỉ bài viết từ Spaces người dùng đã tham gia)
+   */
+  public static async getHomeFeed(
+    options: { sort?: FeedSortOption; time?: FeedTimeOption; limit?: number; cursor?: string } = {},
+  ): Promise<FeedPageResult> {
+    const client = getApiClient();
+    const params = new URLSearchParams();
+    params.set('sort', options.sort ?? 'hot');
+    params.set('limit', String(options.limit ?? 20));
+    if (options.time) params.set('time', options.time);
+    if (options.cursor) params.set('cursor', options.cursor);
+
+    const res = await client.request(`/api/v1/feed/home?${params.toString()}`, { method: 'GET' });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new ApiHttpError(res.status, err.detail || 'Lỗi tải bảng tin trang chủ');
+    }
+    const data = await res.json();
+    return {
+      items: data.items || [],
+      nextCursor: data.pagination?.nextCursor ?? null,
+      hasMore: Boolean(data.pagination?.hasMore),
+    };
   }
 
   /**
    * Lấy bảng tin thịnh hành toàn cầu (Popular Feed)
    */
-  public static async getPopularFeed(limit = 20): Promise<ThreadSummary[]> {
+  public static async getPopularFeed(
+    options: { sort?: FeedSortOption; time?: FeedTimeOption; limit?: number; cursor?: string } = {},
+  ): Promise<FeedPageResult> {
     const client = getApiClient();
-    const res = await client.request(`/api/v1/feed/popular?limit=${limit}`, {
+    const params = new URLSearchParams();
+    params.set('sort', options.sort ?? 'hot');
+    params.set('limit', String(options.limit ?? 20));
+    if (options.time) params.set('time', options.time);
+    if (options.cursor) params.set('cursor', options.cursor);
+
+    const res = await client.request(`/api/v1/feed/popular?${params.toString()}`, {
       method: 'GET',
     });
     if (!res.ok) {
-      return [];
+      const err = await res.json().catch(() => ({}));
+      throw new ApiHttpError(res.status, err.detail || 'Lỗi tải bảng tin Popular');
     }
     const data = await res.json();
-    return data.items || [];
+    return {
+      items: data.items || [],
+      nextCursor: data.pagination?.nextCursor ?? null,
+      hasMore: Boolean(data.pagination?.hasMore),
+    };
   }
 
   /**
@@ -119,7 +253,11 @@ export class CommunityApi {
       method: 'GET',
     });
     if (!res.ok) {
-      throw new Error(`Không tìm thấy bài viết (HTTP ${res.status})`);
+      const err = await res.json().catch(() => ({}));
+      throw new ApiHttpError(
+        res.status,
+        err.detail || `Không thể truy cập bài viết (HTTP ${res.status})`,
+      );
     }
     const data = await res.json();
     return data.thread || data;
@@ -144,7 +282,7 @@ export class CommunityApi {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || 'Không thể tạo bài viết');
+      throw new ApiHttpError(res.status, err.detail || 'Không thể tạo bài viết');
     }
     return await res.json();
   }
@@ -155,16 +293,47 @@ export class CommunityApi {
   public static async voteThread(
     threadId: string,
     direction: 1 | -1,
-  ): Promise<{ netScore: number; userVote: number }> {
+  ): Promise<{ netScore: number; userVote: number; upvotes?: number; downvotes?: number }> {
     const client = getApiClient();
     const res = await client.request(`/api/v1/threads/${encodeURIComponent(threadId)}/vote`, {
       method: 'POST',
       body: JSON.stringify({ direction }),
     });
     if (!res.ok) {
-      throw new Error('Lỗi cập nhật phiếu bầu');
+      const err = await res.json().catch(() => ({}));
+      throw new ApiHttpError(res.status, err.detail || 'Lỗi cập nhật phiếu bầu');
     }
     return await res.json();
+  }
+
+  /**
+   * Lưu / bỏ lưu bài viết
+   */
+  public static async toggleSaveThread(threadId: string): Promise<{ isSaved: boolean }> {
+    const client = getApiClient();
+    const res = await client.request(`/api/v1/threads/${encodeURIComponent(threadId)}/save`, {
+      method: 'POST',
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new ApiHttpError(res.status, err.detail || 'Không thể lưu bài viết');
+    }
+    return await res.json();
+  }
+
+  /**
+   * Danh sách bài viết đã lưu của người dùng hiện tại
+   */
+  public static async getSavedThreads(limit = 20, offset = 0): Promise<ThreadSummary[]> {
+    const client = getApiClient();
+    const res = await client.request(`/api/v1/users/me/saved?limit=${limit}&offset=${offset}`, {
+      method: 'GET',
+    });
+    if (!res.ok) {
+      return [];
+    }
+    const data = await res.json();
+    return data.items || [];
   }
 
   /**
@@ -202,10 +371,24 @@ export class CommunityApi {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || 'Không thể gửi bình luận');
+      throw new ApiHttpError(res.status, err.detail || 'Không thể gửi bình luận');
     }
     const data = await res.json();
     return data.comment || data;
+  }
+
+  /**
+   * Xóa mềm bình luận
+   */
+  public static async deleteComment(commentId: string): Promise<void> {
+    const client = getApiClient();
+    const res = await client.request(`/api/v1/comments/${encodeURIComponent(commentId)}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new ApiHttpError(res.status, err.detail || 'Không thể xóa bình luận');
+    }
   }
 
   /**
@@ -221,7 +404,8 @@ export class CommunityApi {
       body: JSON.stringify({ direction }),
     });
     if (!res.ok) {
-      throw new Error('Lỗi cập nhật phiếu bầu bình luận');
+      const err = await res.json().catch(() => ({}));
+      throw new ApiHttpError(res.status, err.detail || 'Lỗi cập nhật phiếu bầu bình luận');
     }
     return await res.json();
   }

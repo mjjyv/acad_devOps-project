@@ -19,6 +19,8 @@ export class VoteFlushWorker {
   private timer: NodeJS.Timeout | null = null;
   private isRunning = false;
   private intervalMs: number;
+  private refreshTickCount = 0;
+  private readonly refreshHotScoreEveryTicks = 12;
 
   constructor(
     private voteEngine: IVoteStorageEngine,
@@ -53,8 +55,17 @@ export class VoteFlushWorker {
    * Thực thi xả dữ liệu dồn ngay lập tức (phục vụ Unit Test & Shutdown)
    */
   public async flushNow(): Promise<number> {
+    this.refreshTickCount += 1;
+    const shouldRefreshHotScores = this.refreshTickCount >= this.refreshHotScoreEveryTicks;
+    if (shouldRefreshHotScores) {
+      this.refreshTickCount = 0;
+    }
+
     const dirtyIds = await this.voteEngine.getDirtyTargetIds();
     if (dirtyIds.length === 0) {
+      if (shouldRefreshHotScores && this.repo.refreshHotScores) {
+        await this.repo.refreshHotScores();
+      }
       return 0;
     }
 
@@ -92,6 +103,9 @@ export class VoteFlushWorker {
     }
 
     await this.voteEngine.clearDirtyTargetIds(dirtyIds);
+    if (shouldRefreshHotScores && this.repo.refreshHotScores) {
+      await this.repo.refreshHotScores();
+    }
     return dirtyIds.length;
   }
 }

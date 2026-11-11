@@ -32,6 +32,7 @@ export interface IVoteStorageEngine {
   getDirtyTargetIds(): Promise<string[]>;
   clearDirtyTargetIds(targetIds: string[]): Promise<void>;
   hasCounters(targetId: string): Promise<boolean>;
+  ensureUserVoteSeeded(targetId: string, userId: string, direction: number): Promise<void>;
   seedCounters(
     targetId: string,
     counters: VoteCounterState,
@@ -138,6 +139,22 @@ export class AtomicVoteEngine implements IVoteStorageEngine {
 
   public async hasCounters(targetId: string): Promise<boolean> {
     return this.counters.has(targetId);
+  }
+
+  public async ensureUserVoteSeeded(
+    targetId: string,
+    userId: string,
+    direction: number,
+  ): Promise<void> {
+    if (direction === 0) return;
+    let targetVoters = this.voters.get(targetId);
+    if (!targetVoters) {
+      targetVoters = new Map<string, number>();
+      this.voters.set(targetId, targetVoters);
+    }
+    if (!targetVoters.has(userId)) {
+      targetVoters.set(userId, direction);
+    }
   }
 
   /**
@@ -303,6 +320,16 @@ export class RedisVoteEngine implements IVoteStorageEngine {
     const countersKey = `target:${targetId}:counters`;
     const exists = await this.redis.exists(countersKey);
     return exists === 1;
+  }
+
+  public async ensureUserVoteSeeded(
+    targetId: string,
+    userId: string,
+    direction: number,
+  ): Promise<void> {
+    if (direction === 0) return;
+    const votersKey = `target:${targetId}:voters`;
+    await this.redis.hsetnx(votersKey, userId, direction.toString());
   }
 
   public async seedCounters(

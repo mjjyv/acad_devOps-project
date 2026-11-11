@@ -24,6 +24,7 @@ export const ThreadSummarySchema = z.object({
   flair: SpaceFlairSchema.nullable().optional(),
   title: z.string().min(1).max(300),
   slug: z.string().min(1).max(350),
+  contentSnippet: z.string().nullable().optional(),
   linkUrl: z.string().url().nullable().optional(),
   isPinned: z.boolean().default(false),
   isLocked: z.boolean().default(false),

@@ -14,6 +14,7 @@ import type {
   UserStatus,
 } from '@acad/contracts';
 import type pg from 'pg';
+import { DuplicateReportError } from '../services/moderation-service.js';
 
 export interface ReportEntity {
   id: string;
@@ -491,13 +492,23 @@ export class PostgresModerationRepository implements IModerationRepository {
       VALUES ($1, $2, $3, $4, 'PENDING')
       RETURNING id, reporter_id, target_type, target_id, reason, status, resolved_by, resolved_at, resolution_note, created_at
     `;
-    const res = await this.pool.query(query, [
-      data.reporterId,
-      data.targetType,
-      data.targetId,
-      data.reason,
-    ]);
-    const r = res.rows[0];
+
+    let r: Record<string, unknown>;
+    try {
+      const res = await this.pool.query(query, [
+        data.reporterId,
+        data.targetType,
+        data.targetId,
+        data.reason,
+      ]);
+      r = res.rows[0];
+    } catch (err: unknown) {
+      const pgErr = err as { code?: string };
+      if (pgErr?.code === '23505') {
+        throw new DuplicateReportError(data.targetType, data.targetId);
+      }
+      throw err;
+    }
 
     const uRes = await this.pool.query('SELECT username FROM users WHERE id = $1', [
       data.reporterId,
@@ -505,17 +516,17 @@ export class PostgresModerationRepository implements IModerationRepository {
     const username = uRes.rows[0]?.username ?? 'Anonymous';
 
     return {
-      id: r.id,
-      reporterId: r.reporter_id,
+      id: r.id as string,
+      reporterId: r.reporter_id as string,
       reporterUsername: username,
-      targetType: r.target_type,
-      targetId: r.target_id,
-      reason: r.reason,
-      status: r.status,
-      resolvedBy: r.resolved_by,
-      resolvedAt: r.resolved_at ? new Date(r.resolved_at) : null,
-      resolutionNote: r.resolution_note,
-      createdAt: new Date(r.created_at),
+      targetType: r.target_type as ModReportTargetType,
+      targetId: r.target_id as string,
+      reason: r.reason as string,
+      status: r.status as ModReportStatus,
+      resolvedBy: (r.resolved_by as string | null) ?? null,
+      resolvedAt: r.resolved_at ? new Date(r.resolved_at as string | Date) : null,
+      resolutionNote: (r.resolution_note as string | null) ?? null,
+      createdAt: new Date(r.created_at as string | Date),
     };
   }
 
@@ -887,7 +898,7 @@ export class PostgresModerationRepository implements IModerationRepository {
       name: r.name,
       slug: r.slug,
       description: r.description,
-      avatarUrl: r.avatar_url,
+      iconUrl: r.icon_url ?? null,
       bannerUrl: r.banner_url,
       rules: r.rules ?? [],
       creatorId: r.creator_id,
@@ -934,8 +945,13 @@ export class PostgresModerationRepository implements IModerationRepository {
     params.push(limit, offset);
 
     const query = `
-      SELECT t.*
+      SELECT
+        t.*,
+        COALESCE(tc.upvotes, t.upvotes_count) AS effective_upvotes,
+        COALESCE(tc.downvotes, t.downvotes_count) AS effective_downvotes,
+        COALESCE(tc.comment_count, t.comment_count) AS effective_comment_count
       FROM threads t
+      LEFT JOIN thread_counters tc ON t.id = tc.thread_id
       ${whereClause}
       ORDER BY t.created_at DESC
       LIMIT $${params.length - 1} OFFSET $${params.length}
@@ -952,9 +968,9 @@ export class PostgresModerationRepository implements IModerationRepository {
       content: r.content,
       linkUrl: r.link_url,
       threadType: r.thread_type,
-      upvotesCount: r.upvotes_count ?? 0,
-      downvotesCount: r.downvotes_count ?? 0,
-      commentCount: r.comment_count ?? 0,
+      upvotesCount: r.effective_upvotes ?? r.upvotes_count ?? 0,
+      downvotesCount: r.effective_downvotes ?? r.downvotes_count ?? 0,
+      commentCount: r.effective_comment_count ?? r.comment_count ?? 0,
       isPinned: r.is_pinned ?? false,
       isLocked: r.is_locked ?? false,
       createdAt: new Date(r.created_at).toISOString(),

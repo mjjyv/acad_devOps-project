@@ -48,7 +48,7 @@ describe('Kiểm thử Endpoints Bầu Chọn Nguyên Tử & Bảng Tin Thông M
     voteService = new VoteService(communityRepo, voteEngine);
     feedService = new FeedService(communityRepo, voteEngine);
     spaceService = new SpaceService(communityRepo);
-    threadService = new ThreadService(communityRepo);
+    threadService = new ThreadService(communityRepo, voteEngine);
     commentService = new CommentService(communityRepo);
     storageService = new ZeroHopStorageService();
     flushWorker = new VoteFlushWorker(voteEngine, communityRepo, { intervalMs: 1000 });
@@ -263,8 +263,18 @@ describe('Kiểm thử Endpoints Bầu Chọn Nguyên Tử & Bảng Tin Thông M
     });
 
     it('Home Feed phải trả về bài viết từ Spaces mà người dùng đã tham gia', async () => {
-      // User 2 tham gia space
-      await spaceService.joinSpace(spaceId, 'user2-id');
+      // Trước khi tham gia, Home Feed của user2 phải trống
+      const beforeRes = await request(app)
+        .get('/feed/home')
+        .set('Authorization', `Bearer ${user2Token}`);
+      expect(beforeRes.status).toBe(200);
+      expect(beforeRes.body.items).toHaveLength(0);
+
+      // User 2 tham gia space qua API
+      const joinRes = await request(app)
+        .post('/spaces/redis-arch/join')
+        .set('Authorization', `Bearer ${user2Token}`);
+      expect(joinRes.status).toBe(200);
 
       const homeRes = await request(app)
         .get('/feed/home')

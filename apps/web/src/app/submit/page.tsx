@@ -9,71 +9,78 @@ import { BottomNav } from '@/components/layout/bottom-nav';
 import { Header } from '@/components/layout/header';
 import { LeftSidebar } from '@/components/layout/left-sidebar';
 import { CommunityApi } from '@/lib/api/community';
-
-const DEFAULT_SPACES: Space[] = [
-  {
-    id: '00000000-0000-0000-0000-000000000001',
-    slug: 'devops-arch',
-    name: 'DevOps Architecture',
-    description: 'Không gian chuyên sâu về thiết kế hệ thống và DevOps hạ tầng.',
-    rules: [],
-    isPrivate: false,
-    creatorId: '00000000-0000-0000-0000-000000000001',
-    membersCount: 1240,
-    threadsCount: 25,
-    isJoined: false,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: '00000000-0000-0000-0000-000000000002',
-    slug: 'vozforums',
-    name: 'Voz Forums',
-    description: 'Cộng đồng thảo luận công nghệ và lập trình tự do.',
-    rules: [],
-    isPrivate: false,
-    creatorId: '00000000-0000-0000-0000-000000000001',
-    membersCount: 3890,
-    threadsCount: 112,
-    isJoined: false,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: '00000000-0000-0000-0000-000000000003',
-    slug: 'kubernetes',
-    name: 'Kubernetes & Cloud Native',
-    description: 'Thảo luận k8s, microservices, service mesh và observability.',
-    rules: [],
-    isPrivate: false,
-    creatorId: '00000000-0000-0000-0000-000000000001',
-    membersCount: 950,
-    threadsCount: 18,
-    isJoined: false,
-    createdAt: new Date().toISOString(),
-  },
-];
+import { useAuth } from '@/lib/auth/auth-context';
 
 function SubmitContent() {
   const searchParams = useSearchParams();
-  const initialSpaceSlug = searchParams.get('space') || 'devops-arch';
-  const [spaces, setSpaces] = useState<Space[]>(DEFAULT_SPACES);
+  const initialSpaceSlug = searchParams.get('space') || '';
+  const { isAuthenticated } = useAuth();
+  const [spaces, setSpaces] = useState<Space[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
+    void isAuthenticated;
+    let isMounted = true;
     async function fetchSpaces() {
       try {
+        setLoading(true);
+        setErrorMsg(null);
         const loaded = await CommunityApi.getSpaces(50, 0);
-        if (loaded && loaded.length > 0) {
+        if (isMounted) {
           setSpaces(loaded);
         }
-      } catch {
-        // Keep default spaces
+      } catch (err: unknown) {
+        if (isMounted) {
+          setErrorMsg(err instanceof Error ? err.message : 'Không thể tải danh sách không gian');
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
     fetchSpaces();
-  }, []);
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated]);
+
+  if (loading) {
+    return (
+      <div style={{ color: 'var(--text-muted)', padding: '24px', textAlign: 'center' }}>
+        Đang tải danh sách không gian thảo luận...
+      </div>
+    );
+  }
+
+  if (errorMsg) {
+    return (
+      <div
+        className="reddit-card"
+        style={{ padding: '24px', textAlign: 'center', color: '#f43f5e' }}
+      >
+        {errorMsg}
+      </div>
+    );
+  }
+
+  if (spaces.length === 0) {
+    return (
+      <div
+        className="reddit-card"
+        style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}
+      >
+        Chưa có không gian thảo luận nào khả dụng để đăng bài.
+      </div>
+    );
+  }
+
+  const effectiveSlug = initialSpaceSlug || spaces[0]?.slug || '';
 
   return (
     <div style={{ maxWidth: '780px', width: '100%', margin: '0 auto' }}>
-      <RichEditor spaces={spaces} initialSpaceSlug={initialSpaceSlug} />
+      <RichEditor spaces={spaces} initialSpaceSlug={effectiveSlug} />
     </div>
   );
 }

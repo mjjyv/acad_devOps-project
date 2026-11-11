@@ -60,13 +60,14 @@ function getAuthUserId(req: Request): string {
 async function resolveThreadId(
   services: CommunityServices,
   idOrSlug: string,
+  viewerId?: string,
 ): Promise<string | null> {
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
   if (isUuid) {
-    const thread = await services.threadService.getThreadById(idOrSlug);
+    const thread = await services.threadService.getThreadById(idOrSlug, viewerId);
     return thread ? thread.id : null;
   }
-  const thread = await services.threadService.getThreadBySlug(idOrSlug);
+  const thread = await services.threadService.getThreadBySlug(idOrSlug, viewerId);
   return thread ? thread.id : null;
 }
 
@@ -158,25 +159,24 @@ export function createCommunityRouter(
     },
   );
 
-  // POST /spaces/:slug/leave - Rời không gian (AuthGuard)
-  router.post(
-    '/spaces/:slug/leave',
-    guard,
-    async (req: Request, res: Response, next: NextFunction) => {
-      try {
-        const slug = req.params.slug as string;
-        const space = await services.spaceService.getSpaceBySlug(slug);
-        if (!space) {
-          res.status(404).json({ title: 'Not Found', status: 404 });
-          return;
-        }
-        await services.spaceService.leaveSpace(space.id, getAuthUserId(req));
-        res.status(200).json({ message: 'Rời không gian thành công' });
-      } catch (err) {
-        next(err);
+  const handleLeaveSpace = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const slug = req.params.slug as string;
+      const space = await services.spaceService.getSpaceBySlug(slug);
+      if (!space) {
+        res.status(404).json({ title: 'Not Found', status: 404 });
+        return;
       }
-    },
-  );
+      await services.spaceService.leaveSpace(space.id, getAuthUserId(req));
+      res.status(200).json({ message: 'Rời không gian thành công' });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  // POST /spaces/:slug/leave & DELETE /spaces/:slug/leave - Rời không gian (AuthGuard)
+  router.post('/spaces/:slug/leave', guard, handleLeaveSpace);
+  router.delete('/spaces/:slug/leave', guard, handleLeaveSpace);
 
   // GET /spaces/:slug/flairs - Danh sách Flairs của không gian
   router.get('/spaces/:slug/flairs', async (req: Request, res: Response, next: NextFunction) => {
@@ -230,12 +230,14 @@ export function createCommunityRouter(
       const userId = getOptionalUserId(req, jwtSecret);
       const sort = req.query.sort as 'hot' | 'new' | 'top' | 'best' | undefined;
       const time = req.query.time as 'day' | 'week' | 'month' | 'year' | 'all' | undefined;
+      const flairId = req.query.flairId as string | undefined;
       const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : 20;
       const cursor = req.query.cursor as string | undefined;
 
       const feed = await services.feedService.getSpaceFeed(slug, userId, {
         sort,
         time,
+        flairId,
         limit,
         cursor,
       });
@@ -276,9 +278,10 @@ export function createCommunityRouter(
   router.get('/threads/:id', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const idOrSlug = req.params.id as string;
-      let thread = await services.threadService.getThreadById(idOrSlug);
+      const userId = getOptionalUserId(req, jwtSecret);
+      let thread = await services.threadService.getThreadById(idOrSlug, userId);
       if (!thread) {
-        thread = await services.threadService.getThreadBySlug(idOrSlug);
+        thread = await services.threadService.getThreadBySlug(idOrSlug, userId);
       }
       if (!thread) {
         res.status(404).json({
@@ -300,6 +303,7 @@ export function createCommunityRouter(
   router.get('/spaces/:slug/search', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const slug = req.params.slug as string;
+      const userId = getOptionalUserId(req, jwtSecret);
       const space = await services.spaceService.getSpaceBySlug(slug);
       if (!space) {
         res.status(404).json({ title: 'Not Found', status: 404 });
@@ -307,7 +311,7 @@ export function createCommunityRouter(
       }
       const query = String(req.query.q || '');
       const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : 20;
-      const threads = await services.threadService.searchThreads(space.id, query, limit);
+      const threads = await services.threadService.searchThreads(space.id, query, limit, userId);
       res.status(200).json({ threads });
     } catch (err) {
       next(err);
@@ -324,8 +328,9 @@ export function createCommunityRouter(
     guard,
     async (req: Request, res: Response, next: NextFunction) => {
       try {
+        const userId = getAuthUserId(req);
         const idParam = req.params.id as string;
-        const threadId = await resolveThreadId(services, idParam);
+        const threadId = await resolveThreadId(services, idParam, userId);
         if (!threadId) {
           res.status(404).json({
             type: 'https://api.acad.vn/errors/not-found',
@@ -337,7 +342,6 @@ export function createCommunityRouter(
           return;
         }
         const body = VoteBodySchema.parse(req.body);
-        const userId = getAuthUserId(req);
 
         const result = await services.voteService.voteThread(threadId, userId, body.direction);
         res.status(200).json(result);
@@ -371,8 +375,9 @@ export function createCommunityRouter(
     guard,
     async (req: Request, res: Response, next: NextFunction) => {
       try {
+        const userId = getAuthUserId(req);
         const idParam = req.params.id as string;
-        const threadId = await resolveThreadId(services, idParam);
+        const threadId = await resolveThreadId(services, idParam, userId);
         if (!threadId) {
           res.status(404).json({
             type: 'https://api.acad.vn/errors/not-found',
@@ -383,7 +388,6 @@ export function createCommunityRouter(
           });
           return;
         }
-        const userId = getAuthUserId(req);
 
         const result = await services.voteService.toggleSaveThread(threadId, userId);
         res.status(200).json(result);
@@ -458,12 +462,13 @@ export function createCommunityRouter(
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         const threadIdParam = req.params.threadId as string;
-        const threadId = await resolveThreadId(services, threadIdParam);
+        const userId = getOptionalUserId(req, jwtSecret);
+        const threadId = await resolveThreadId(services, threadIdParam, userId);
         if (!threadId) {
           res.status(200).json({ items: [], totalCount: 0 });
           return;
         }
-        const tree = await services.commentService.getThreadComments(threadId);
+        const tree = await services.commentService.getThreadComments(threadId, userId);
         res.status(200).json(tree);
       } catch (err) {
         next(err);
@@ -477,8 +482,9 @@ export function createCommunityRouter(
     guard,
     async (req: Request, res: Response, next: NextFunction) => {
       try {
+        const userId = getAuthUserId(req);
         const threadIdParam = req.params.threadId as string;
-        const threadId = await resolveThreadId(services, threadIdParam);
+        const threadId = await resolveThreadId(services, threadIdParam, userId);
         if (!threadId) {
           res.status(404).json({
             type: 'https://api.acad.vn/errors/not-found',
@@ -493,7 +499,7 @@ export function createCommunityRouter(
 
         const comment = await services.commentService.createComment({
           threadId,
-          authorId: getAuthUserId(req),
+          authorId: userId,
           content: body.content,
           parentId: body.parentId,
           parentAuthorUsername: body.parentAuthorUsername,

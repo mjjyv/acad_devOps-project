@@ -22,6 +22,11 @@ export interface PostItem {
   spaceSlug: string;
   spaceName: string;
   spaceColor?: string;
+  flair?: {
+    name: string;
+    colorHex?: string;
+    backgroundHex?: string;
+  } | null;
   author: string;
   timeAgo: string;
   title: string;
@@ -31,6 +36,7 @@ export interface PostItem {
   comments: number;
   hasJoined?: boolean;
   userVote?: 1 | -1 | null;
+  isSaved?: boolean;
 }
 
 interface PostCardProps {
@@ -44,12 +50,14 @@ export function PostCard({ post }: PostCardProps) {
   const [vote, setVote] = useState<1 | -1 | null>(post.userVote || null);
   const [baseVotes, setBaseVotes] = useState<number>(post.upvotes);
   const [isJoined, setIsJoined] = useState<boolean>(!!post.hasJoined);
-  const [isBookmarked, setIsBookmarked] = useState<boolean>(false);
+  const [isBookmarked, setIsBookmarked] = useState<boolean>(!!post.isSaved);
 
   useEffect(() => {
     setBaseVotes(post.upvotes);
     setVote(post.userVote ?? null);
-  }, [post.upvotes, post.userVote]);
+    setIsJoined(Boolean(post.hasJoined));
+    setIsBookmarked(Boolean(post.isSaved));
+  }, [post.upvotes, post.userVote, post.hasJoined, post.isSaved]);
 
   // 0ms Optimistic Voting State Machine connected to Real Community API
   const handleVote = (direction: 1 | -1, e: React.MouseEvent) => {
@@ -101,25 +109,30 @@ export function PostCard({ post }: PostCardProps) {
 
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const url =
-      typeof window !== 'undefined'
-        ? `${window.location.origin}/s/${post.spaceSlug}/comments/${post.id}`
-        : '';
+    const url = typeof window !== 'undefined' ? `${window.location.origin}/threads/${post.id}` : '';
     try {
       if (navigator.clipboard && url) {
         await navigator.clipboard.writeText(url);
       }
-      showToast('Link copied to clipboard!');
+      showToast('Đã sao chép liên kết bài viết!');
     } catch {
-      showToast('Could not copy link');
+      showToast('Không thể sao chép liên kết');
     }
   };
 
   const handleBookmarkToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
-    requireAuth(() => {
-      setIsBookmarked(!isBookmarked);
-      showToast(!isBookmarked ? 'Post saved to bookmarks' : 'Post removed from bookmarks');
+    requireAuth(async () => {
+      const nextSaved = !isBookmarked;
+      setIsBookmarked(nextSaved);
+      try {
+        const res = await CommunityApi.toggleSaveThread(post.id);
+        setIsBookmarked(res.isSaved);
+        showToast(res.isSaved ? 'Đã lưu bài viết vào tài khoản' : 'Đã bỏ lưu bài viết');
+      } catch (err: unknown) {
+        setIsBookmarked(!nextSaved);
+        showToast(err instanceof Error ? err.message : 'Lỗi cập nhật trạng thái lưu');
+      }
     }, 'Đăng nhập để lưu bài viết');
   };
 

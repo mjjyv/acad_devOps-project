@@ -1,14 +1,12 @@
 -- ==============================================================================
 -- Migration: 000001_create_auth_schema.up.sql
--- Module: Phase B1 - Core Identity & Session Shield
+-- Phân hệ 1: Core Identity, Cryptography & Session Shield
 -- Target: PostgreSQL 16+
 -- ==============================================================================
 
--- 1. Kích hoạt tiện ích mở rộng nền tảng
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- 2. Kiểu dữ liệu Enum người dùng
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
@@ -20,7 +18,6 @@ BEGIN
     END IF;
 END $$;
 
--- 3. Bảng users (Danh tính người dùng & Điểm Karma)
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username VARCHAR(32) NOT NULL,
@@ -33,15 +30,17 @@ CREATE TABLE IF NOT EXISTS users (
     avatar_url TEXT,
     bio TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT chk_username_length CHECK (char_length(username) >= 3),
+    CONSTRAINT chk_karma_not_null CHECK (karma_score IS NOT NULL)
 );
 
--- Chỉ mục độc bản không phân biệt hoa thường
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_lower ON users (LOWER(username));
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower ON users (LOWER(email));
 CREATE INDEX IF NOT EXISTS idx_users_role_status ON users (role, status);
+CREATE INDEX IF NOT EXISTS idx_users_karma_score ON users (karma_score DESC);
 
--- 4. Bảng user_sessions (Quản lý phiên đa thiết bị & Token Rotation)
 CREATE TABLE IF NOT EXISTS user_sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -59,4 +58,25 @@ CREATE TABLE IF NOT EXISTS user_sessions (
 
 CREATE INDEX IF NOT EXISTS idx_sessions_user_active ON user_sessions (user_id) WHERE NOT is_revoked;
 CREATE INDEX IF NOT EXISTS idx_sessions_token_hash ON user_sessions (refresh_token_hash);
-CREATE INDEX IF NOT EXISTS idx_sessions_prev_token_hash ON user_sessions (previous_token_hash);
+CREATE INDEX IF NOT EXISTS idx_sessions_prev_token_hash ON user_sessions (previous_token_hash) WHERE previous_token_hash IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON user_sessions (expires_at);
+
+CREATE OR REPLACE FUNCTION update_timestamp_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_users_updated_at ON users;
+CREATE TRIGGER trg_users_updated_at
+    BEFORE UPDATE ON users
+    FOR EACH ROW
+    EXECUTE FUNCTION update_timestamp_column();
+
+DROP TRIGGER IF EXISTS trg_user_sessions_updated_at ON user_sessions;
+CREATE TRIGGER trg_user_sessions_updated_at
+    BEFORE UPDATE ON user_sessions
+    FOR EACH ROW
+    EXECUTE FUNCTION update_timestamp_column();

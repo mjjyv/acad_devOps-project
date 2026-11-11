@@ -37,7 +37,7 @@ export interface SpaceEntity {
   name: string;
   slug: string;
   description: string | null;
-  avatarUrl: string | null;
+  iconUrl: string | null;
   bannerUrl: string | null;
   isPrivate: boolean;
   rules: Array<{ title: string; description: string }>;
@@ -59,7 +59,9 @@ export interface SpaceFlairEntity {
   id: string;
   spaceId: string;
   name: string;
-  color: string;
+  slug: string;
+  colorHex: string;
+  backgroundHex: string;
   createdAt: string;
 }
 
@@ -71,6 +73,7 @@ export interface ThreadEntity {
   title: string;
   slug: string;
   content: string | null;
+  contentSnippet?: string | null | undefined;
   linkUrl: string | null;
   threadType: 'TEXT' | 'LINK' | 'MEDIA';
   upvotesCount: number;
@@ -83,10 +86,13 @@ export interface ThreadEntity {
   // Joined fields from spaces, users, space_flairs
   spaceSlug?: string | undefined;
   spaceName?: string | undefined;
+  spaceIsPrivate?: boolean | undefined;
   authorUsername?: string | undefined;
   authorAvatarUrl?: string | null | undefined;
   flairName?: string | null | undefined;
-  flairColor?: string | null | undefined;
+  flairSlug?: string | null | undefined;
+  flairColorHex?: string | null | undefined;
+  flairBackgroundHex?: string | null | undefined;
 }
 
 export interface CommentEntity {
@@ -125,17 +131,30 @@ export interface ThreadCountersEntity {
 export interface FeedFilter {
   sort?: ('hot' | 'new' | 'top' | 'best') | undefined;
   time?: ('day' | 'week' | 'month' | 'year' | 'all') | undefined;
+  flairId?: string | undefined;
   limit?: number | undefined;
   cursor?: string | undefined;
 }
 
+export interface CreateFlairRepoData {
+  name: string;
+  slug: string;
+  colorHex?: string | undefined;
+  backgroundHex?: string | undefined;
+}
+
 export interface ICommunityRepository {
+  /**
+   * Cờ đánh dấu DB tự duy trì bộ đếm & Karma qua PostgreSQL Triggers để Service không cộng dồn kép.
+   */
+  readonly handlesCountersViaDbTriggers?: boolean;
+
   // Spaces
   createSpace(data: {
     name: string;
     slug: string;
     description?: string | null;
-    avatarUrl?: string | null;
+    iconUrl?: string | null;
     bannerUrl?: string | null;
     rules?: Array<{ title: string; description: string }>;
     creatorId: string;
@@ -153,7 +172,7 @@ export interface ICommunityRepository {
   getMembership(spaceId: string, userId: string): Promise<SpaceMembershipEntity | null>;
 
   // Flairs
-  createFlair(spaceId: string, name: string, color?: string): Promise<SpaceFlairEntity>;
+  createFlair(spaceId: string, data: CreateFlairRepoData): Promise<SpaceFlairEntity>;
   listFlairs(spaceId: string): Promise<SpaceFlairEntity[]>;
 
   // Threads
@@ -202,10 +221,12 @@ export interface ICommunityRepository {
     direction: number,
   ): Promise<void>;
   getUserVote(targetId: string, targetType: 'THREAD' | 'COMMENT', userId: string): Promise<number>;
+  getUserCommentVotes(threadId: string, userId: string): Promise<Record<string, number>>;
   toggleSaveThread(userId: string, threadId: string): Promise<boolean>;
   isThreadSaved(userId: string, threadId: string): Promise<boolean>;
   listSavedThreads(userId: string, limit?: number, offset?: number): Promise<ThreadEntity[]>;
   updateUserKarma(userId: string, delta: number): Promise<void>;
+  refreshHotScores?(): Promise<void>;
 
   // Feeds & Keyset Cursor Pagination (Phase B3)
   listHomeFeedThreads(
@@ -227,6 +248,7 @@ export interface ICommunityRepository {
  * InMemoryCommunityRepository: Triển khai trong bộ nhớ phục vụ Unit Test và Fast CI.
  */
 export class InMemoryCommunityRepository implements ICommunityRepository {
+  public readonly handlesCountersViaDbTriggers = false;
   private spaces = new Map<string, SpaceEntity>();
   private memberships: SpaceMembershipEntity[] = [];
   private flairs = new Map<string, SpaceFlairEntity>();
@@ -245,7 +267,7 @@ export class InMemoryCommunityRepository implements ICommunityRepository {
     name: string;
     slug: string;
     description?: string | null;
-    avatarUrl?: string | null;
+    iconUrl?: string | null;
     bannerUrl?: string | null;
     rules?: Array<{ title: string; description: string }>;
     creatorId: string;
@@ -265,7 +287,7 @@ export class InMemoryCommunityRepository implements ICommunityRepository {
       name: data.name,
       slug: slugLower,
       description: data.description ?? null,
-      avatarUrl: data.avatarUrl ?? null,
+      iconUrl: data.iconUrl ?? null,
       bannerUrl: data.bannerUrl ?? null,
       rules: data.rules ?? [],
       creatorId: data.creatorId,
@@ -349,14 +371,11 @@ export class InMemoryCommunityRepository implements ICommunityRepository {
   }
 
   // Flairs
-  public async createFlair(
-    spaceId: string,
-    name: string,
-    color: string = '#FF4500',
-  ): Promise<SpaceFlairEntity> {
+  public async createFlair(spaceId: string, data: CreateFlairRepoData): Promise<SpaceFlairEntity> {
+    const slugLower = data.slug.toLowerCase();
     for (const flair of this.flairs.values()) {
-      if (flair.spaceId === spaceId && flair.name.toLowerCase() === name.toLowerCase()) {
-        throw new DuplicateFlairError(`Flair "${name}" đã tồn tại trong không gian này`);
+      if (flair.spaceId === spaceId && flair.slug.toLowerCase() === slugLower) {
+        throw new DuplicateFlairError(`Flair "${data.name}" đã tồn tại trong không gian này`);
       }
     }
 
@@ -364,8 +383,10 @@ export class InMemoryCommunityRepository implements ICommunityRepository {
     const flair: SpaceFlairEntity = {
       id,
       spaceId,
-      name,
-      color,
+      name: data.name,
+      slug: slugLower,
+      colorHex: data.colorHex ?? '#E1D9BC',
+      backgroundHex: data.backgroundHex ?? '#30364F',
       createdAt: new Date().toISOString(),
     };
     this.flairs.set(id, flair);
@@ -389,6 +410,9 @@ export class InMemoryCommunityRepository implements ICommunityRepository {
   }): Promise<ThreadEntity> {
     const id = randomUUID();
     const now = new Date().toISOString();
+    const space = this.spaces.get(data.spaceId);
+    const flair = data.flairId ? this.flairs.get(data.flairId) : undefined;
+    const contentText = data.content ?? null;
     const thread: ThreadEntity = {
       id,
       spaceId: data.spaceId,
@@ -396,7 +420,8 @@ export class InMemoryCommunityRepository implements ICommunityRepository {
       flairId: data.flairId ?? null,
       title: data.title,
       slug: data.slug,
-      content: data.content ?? null,
+      content: contentText,
+      contentSnippet: contentText ? contentText.slice(0, 220) : null,
       linkUrl: data.linkUrl ?? null,
       threadType: data.threadType ?? 'TEXT',
       upvotesCount: 0,
@@ -406,6 +431,13 @@ export class InMemoryCommunityRepository implements ICommunityRepository {
       isLocked: false,
       createdAt: now,
       updatedAt: now,
+      spaceSlug: space?.slug,
+      spaceName: space?.name,
+      spaceIsPrivate: space?.isPrivate ?? false,
+      flairName: flair?.name ?? null,
+      flairSlug: flair?.slug ?? null,
+      flairColorHex: flair?.colorHex ?? null,
+      flairBackgroundHex: flair?.backgroundHex ?? null,
     };
 
     this.threads.set(id, thread);
@@ -422,7 +454,6 @@ export class InMemoryCommunityRepository implements ICommunityRepository {
       updatedAt: new Date(now),
     });
 
-    const space = this.spaces.get(data.spaceId);
     if (space) {
       space.threadCount++;
     }
@@ -512,9 +543,21 @@ export class InMemoryCommunityRepository implements ICommunityRepository {
   }
 
   public async listCommentsByThread(threadId: string): Promise<CommentEntity[]> {
-    return Array.from(this.comments.values())
+    const threadComments = Array.from(this.comments.values())
       .filter((c) => c.threadId === threadId)
       .sort((a, b) => a.path.localeCompare(b.path));
+
+    return threadComments.map((c) => {
+      const directRepliesCount = threadComments.filter((r) => r.parentId === c.id).length;
+      const totalDescendantsCount = threadComments.filter(
+        (d) => d.id !== c.id && (d.path === c.path || d.path.startsWith(`${c.path}.`)),
+      ).length;
+      return {
+        ...c,
+        directRepliesCount,
+        totalDescendantsCount,
+      };
+    });
   }
 
   public async countChildrenByParent(threadId: string, parentId?: string | null): Promise<number> {
@@ -602,6 +645,22 @@ export class InMemoryCommunityRepository implements ICommunityRepository {
     return targetMap.get(targetId)?.get(userId) ?? 0;
   }
 
+  public async getUserCommentVotes(
+    threadId: string,
+    userId: string,
+  ): Promise<Record<string, number>> {
+    const result: Record<string, number> = {};
+    for (const c of this.comments.values()) {
+      if (c.threadId === threadId) {
+        const dir = this.commentVotes.get(c.id)?.get(userId);
+        if (dir) {
+          result[c.id] = dir;
+        }
+      }
+    }
+    return result;
+  }
+
   public async toggleSaveThread(userId: string, threadId: string): Promise<boolean> {
     let saved = this.savedThreads.get(userId);
     if (!saved) {
@@ -651,17 +710,23 @@ export class InMemoryCommunityRepository implements ICommunityRepository {
       .filter((m) => m.userId === userId)
       .map((m) => m.spaceId);
 
-    let eligible = Array.from(this.threads.values());
-    if (joinedSpaceIds.length > 0) {
-      eligible = eligible.filter((t) => joinedSpaceIds.includes(t.spaceId));
+    if (joinedSpaceIds.length === 0) {
+      return { items: [], nextCursor: null };
     }
+
+    const eligible = Array.from(this.threads.values()).filter((t) =>
+      joinedSpaceIds.includes(t.spaceId),
+    );
     return this.filterAndSortThreads(eligible, options);
   }
 
   public async listPopularFeedThreads(
     options?: FeedFilter,
   ): Promise<{ items: ThreadEntity[]; nextCursor: string | null }> {
-    const eligible = Array.from(this.threads.values());
+    const eligible = Array.from(this.threads.values()).filter((t) => {
+      const space = this.spaces.get(t.spaceId);
+      return !space?.isPrivate;
+    });
     return this.filterAndSortThreads(eligible, options);
   }
 
@@ -682,8 +747,12 @@ export class InMemoryCommunityRepository implements ICommunityRepository {
     const limit = options?.limit ?? 20;
     const now = Date.now();
 
-    // 1. Lọc thời gian cho chế độ "top"
     let filtered = threads;
+    if (options?.flairId) {
+      filtered = filtered.filter((t) => t.flairId === options.flairId);
+    }
+
+    // 1. Lọc thời gian cho chế độ "top"
     if (sort === 'top' && time !== 'all') {
       const windowMs: Record<string, number> = {
         day: 24 * 3600 * 1000,

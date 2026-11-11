@@ -91,50 +91,45 @@ export class TokenRotationService {
     // =========================================================================
     if (
       session.previousTokenHash &&
-      TokenManager.timingSafeCompare(submittedHash, session.previousTokenHash)
+      TokenManager.timingSafeCompare(submittedHash, session.previousTokenHash) &&
+      session.gracePeriodExpiresAt &&
+      now.getTime() <= session.gracePeriodExpiresAt.getTime()
     ) {
-      if (session.gracePeriodExpiresAt && now.getTime() <= session.gracePeriodExpiresAt.getTime()) {
-        const claims = await this.claimsProvider(session.userId);
-        if (!claims) {
-          return {
-            status: 'SESSION_NOT_FOUND',
-            error: 'Không tìm thấy thông tin tài khoản người dùng',
-          };
-        }
-
-        const claimsWithSession: UserTokenClaims = {
-          ...claims,
-          sessionId: session.id,
-        };
-        const newAccessToken = TokenManager.signAccessToken(claimsWithSession, this.jwtSecret);
-
+      const claims = await this.claimsProvider(session.userId);
+      if (!claims) {
         return {
-          status: 'GRACE_PERIOD_RENEWED',
-          accessToken: newAccessToken,
-          expiresIn: TokenManager.ACCESS_TOKEN_TTL_SECONDS,
-          session,
+          status: 'SESSION_NOT_FOUND',
+          error: 'Không tìm thấy thông tin tài khoản người dùng',
         };
       }
 
-      // =======================================================================
-      // TRƯỜNG HỢP 3: TOKEN REUSE ATTACK
-      // Token cũ đã xoay vòng bị phát lại NGOÀI cửa sổ 30s -> Tấn công đánh cắp phiên!
-      // =======================================================================
-      console.warn(
-        `[SECURITY WARNING] Phát hiện Token Reuse Attack đối với User ID: ${session.userId}. Thu hồi cưỡng chế toàn bộ phiên!`,
-      );
-      await this.sessionStore.revokeAllUserSessions(session.userId);
+      const claimsWithSession: UserTokenClaims = {
+        ...claims,
+        sessionId: session.id,
+      };
+      const newAccessToken = TokenManager.signAccessToken(claimsWithSession, this.jwtSecret);
 
       return {
-        status: 'TOKEN_REUSE_DETECTED',
-        error:
-          'Cảnh báo an ninh: Phát hiện dấu hiệu tái sử dụng token đã thu hồi. Toàn bộ phiên đăng nhập đã bị hủy.',
+        status: 'GRACE_PERIOD_RENEWED',
+        accessToken: newAccessToken,
+        expiresIn: TokenManager.ACCESS_TOKEN_TTL_SECONDS,
+        session,
       };
     }
 
+    // =========================================================================
+    // TRƯỜNG HỢP 3: TOKEN REUSE ATTACK
+    // Bất kỳ token cũ nào thuộc họ phiên bị phát lại ngoài cửa sổ 30s Grace -> Thu hồi toàn bộ phiên!
+    // =========================================================================
+    console.warn(
+      `[SECURITY WARNING] Phát hiện Token Reuse Attack đối với User ID: ${session.userId}. Thu hồi cưỡng chế toàn bộ phiên!`,
+    );
+    await this.sessionStore.revokeAllUserSessions(session.userId);
+
     return {
-      status: 'SESSION_NOT_FOUND',
-      error: 'Token không hợp lệ hoặc không thuộc phiên này',
+      status: 'TOKEN_REUSE_DETECTED',
+      error:
+        'Cảnh báo an ninh: Phát hiện dấu hiệu tái sử dụng token đã thu hồi. Toàn bộ phiên đăng nhập đã bị hủy.',
     };
   }
 }

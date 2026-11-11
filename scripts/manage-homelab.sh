@@ -43,9 +43,77 @@ start_containers() {
   fi
 }
 
+wait_for_datastores() {
+  echo -n "Đang chờ PostgreSQL sẵn sàng..."
+  for _ in $(seq 1 30); do
+    if podman exec acad-postgres pg_isready -U postgres -d acad_dev >/dev/null 2>&1; then
+      echo " OK"
+      break
+    fi
+    sleep 1
+  done
+
+  echo -n "Đang chờ Redis sẵn sàng..."
+  for _ in $(seq 1 30); do
+    if [ "$(podman exec acad-redis redis-cli ping 2>/dev/null || true)" = "PONG" ]; then
+      echo " OK"
+      break
+    fi
+    sleep 1
+  done
+}
+
+run_migrations() {
+  echo "--- Kiểm tra & Thực thi SQL Migrations (schema_migrations) ---"
+  podman exec acad-postgres psql -v ON_ERROR_STOP=1 -U postgres -d acad_dev -c "
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      version TEXT PRIMARY KEY,
+      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  " >/dev/null
+
+  for mig_file in "$PROJECT_DIR"/deploy/migrations/*.up.sql; do
+    [ -e "$mig_file" ] || continue
+    version="$(basename "$mig_file")"
+    already_applied="$(podman exec acad-postgres psql -U postgres -d acad_dev -tAc \
+      "SELECT 1 FROM schema_migrations WHERE version = '$version' LIMIT 1" || true)"
+    if [ "$already_applied" = "1" ]; then
+      echo "  [SKIP] $version (đã áp dụng)"
+    else
+      echo "  [APPLY] $version ..."
+      podman exec -i acad-postgres psql -v ON_ERROR_STOP=1 -U postgres -d acad_dev < "$mig_file"
+      podman exec acad-postgres psql -v ON_ERROR_STOP=1 -U postgres -d acad_dev -c \
+        "INSERT INTO schema_migrations (version) VALUES ('$version') ON CONFLICT DO NOTHING;" >/dev/null
+    fi
+  done
+  echo "✅ Toàn bộ Migrations đã đồng bộ."
+}
+
+run_seeds() {
+  echo "--- Nạp Bộ Dữ Liệu Mẫu Chuẩn Hóa 5 Phân Hệ (SQL + Redis) ---"
+  for sql_seed in \
+    "$PROJECT_DIR/deploy/seeds/001_auth_seed.sql" \
+    "$PROJECT_DIR/deploy/seeds/002_community_seed.sql" \
+    "$PROJECT_DIR/deploy/seeds/003_voting_feed_seed.sql" \
+    "$PROJECT_DIR/deploy/seeds/004_chat_mod_seed.sql"; do
+    echo "  [SQL SEED] $(basename "$sql_seed")"
+    podman exec -i acad-postgres psql -v ON_ERROR_STOP=1 -U postgres -d acad_dev < "$sql_seed"
+  done
+
+  for sh_seed in \
+    "$PROJECT_DIR/deploy/seeds/001_auth_redis_seed.sh" \
+    "$PROJECT_DIR/deploy/seeds/003_voting_redis_seed.sh"; do
+    echo "  [REDIS SEED] $(basename "$sh_seed")"
+    bash "$sh_seed"
+  done
+  echo "✅ Đã nạp đồng bộ dữ liệu mẫu PostgreSQL 16 + Redis 7."
+}
+
 case "$ACTION" in
   start)
     start_containers
+    wait_for_datastores
+    run_migrations
     echo "--- Khởi chạy Backend API (:10000) & Next.js Web (:3000) qua Systemd ---"
     systemctl --user enable --now acad-api.service acad-web.service
     sleep 2
@@ -59,10 +127,32 @@ case "$ACTION" in
     ;;
   restart)
     start_containers
+    wait_for_datastores
+    run_migrations
     echo "--- Khởi động lại dịch vụ Acad Homelab ---"
     systemctl --user restart acad-api.service acad-web.service
     sleep 2
     systemctl --user status acad-api.service acad-web.service --no-pager
+    ;;
+  migrate)
+    start_containers
+    wait_for_datastores
+    run_migrations
+    ;;
+  seed)
+    start_containers
+    wait_for_datastores
+    run_migrations
+    run_seeds
+    ;;
+  qa)
+    export PATH="/home/debv/.local/bin:$PATH"
+    cd "$PROJECT_DIR"
+    pnpm run lint
+    pnpm run typecheck
+    pnpm run build
+    pnpm run test
+    pnpm run test:integration
     ;;
   status)
     echo "=== 1. Trạng Thái Database & Redis (Podman Rootless) ==="
@@ -84,7 +174,7 @@ case "$ACTION" in
     echo "=== KIỂM TRA SỨC KHỎE HỆ THỐNG SELF-HOSTED ==="
     echo -n "1. PostgreSQL (Port 5432 - Storage .data/postgres): "
     podman exec acad-postgres pg_isready -U postgres -d acad_dev >/dev/null 2>&1 && echo "READY (OK)" || echo "DOWN"
-    
+
     echo -n "2. Redis Engine (Port 6379 - Storage .data/redis): "
     [ "$(podman exec acad-redis redis-cli ping 2>/dev/null)" = "PONG" ] && echo "PONG (OK)" || echo "DOWN"
 
@@ -137,13 +227,8 @@ case "$ACTION" in
       echo "⚠️ Tên miền chưa phản hồi 200 OK. Vui lòng kiểm tra lại cấu hình Public Hostnames trên Cloudflare Tunnel."
     fi
     ;;
-  seed)
-    echo "--- Nạp dữ liệu mẫu PostgreSQL (Realistic Community Seed Data) ---"
-    podman exec -i acad-postgres psql -U postgres -d acad_dev < "$PROJECT_DIR/deploy/seeds/001_realistic_community_seed.sql"
-    echo "✅ Đã nạp thành công bộ dữ liệu mẫu vào cơ sở dữ liệu acad_dev."
-    ;;
   *)
-    echo "Cách dùng: $0 {start|stop|restart|status|logs-api|logs-web|test|seed|verify-domain <domain>}"
+    echo "Cách dùng: $0 {start|stop|restart|migrate|seed|qa|status|logs-api|logs-web|test|verify-domain <domain>}"
     exit 1
     ;;
 esac

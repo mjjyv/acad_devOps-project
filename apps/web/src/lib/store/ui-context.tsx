@@ -1,7 +1,7 @@
 'use client';
 
 import type React from 'react';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 export interface RecentPostItem {
   id: string;
@@ -43,55 +43,7 @@ interface UIContextType {
 
 const UIContext = createContext<UIContextType | undefined>(undefined);
 
-const INITIAL_RECENT_POSTS: RecentPostItem[] = [
-  {
-    id: 'd0000000-0000-0000-0000-000000000002',
-    spaceSlug: 'vozforums',
-    spaceName: 's/vozforums',
-    title:
-      'Chia sẻ kinh nghiệm phỏng vấn DevOps Engineer và SRE tại các công ty Big Tech & Unicorn',
-    timeAgo: '2d ago',
-    upvotes: 428,
-    comments: 3,
-    thumbnailUrl:
-      'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=60',
-  },
-  {
-    id: 'd0000000-0000-0000-0000-000000000001',
-    spaceSlug: 'devops-arch',
-    spaceName: 's/devops-arch',
-    title:
-      'Triển khai Self-Hosted Homelab Monorepo: Podman Rootless, Cloudflare Tunnel và Next.js 15 SSR High Availability',
-    timeAgo: '3d ago',
-    upvotes: 562,
-    comments: 6,
-    thumbnailUrl:
-      'https://images.unsplash.com/photo-1629654297299-c8506221ca97?w=100&auto=format&fit=crop&q=60',
-  },
-  {
-    id: 'd0000000-0000-0000-0000-000000000003',
-    spaceSlug: 'system-design',
-    spaceName: 's/system-design',
-    title:
-      'Deep-dive PostgreSQL 16 ltree: Cấu trúc cây bình luận đệ quy tối ưu hóa cho hàng triệu nút',
-    timeAgo: '1d ago',
-    upvotes: 315,
-    comments: 2,
-    thumbnailUrl:
-      'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=100&auto=format&fit=crop&q=60',
-  },
-  {
-    id: 'd0000000-0000-0000-0000-000000000004',
-    spaceSlug: 'kubernetes',
-    spaceName: 's/kubernetes',
-    title: 'Chiến lược bộ đếm Karma và Vote FSM nguyên tử với Redis Lua Scripts',
-    timeAgo: '18h ago',
-    upvotes: 289,
-    comments: 1,
-    thumbnailUrl:
-      'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=100&auto=format&fit=crop&q=60',
-  },
-];
+const STORAGE_KEY_RECENT_POSTS = 'acad_recent_posts_v1';
 
 export function UIProvider({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -100,28 +52,55 @@ export function UIProvider({ children }: { children: React.ReactNode }) {
   const [feedSort, setFeedSort] = useState<FeedSort>('hot');
   const [viewMode, setViewMode] = useState<ViewMode>('card');
   const [searchQuery, setSearchQuery] = useState('');
-  const [recentPosts, setRecentPosts] = useState<RecentPostItem[]>(INITIAL_RECENT_POSTS);
+  const [recentPosts, setRecentPosts] = useState<RecentPostItem[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const toggleSidebar = () => setSidebarOpen((prev) => !prev);
-  const clearRecentPosts = () => setRecentPosts([]);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_RECENT_POSTS);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          setRecentPosts(parsed.slice(0, 5));
+        }
+      }
+    } catch {
+      // Ignore malformed local storage
+    }
+  }, []);
 
-  const addRecentPost = (post: Omit<RecentPostItem, 'timeAgo'> & { timeAgo?: string }) => {
-    setRecentPosts((prev) => {
-      const filtered = prev.filter((p) => p.id !== post.id);
-      return [
-        {
-          ...post,
-          timeAgo: post.timeAgo || 'Just now',
-          spaceName:
-            post.spaceName && post.spaceName !== 's/'
-              ? post.spaceName
-              : `s/${post.spaceSlug || 'devops-arch'}`,
-        },
-        ...filtered,
-      ].slice(0, 5);
-    });
+  const toggleSidebar = () => setSidebarOpen((prev) => !prev);
+  const clearRecentPosts = () => {
+    setRecentPosts([]);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(STORAGE_KEY_RECENT_POSTS);
+    }
   };
+
+  const addRecentPost = useCallback(
+    (post: Omit<RecentPostItem, 'timeAgo'> & { timeAgo?: string }) => {
+      setRecentPosts((prev) => {
+        const filtered = prev.filter((p) => p.id !== post.id);
+        const next = [
+          {
+            ...post,
+            timeAgo: post.timeAgo || 'Vừa xong',
+            spaceName:
+              post.spaceName && post.spaceName !== 's/'
+                ? post.spaceName
+                : `s/${post.spaceSlug || 'devops-arch'}`,
+          },
+          ...filtered,
+        ].slice(0, 5);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(STORAGE_KEY_RECENT_POSTS, JSON.stringify(next));
+        }
+        return next;
+      });
+    },
+    [],
+  );
 
   const showToast = (message: string) => {
     setToastMessage(message);

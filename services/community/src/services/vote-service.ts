@@ -3,9 +3,14 @@
  * @description Service managing Atomic Votes for Threads and Comments, Karma, and Saved Threads.
  */
 
-import type { VoteDirection, VoteResult } from '@acad/contracts';
+import type { ThreadSummary, VoteDirection, VoteResult } from '@acad/contracts';
 import type { ICommunityRepository } from '../repository/community-repository.js';
 import type { IVoteStorageEngine } from '../voting/lua-vote-engine.js';
+import {
+  assertSpaceMembershipIfPrivate,
+  mapEntityToThreadSummary,
+  resolveViewerThreadState,
+} from './thread-mapper.js';
 
 export class TargetNotFoundError extends Error {
   constructor(message: string = 'Không tìm thấy mục tiêu yêu cầu để biểu quyết') {
@@ -20,6 +25,36 @@ export class VoteService {
     private voteEngine: IVoteStorageEngine,
   ) {}
 
+  private async prepareTargetCounters(
+    targetId: string,
+    upvotes: number,
+    downvotes: number,
+    userId: string,
+    previousVote: number,
+  ): Promise<void> {
+    // Lazy-seed Redis counters hoặc đồng bộ HSETNX phiếu cá nhân từ PostgreSQL
+    const hasCounters = await this.voteEngine.hasCounters(targetId);
+    if (!hasCounters) {
+      await this.voteEngine.seedCounters(
+        targetId,
+        {
+          upvotes,
+          downvotes,
+          netScore: upvotes - downvotes,
+        },
+        {
+          userId,
+          direction: previousVote,
+        },
+      );
+      return;
+    }
+
+    if (previousVote !== 0) {
+      await this.voteEngine.ensureUserVoteSeeded(targetId, userId, previousVote);
+    }
+  }
+
   /**
    * Biểu quyết bài viết nguyên tử (O(1) trên Redis/Memory)
    */
@@ -33,34 +68,25 @@ export class VoteService {
       throw new TargetNotFoundError('Không tìm thấy bài viết yêu cầu');
     }
 
-    const previousVote = await this.repo.getUserVote(threadId, 'THREAD', userId);
+    await assertSpaceMembershipIfPrivate(this.repo, thread.spaceId, thread.spaceIsPrivate, userId);
 
-    // Lazy-seed Redis counters từ PostgreSQL nếu chưa từng có trong Redis cache
-    const hasCounters = await this.voteEngine.hasCounters(threadId);
-    if (!hasCounters) {
-      await this.voteEngine.seedCounters(
-        threadId,
-        {
-          upvotes: thread.upvotesCount,
-          downvotes: thread.downvotesCount,
-          netScore: thread.upvotesCount - thread.downvotesCount,
-        },
-        {
-          userId,
-          direction: previousVote,
-        },
-      );
-    }
+    const previousVote = await this.repo.getUserVote(threadId, 'THREAD', userId);
+    await this.prepareTargetCounters(
+      threadId,
+      thread.upvotesCount,
+      thread.downvotesCount,
+      userId,
+      previousVote,
+    );
 
     const voteRes = await this.voteEngine.executeVote(threadId, userId, direction);
     const finalDirection = voteRes.finalDirection;
 
-    // Ghi nhận lịch sử vào repo
+    // Ghi nhận lịch sử vào repo (DB Trigger tự cập nhật Karma nếu handlesCountersViaDbTriggers = true)
     await this.repo.recordVote(threadId, 'THREAD', userId, finalDirection);
 
-    // Tính toán karma delta tác giả bài viết
     const delta = finalDirection - previousVote;
-    if (delta !== 0) {
+    if (delta !== 0 && !this.repo.handlesCountersViaDbTriggers) {
       await this.repo.updateUserKarma(thread.authorId, delta);
     }
 
@@ -88,24 +114,24 @@ export class VoteService {
       throw new TargetNotFoundError('Không tìm thấy bình luận yêu cầu');
     }
 
-    const previousVote = await this.repo.getUserVote(commentId, 'COMMENT', userId);
-
-    // Lazy-seed Redis counters từ PostgreSQL nếu chưa từng có trong Redis cache
-    const hasCounters = await this.voteEngine.hasCounters(commentId);
-    if (!hasCounters) {
-      await this.voteEngine.seedCounters(
-        commentId,
-        {
-          upvotes: comment.upvotesCount,
-          downvotes: comment.downvotesCount,
-          netScore: comment.upvotesCount - comment.downvotesCount,
-        },
-        {
-          userId,
-          direction: previousVote,
-        },
+    const thread = await this.repo.findThreadById(comment.threadId);
+    if (thread) {
+      await assertSpaceMembershipIfPrivate(
+        this.repo,
+        thread.spaceId,
+        thread.spaceIsPrivate,
+        userId,
       );
     }
+
+    const previousVote = await this.repo.getUserVote(commentId, 'COMMENT', userId);
+    await this.prepareTargetCounters(
+      commentId,
+      comment.upvotesCount,
+      comment.downvotesCount,
+      userId,
+      previousVote,
+    );
 
     const voteRes = await this.voteEngine.executeVote(commentId, userId, direction);
     const finalDirection = voteRes.finalDirection;
@@ -113,7 +139,7 @@ export class VoteService {
     await this.repo.recordVote(commentId, 'COMMENT', userId, finalDirection);
 
     const delta = finalDirection - previousVote;
-    if (delta !== 0) {
+    if (delta !== 0 && !this.repo.handlesCountersViaDbTriggers) {
       await this.repo.updateUserKarma(comment.authorId, delta);
     }
 
@@ -136,6 +162,7 @@ export class VoteService {
     if (!thread) {
       throw new TargetNotFoundError('Không tìm thấy bài viết yêu cầu');
     }
+    await assertSpaceMembershipIfPrivate(this.repo, thread.spaceId, thread.spaceIsPrivate, userId);
     const isSaved = await this.repo.toggleSaveThread(userId, threadId);
     return { isSaved };
   }
@@ -143,29 +170,23 @@ export class VoteService {
   /**
    * Lấy danh sách bài viết đã lưu của người dùng
    */
-  public async listSavedThreads(userId: string, limit: number = 20, offset: number = 0) {
+  public async listSavedThreads(
+    userId: string,
+    limit: number = 20,
+    offset: number = 0,
+  ): Promise<ThreadSummary[]> {
     const threads = await this.repo.listSavedThreads(userId, limit, offset);
-    return threads.map((t) => ({
-      id: t.id,
-      spaceId: t.spaceId,
-      spaceSlug: '',
-      spaceName: '',
-      authorId: t.authorId,
-      authorUsername: '',
-      flair: null,
-      title: t.title,
-      slug: t.slug,
-      linkUrl: t.linkUrl,
-      isPinned: t.isPinned,
-      isLocked: t.isLocked,
-      upvotes: t.upvotesCount,
-      downvotes: t.downvotesCount,
-      netScore: t.upvotesCount - t.downvotesCount,
-      commentsCount: t.commentCount,
-      userVote: 0,
-      isSaved: true,
-      createdAt: t.createdAt,
-      updatedAt: t.updatedAt,
-    }));
+    return Promise.all(
+      threads.map(async (t) => {
+        const viewerState = await resolveViewerThreadState(
+          this.repo,
+          this.voteEngine,
+          t.id,
+          userId,
+          { preSaved: true },
+        );
+        return mapEntityToThreadSummary(t, viewerState);
+      }),
+    );
   }
 }

@@ -87,15 +87,13 @@ async function bootstrap() {
   const sessionStore = new RedisSessionStore(redis);
   const authService = new AuthService(userRepository, sessionStore, JWT_SECRET);
 
-  // 3.1. Khởi tạo Phân Hệ Cộng Đồng (Community Services)
+  // 3.1. Khởi tạo Phân Hệ Cộng Đồng & Bầu Chọn (Community & Voting Services)
   const communityRepo = new PostgresCommunityRepository(pool);
+  const voteEngine = new RedisVoteEngine(redis);
   const spaceService = new SpaceService(communityRepo);
-  const threadService = new ThreadService(communityRepo);
+  const threadService = new ThreadService(communityRepo, voteEngine);
   const commentService = new CommentService(communityRepo);
   const storageService = new ZeroHopStorageService();
-
-  // 3.2. Khởi tạo Phân Hệ Bầu Chọn & Nguồn Cấp Tin (Phase B3)
-  const voteEngine = new RedisVoteEngine(redis);
   const voteService = new VoteService(communityRepo, voteEngine);
   const feedService = new FeedService(communityRepo, voteEngine);
   const flushWorker = new VoteFlushWorker(voteEngine, communityRepo, { intervalMs: 5000 });

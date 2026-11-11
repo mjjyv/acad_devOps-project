@@ -1,7 +1,7 @@
 'use client';
 
 import type { FlatCommentItem } from '@acad/contracts';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CommunityApi } from '@/lib/api/community';
 import { useAuth } from '@/lib/auth/auth-context';
 
@@ -9,6 +9,7 @@ interface CommentItemProps {
   comment: FlatCommentItem;
   threadId: string;
   onCommentAdded?: (newComment: FlatCommentItem) => void;
+  onCommentDeleted?: (commentId: string) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: (commentId: string) => void;
 }
@@ -17,6 +18,7 @@ export function CommentItem({
   comment,
   threadId,
   onCommentAdded,
+  onCommentDeleted,
   isCollapsed = false,
   onToggleCollapse,
 }: CommentItemProps) {
@@ -24,6 +26,12 @@ export function CommentItem({
 
   const [vote, setVote] = useState<number>(comment.userVote || 0);
   const [score, setScore] = useState<number>(comment.netScore || 0);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    setVote(comment.userVote || 0);
+    setScore(comment.netScore || 0);
+  }, [comment.userVote, comment.netScore]);
 
   const [isReplying, setIsReplying] = useState(false);
   const [replyText, setReplyText] = useState('');
@@ -88,20 +96,21 @@ export function CommentItem({
 
   const authorLetter = comment.author.username.charAt(0).toUpperCase();
 
-  // Thụt lề theo cấp bậc depth (tối đa cấp 8 trên desktop, cấp 4 trên mobile)
-  const indentPx = Math.min(comment.depth, 6) * 20;
+  // Thụt lề theo cấp bậc depth 1-based: root (depth = 1) có indent = 0px, tối đa 5 mức
+  const indentLevel = Math.max(0, Math.min(comment.depth - 1, 5));
+  const indentPx = indentLevel * 20;
 
   return (
     <div
       style={{
         marginLeft: `${indentPx}px`,
         position: 'relative',
-        paddingLeft: comment.depth > 0 ? '14px' : '0',
+        paddingLeft: comment.depth > 1 ? '14px' : '0',
         marginBottom: '10px',
       }}
     >
       {/* Đường Kẻ Phân Cấp Dọc (Threadline Guide) */}
-      {comment.depth > 0 && (
+      {comment.depth > 1 && (
         <button
           type="button"
           aria-label="Thu gọn nhánh bình luận"
@@ -319,6 +328,35 @@ export function CommentItem({
               <span>💬</span>
               <span>Trả lời</span>
             </button>
+
+            {user?.id === comment.author.id && !comment.isDeleted && (
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={async () => {
+                  try {
+                    setIsDeleting(true);
+                    await CommunityApi.deleteComment(comment.id);
+                    onCommentDeleted?.(comment.id);
+                  } catch {
+                    // Keep state if failed
+                  } finally {
+                    setIsDeleting(false);
+                  }
+                }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#f43f5e',
+                  fontWeight: 600,
+                  cursor: isDeleting ? 'not-allowed' : 'pointer',
+                  padding: '4px 6px',
+                  borderRadius: '4px',
+                }}
+              >
+                {isDeleting ? 'Đang xóa...' : 'Xóa'}
+              </button>
+            )}
           </div>
 
           {/* Form Trả Lời Inline nếu mở */}

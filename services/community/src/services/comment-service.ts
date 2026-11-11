@@ -6,6 +6,7 @@
 import type { CommentTreeResponse, FlatCommentItem } from '@acad/contracts';
 import { LtreePathManager } from '../comments/ltree-path.js';
 import type { CommentEntity, ICommunityRepository } from '../repository/community-repository.js';
+import { assertSpaceMembershipIfPrivate } from './thread-mapper.js';
 
 export class CommentNotFoundError extends Error {
   constructor(message: string = 'Không tìm thấy bình luận yêu cầu') {
@@ -23,6 +24,7 @@ export class CommentService {
       isCapped?: boolean | undefined;
       mentionNeeded?: boolean | undefined;
       parentAuthorUsername?: string | undefined;
+      userVote?: number | undefined;
     },
   ): FlatCommentItem {
     return {
@@ -45,7 +47,7 @@ export class CommentService {
       netScore: entity.upvotesCount - entity.downvotesCount,
       upvotes: entity.upvotesCount,
       downvotes: entity.downvotesCount,
-      userVote: 0,
+      userVote: options?.userVote ?? 0,
       directRepliesCount: entity.directRepliesCount ?? 0,
       totalDescendantsCount: entity.totalDescendantsCount ?? 0,
       isCollapsed: false,
@@ -62,6 +64,17 @@ export class CommentService {
     parentId?: string | null | undefined;
     parentAuthorUsername?: string | undefined;
   }): Promise<FlatCommentItem> {
+    const thread = await this.repo.findThreadById(data.threadId);
+    if (!thread) {
+      throw new CommentNotFoundError('Không tìm thấy bài viết chứa bình luận');
+    }
+    await assertSpaceMembershipIfPrivate(
+      this.repo,
+      thread.spaceId,
+      thread.spaceIsPrivate,
+      data.authorId,
+    );
+
     // 1. Bình luận gốc (Root comment: depth = 1)
     if (!data.parentId) {
       const rootIndex = await this.repo.countChildrenByParent(data.threadId, null);
@@ -118,9 +131,24 @@ export class CommentService {
     });
   }
 
-  public async getThreadComments(threadId: string): Promise<CommentTreeResponse> {
+  public async getThreadComments(
+    threadId: string,
+    viewerId?: string,
+  ): Promise<CommentTreeResponse> {
+    const thread = await this.repo.findThreadById(threadId);
+    if (!thread) {
+      throw new CommentNotFoundError('Không tìm thấy bài viết yêu cầu');
+    }
+    await assertSpaceMembershipIfPrivate(
+      this.repo,
+      thread.spaceId,
+      thread.spaceIsPrivate,
+      viewerId,
+    );
+
     const comments = await this.repo.listCommentsByThread(threadId);
-    const items = comments.map((c) => this.toFlatComment(c));
+    const userVotes = viewerId ? await this.repo.getUserCommentVotes(threadId, viewerId) : {};
+    const items = comments.map((c) => this.toFlatComment(c, { userVote: userVotes[c.id] ?? 0 }));
     return {
       items,
       totalCount: items.length,

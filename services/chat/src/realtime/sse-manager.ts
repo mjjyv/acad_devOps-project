@@ -3,7 +3,7 @@
  * @description Server-Sent Events (SSE) Gateway with Heartbeat (15s Keep-Alive) & Multi-Tab Support.
  */
 
-import type { ServerResponse } from 'node:http';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 
 export interface SseClient {
   userId: string;
@@ -43,7 +43,7 @@ export class SseManager {
   /**
    * Đăng ký một kết nối SSE mới từ client
    */
-  public registerClient(userId: string, res: ServerResponse): void {
+  public registerClient(userId: string, res: ServerResponse, req?: IncomingMessage): void {
     // 1. Thiết lập Headers tiêu chuẩn SSE RFC 8895
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
@@ -61,14 +61,27 @@ export class SseManager {
     userSockets.add(res);
 
     // 3. Gửi thông điệp chào đón kết nối
-    res.write(
-      `event: connected\ndata: ${JSON.stringify({ status: 'connected', timestamp: new Date().toISOString() })}\n\n`,
-    );
+    if (this.isSocketAlive(res)) {
+      res.write(
+        `event: connected\ndata: ${JSON.stringify({ status: 'connected', timestamp: new Date().toISOString() })}\n\n`,
+      );
+    }
 
-    // 4. Lắng nghe sự kiện ngắt kết nối
-    res.on('close', () => {
+    // 4. Lắng nghe đầy đủ sự kiện ngắt kết nối (cả req, res và error) tránh rò rỉ FD
+    let cleanedUp = false;
+    const onDisconnect = () => {
+      if (cleanedUp) return;
+      cleanedUp = true;
       this.removeClient(userId, res);
-    });
+    };
+
+    res.on('close', onDisconnect);
+    res.on('error', onDisconnect);
+    req?.on('close', onDisconnect);
+  }
+
+  private isSocketAlive(res: ServerResponse): boolean {
+    return !res.writableEnded && !res.destroyed;
   }
 
   /**
@@ -94,14 +107,20 @@ export class SseManager {
     }
 
     const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-    for (const res of userSockets) {
+    let delivered = false;
+    for (const res of Array.from(userSockets)) {
+      if (!this.isSocketAlive(res)) {
+        this.removeClient(userId, res);
+        continue;
+      }
       try {
         res.write(payload);
+        delivered = true;
       } catch {
         this.removeClient(userId, res);
       }
     }
-    return true;
+    return delivered;
   }
 
   /**
@@ -122,8 +141,12 @@ export class SseManager {
    */
   public sendHeartbeat(): void {
     const pingComment = `: ping\n\n`;
-    for (const [userId, sockets] of this.clients.entries()) {
-      for (const res of sockets) {
+    for (const [userId, sockets] of Array.from(this.clients.entries())) {
+      for (const res of Array.from(sockets)) {
+        if (!this.isSocketAlive(res)) {
+          this.removeClient(userId, res);
+          continue;
+        }
         try {
           res.write(pingComment);
         } catch {

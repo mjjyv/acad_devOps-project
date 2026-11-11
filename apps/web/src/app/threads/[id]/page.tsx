@@ -11,152 +11,80 @@ import { BottomNav } from '@/components/layout/bottom-nav';
 import { Header } from '@/components/layout/header';
 import { LeftSidebar } from '@/components/layout/left-sidebar';
 import { RightRail } from '@/components/layout/right-rail';
-import { CommunityApi } from '@/lib/api/community';
+import { ApiHttpError, CommunityApi } from '@/lib/api/community';
 import { useAuth } from '@/lib/auth/auth-context';
+import { useUI } from '@/lib/store/ui-context';
+import { formatTimeAgo } from '@/lib/utils/thread-mapper';
 
 export default function ThreadDetailPage() {
   const params = useParams();
   const threadId = (params?.id as string) || '';
-  const { user, openAuthModal } = useAuth();
+  const { user, isAuthenticated, openAuthModal } = useAuth();
+  const { addRecentPost } = useUI();
 
   const [thread, setThread] = useState<ThreadDetail | null>(null);
   const [comments, setComments] = useState<FlatCommentItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const [vote, setVote] = useState<number>(0);
   const [score, setScore] = useState<number>(0);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    void isAuthenticated;
     let isMounted = true;
     async function loadThreadAndComments() {
+      if (!threadId) return;
       try {
         setLoading(true);
-        const data = await CommunityApi.getThread(threadId);
-        if (isMounted && data) {
-          setThread(data);
-          setScore(data.netScore || 0);
-          setVote(data.userVote || 0);
-        }
-      } catch {
-        // Fallback demo thread data
-        if (isMounted) {
-          const fallbackThread: ThreadDetail = {
-            id: threadId,
-            spaceId: 'space-1',
-            spaceSlug: 'devops-arch',
-            spaceName: 'DevOps Architecture',
-            authorId: 'author-1',
-            authorUsername: 'cloud_architect',
-            title:
-              'Triển khai Self-Hosted Homelab Monorepo: Podman Rootless, Cloudflare Tunnel và Next.js 15 SSR High Availability',
-            slug: 'trien-khai-self-hosted-homelab-monorepo',
-            isPinned: false,
-            isLocked: false,
-            upvotes: 562,
-            downvotes: 0,
-            netScore: 562,
-            commentsCount: 3,
-            userVote: 0,
-            isSaved: false,
-            createdAt: new Date(Date.now() - 3600 * 1000 * 4).toISOString(),
-            contentText: `Tối ưu hóa tài nguyên phần cứng, triệt tiêu chi phí Cloud đắt đỏ với mô hình Zero Trust Cloudflare Tunnel kết hợp Systemd User Daemons và PostgreSQL 16 ltree nested tree CMS.\n\n### 1. Kiến trúc tổng thể\n- **Edge Network:** Cloudflare WAF + TLS 1.3\n- **Inbound:** Cloudflare Tunnel daemon (NAT closed 100%)\n- **Database Engine:** PostgreSQL 16 Alpine với Podman Rootless Cgroups v2 isolation\n- **Cache:** Redis 7 In-Memory Engine\n- **API Gateway:** Node.js 22 Express (RFC 7807 problem details)\n\n### 2. Kết quả đo lường thực tế\nLatency phản hồi trung bình nội bộ < 15ms. Bộ nhớ tiêu thụ toàn hệ thống chỉ ~350MB RAM!`,
-          };
-          setThread(fallbackThread);
-          setScore(fallbackThread.netScore);
-          setVote(fallbackThread.userVote);
-        }
-      }
+        setErrorStatus(null);
+        setErrorMsg(null);
 
-      try {
-        const commentData = await CommunityApi.getThreadComments(threadId);
-        if (isMounted && commentData.items && commentData.items.length > 0) {
-          setComments(commentData.items);
-        } else if (isMounted) {
-          // Demo sample nested comments
-          const demoComments: FlatCommentItem[] = [
-            {
-              id: 'comment-1',
-              threadId,
-              parentId: null,
-              path: '0001',
-              depth: 0,
-              isCappedAtMaxDepth: false,
-              parentAuthorMentionNeeded: false,
-              contentAst: {
-                text: 'Kiến trúc rất ấn tượng! Cho mình hỏi việc backup volume .data/postgres bạn tự động hóa bằng giải pháp nào?',
-              },
-              author: { id: 'u-1', username: 'sre_expert', karmaScore: 140 },
-              netScore: 18,
-              upvotes: 18,
-              downvotes: 0,
-              userVote: 0,
-              directRepliesCount: 1,
-              totalDescendantsCount: 2,
-              isCollapsed: false,
-              isDeleted: false,
-              createdAt: new Date(Date.now() - 3600 * 1000 * 3).toISOString(),
-            },
-            {
-              id: 'comment-2',
-              threadId,
-              parentId: 'comment-1',
-              path: '0001.0001',
-              depth: 1,
-              isCappedAtMaxDepth: false,
-              parentAuthorMentionNeeded: false,
-              parentAuthorUsername: 'sre_expert',
-              contentAst: {
-                text: 'Mình dùng pg_dump định kỳ lúc 2h sáng đẩy lên Cloudflare R2 qua Rclone mã hóa GPG nhé bạn!',
-              },
-              author: { id: 'u-2', username: 'cloud_architect', karmaScore: 560 },
-              netScore: 12,
-              upvotes: 12,
-              downvotes: 0,
-              userVote: 0,
-              directRepliesCount: 1,
-              totalDescendantsCount: 1,
-              isCollapsed: false,
-              isDeleted: false,
-              createdAt: new Date(Date.now() - 3600 * 1000 * 2).toISOString(),
-            },
-            {
-              id: 'comment-3',
-              threadId,
-              parentId: 'comment-2',
-              path: '0001.0001.0001',
-              depth: 2,
-              isCappedAtMaxDepth: false,
-              parentAuthorMentionNeeded: false,
-              parentAuthorUsername: 'cloud_architect',
-              contentAst: { text: 'Tuyệt vời, cảm ơn bác nhiều!' },
-              author: { id: 'u-1', username: 'sre_expert', karmaScore: 140 },
-              netScore: 4,
-              upvotes: 4,
-              downvotes: 0,
-              userVote: 0,
-              directRepliesCount: 0,
-              totalDescendantsCount: 0,
-              isCollapsed: false,
-              isDeleted: false,
-              createdAt: new Date(Date.now() - 3600 * 1000).toISOString(),
-            },
-          ];
-          setComments(demoComments);
+        const [threadData, treeData] = await Promise.all([
+          CommunityApi.getThread(threadId),
+          CommunityApi.getThreadComments(threadId),
+        ]);
+
+        if (!isMounted) return;
+
+        setThread(threadData);
+        setScore(threadData.netScore || 0);
+        setVote(threadData.userVote || 0);
+        setComments(treeData.items || []);
+
+        addRecentPost({
+          id: threadData.id,
+          spaceSlug: threadData.spaceSlug,
+          spaceName: `s/${threadData.spaceSlug}`,
+          title: threadData.title,
+          timeAgo: formatTimeAgo(threadData.createdAt),
+          upvotes: threadData.netScore || 0,
+          comments: threadData.commentsCount || (treeData.items?.length ?? 0),
+        });
+      } catch (err: unknown) {
+        if (!isMounted) return;
+        setThread(null);
+        setComments([]);
+        if (err instanceof ApiHttpError) {
+          setErrorStatus(err.status);
+          setErrorMsg(err.message);
+        } else {
+          setErrorStatus(404);
+          setErrorMsg('Không tìm thấy bài viết này.');
         }
-      } catch {
-        // Ignored
       } finally {
         if (isMounted) setLoading(false);
       }
     }
-    loadThreadAndComments();
+
+    void loadThreadAndComments();
     return () => {
       isMounted = false;
     };
-  }, [threadId]);
+  }, [threadId, isAuthenticated, addRecentPost]);
 
-  // Optimistic Thread Voting FSM
   const handleVote = async (direction: 1 | -1) => {
     if (!user) {
       openAuthModal('login');
@@ -180,7 +108,7 @@ export default function ThreadDetailPage() {
     setScore(prevScore + delta);
 
     try {
-      const res = await CommunityApi.voteThread(threadId, direction);
+      const res = await CommunityApi.voteThread(thread?.id || threadId, direction);
       setScore(res.netScore);
       setVote(res.userVote);
     } catch {
@@ -191,7 +119,7 @@ export default function ThreadDetailPage() {
 
   const handleCopyLink = () => {
     if (typeof window !== 'undefined') {
-      navigator.clipboard.writeText(window.location.href);
+      void navigator.clipboard.writeText(window.location.href);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -246,7 +174,7 @@ export default function ThreadDetailPage() {
                     {thread.flair?.name && (
                       <span
                         style={{
-                          backgroundColor: `${thread.flair.colorHex || 'var(--color-brand)'}22`,
+                          backgroundColor: thread.flair.backgroundHex || 'var(--bg-subtle)',
                           color: thread.flair.colorHex || 'var(--color-brand)',
                           border: `1px solid ${thread.flair.colorHex || 'var(--color-brand)'}44`,
                           padding: '2px 8px',
@@ -287,6 +215,25 @@ export default function ThreadDetailPage() {
                     {thread.title}
                   </h1>
 
+                  {/* Liên kết ngoài nếu là LINK thread */}
+                  {thread.linkUrl && (
+                    <a
+                      href={thread.linkUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-block',
+                        marginBottom: '14px',
+                        fontSize: '13px',
+                        color: 'var(--color-brand)',
+                        textDecoration: 'underline',
+                        wordBreak: 'break-all',
+                      }}
+                    >
+                      {thread.linkUrl}
+                    </a>
+                  )}
+
                   {/* Nội dung bài viết với Markdown Renderer */}
                   <div style={{ marginBottom: '24px' }}>
                     <MarkdownRenderer content={thread.contentText || ''} />
@@ -301,7 +248,6 @@ export default function ThreadDetailPage() {
                       flexWrap: 'wrap',
                     }}
                   >
-                    {/* Bầu chọn Upvote / Downvote */}
                     <div
                       style={{
                         display: 'inline-flex',
@@ -360,7 +306,6 @@ export default function ThreadDetailPage() {
                       </button>
                     </div>
 
-                    {/* Nút Bình luận */}
                     <div
                       style={{
                         display: 'inline-flex',
@@ -378,7 +323,6 @@ export default function ThreadDetailPage() {
                       <span>{comments.length} bình luận</span>
                     </div>
 
-                    {/* Nút Chia sẻ */}
                     <button
                       type="button"
                       onClick={handleCopyLink}
@@ -401,17 +345,45 @@ export default function ThreadDetailPage() {
                     </button>
                   </div>
 
-                  {/* Cây Bình Luận Đa Tầng Ltree */}
+                  {/* Cây Bình Luận Đa Tầng ltree */}
                   <CommentTree threadId={thread.id} initialComments={comments} />
                 </article>
               ) : (
-                <div style={{ padding: '40px', textAlign: 'center', color: '#f43f5e' }}>
-                  Không tìm thấy bài viết này.
+                <div className="reddit-card" style={{ padding: '40px', textAlign: 'center' }}>
+                  <h2
+                    style={{
+                      fontSize: '18px',
+                      fontWeight: 800,
+                      color: errorStatus === 403 ? 'var(--color-brand)' : '#f43f5e',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    {errorStatus === 403
+                      ? 'Không gian Riêng Tư — Yêu cầu Quyền Thành Viên'
+                      : 'Không tìm thấy bài viết'}
+                  </h2>
+                  <p
+                    style={{
+                      fontSize: '13px',
+                      color: 'var(--text-secondary)',
+                      marginBottom: '16px',
+                    }}
+                  >
+                    {errorMsg || 'Bài viết này không tồn tại hoặc bạn không có quyền xem.'}
+                  </p>
+                  {errorStatus === 403 && !isAuthenticated && (
+                    <button
+                      type="button"
+                      className="reddit-pill-btn primary"
+                      onClick={() => openAuthModal('login')}
+                    >
+                      Đăng nhập
+                    </button>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* Cột Phải */}
             <div className="desktop-only-rail">
               <RightRail />
             </div>

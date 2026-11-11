@@ -11,6 +11,11 @@ import type {
 } from '../repository/community-repository.js';
 import type { IVoteStorageEngine } from '../voting/lua-vote-engine.js';
 import { SpaceNotFoundError } from './space-service.js';
+import {
+  assertSpaceMembershipIfPrivate,
+  mapEntityToThreadSummary,
+  resolveViewerThreadState,
+} from './thread-mapper.js';
 
 export class FeedService {
   constructor(
@@ -43,7 +48,7 @@ export class FeedService {
   }
 
   /**
-   * Popular Feed: Bảng tin toàn cầu từ toàn bộ các không gian
+   * Popular Feed: Bảng tin toàn cầu từ toàn bộ các không gian công khai
    */
   public async getPopularFeed(
     userId: string | undefined,
@@ -75,6 +80,8 @@ export class FeedService {
       throw new SpaceNotFoundError(`Không gian thảo luận "${spaceSlug}" không tồn tại`);
     }
 
+    await assertSpaceMembershipIfPrivate(this.repo, space.id, space.isPrivate, userId);
+
     const { items, nextCursor } = await this.repo.listSpaceFeedThreads(space.id, filter);
     const summaries = await Promise.all(
       items.map((t) => this.toThreadSummary(t, userId, space.name, space.slug)),
@@ -96,50 +103,17 @@ export class FeedService {
     spaceName?: string | undefined,
     spaceSlug?: string | undefined,
   ): Promise<ThreadSummary> {
-    let userVote = 0;
-    let isSaved = false;
+    const viewerState = await resolveViewerThreadState(
+      this.repo,
+      this.voteEngine,
+      entity.id,
+      userId,
+    );
 
-    if (userId) {
-      if (this.voteEngine) {
-        userVote = await this.voteEngine.getUserVote(entity.id, userId);
-      } else {
-        userVote = await this.repo.getUserVote(entity.id, 'THREAD', userId);
-      }
-      isSaved = await this.repo.isThreadSaved(userId, entity.id);
-    }
-
-    return {
-      id: entity.id,
-      spaceId: entity.spaceId,
-      spaceSlug: spaceSlug ?? entity.spaceSlug ?? '',
-      spaceName: spaceName ?? entity.spaceName ?? '',
-      authorId: entity.authorId,
-      authorUsername: entity.authorUsername ?? '',
-      authorAvatarUrl: entity.authorAvatarUrl ?? null,
-      flair: entity.flairId
-        ? {
-            id: entity.flairId,
-            spaceId: entity.spaceId,
-            name: entity.flairName ?? '',
-            slug: (entity.flairName ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-            colorHex: entity.flairColor ?? '#DFD0B8',
-            backgroundHex: '#30364F',
-            createdAt: entity.createdAt,
-          }
-        : null,
-      title: entity.title,
-      slug: entity.slug,
-      linkUrl: entity.linkUrl,
-      isPinned: entity.isPinned,
-      isLocked: entity.isLocked,
-      upvotes: entity.upvotesCount,
-      downvotes: entity.downvotesCount,
-      netScore: entity.upvotesCount - entity.downvotesCount,
-      commentsCount: entity.commentCount,
-      userVote,
-      isSaved,
-      createdAt: entity.createdAt,
-      updatedAt: entity.updatedAt,
-    };
+    return mapEntityToThreadSummary(entity, {
+      ...viewerState,
+      spaceName,
+      spaceSlug,
+    });
   }
 }

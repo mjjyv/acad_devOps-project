@@ -249,7 +249,7 @@ export function createChatRouter(
     }
 
     // Đăng ký client vào SSE Gateway và đánh dấu online
-    services.sseManager.registerClient(payload.sub, res);
+    services.sseManager.registerClient(payload.sub, res, req);
     void services.presenceManager.setOnline(payload.sub);
   });
 

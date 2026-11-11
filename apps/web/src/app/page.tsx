@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FloatingChatWidget } from '@/components/chat/floating-chat-widget';
 import { FeedHeader } from '@/components/feed/feed-header';
 import { PostCard, type PostItem } from '@/components/feed/post-card';
@@ -9,138 +9,92 @@ import { Header } from '@/components/layout/header';
 import { LeftSidebar } from '@/components/layout/left-sidebar';
 import { RightRail } from '@/components/layout/right-rail';
 import { CommunityApi } from '@/lib/api/community';
-
-const INITIAL_POSTS: PostItem[] = [
-  {
-    id: 'd0000000-0000-0000-0000-000000000001',
-    spaceSlug: 'devops-arch',
-    spaceName: 's/devops-arch',
-    spaceColor: '#E1D9BC',
-    author: 'cloud_architect',
-    timeAgo: '3 ngày trước',
-    title:
-      'Triển khai Self-Hosted Homelab Monorepo: Podman Rootless, Cloudflare Tunnel và Next.js 15 SSR High Availability',
-    bodySnippet:
-      'Tối ưu hóa tài nguyên phần cứng, triệt tiêu chi phí Cloud đắt đỏ với mô hình Zero Trust Cloudflare Tunnel kết hợp Systemd User Daemons và PostgreSQL 16 ltree nested tree CMS. Giảm 100% rủi ro bị tấn công trực diện vào IP công cộng...',
-    upvotes: 562,
-    comments: 6,
-    hasJoined: false,
-    userVote: null,
-  },
-  {
-    id: 'd0000000-0000-0000-0000-000000000002',
-    spaceSlug: 'vozforums',
-    spaceName: 's/vozforums',
-    spaceColor: '#ACBAC4',
-    author: 'khoaitaychien',
-    timeAgo: '2 ngày trước',
-    title:
-      'Chia sẻ kinh nghiệm phỏng vấn DevOps Engineer và SRE tại các công ty Big Tech & Unicorn',
-    bodySnippet:
-      'Chào anh em, mình vừa kết thúc chuỗi phỏng vấn ở 4 công ty công nghệ lớn tại VN và Singapore. Muốn chia sẻ lại toàn bộ roadmap ôn tập từ Linux kernel internals, networking TCP/IP, Kubernetes architecture, và deep-dive distributed system...',
-    upvotes: 428,
-    comments: 3,
-    hasJoined: false,
-    userVote: null,
-  },
-  {
-    id: 'd0000000-0000-0000-0000-000000000003',
-    spaceSlug: 'system-design',
-    spaceName: 's/system-design',
-    spaceColor: '#E1D9BC',
-    author: 'devops_ninja',
-    timeAgo: '1 ngày trước',
-    title:
-      'Deep-dive PostgreSQL 16 ltree: Cấu trúc cây bình luận đệ quy tối ưu hóa cho hàng triệu nút',
-    bodySnippet:
-      'Tại sao Reddit và các diễn đàn lớn chuyển từ Recursive CTE sang Materialized Path ltree? Phân tích mã hóa Base36, GiST index dưới 1.2ms và chiến lược Capped Depth cho giao diện di động...',
-    upvotes: 315,
-    comments: 2,
-    hasJoined: false,
-    userVote: null,
-  },
-  {
-    id: 'd0000000-0000-0000-0000-000000000004',
-    spaceSlug: 'kubernetes',
-    spaceName: 's/kubernetes',
-    spaceColor: '#ACBAC4',
-    author: 'sre_expert',
-    timeAgo: '18 giờ trước',
-    title: 'Chiến lược bộ đếm Karma và Vote FSM nguyên tử với Redis Lua Scripts',
-    bodySnippet:
-      'Giải quyết bài toán Race Condition khi có 5,000 lượt upvote/downvote đồng thời trên cùng một bài viết kỹ thuật. Triển khai Redis Lua Scripts chạy đơn luồng nguyên tử kết hợp PostgreSQL HOT update...',
-    upvotes: 289,
-    comments: 1,
-    hasJoined: false,
-    userVote: null,
-  },
-  {
-    id: 'd0000000-0000-0000-0000-000000000005',
-    spaceSlug: 'security-shield',
-    spaceName: 's/security-shield',
-    spaceColor: '#F0F0DB',
-    author: 'lawyer_tech',
-    timeAgo: '12 giờ trước',
-    title:
-      'Quy định mới về bảo vệ dữ liệu cá nhân Nghị định 13 và tác động trực tiếp đến kiến trúc lưu trữ log hệ thống',
-    bodySnippet:
-      'Đối với các hệ thống backend có ghi nhận IP, cookie tracking hoặc thông tin người dùng, việc lưu trữ plain text trong PostgreSQL hay Elasticsearch có thể đối mặt với rủi ro pháp lý cao theo Nghị định 13...',
-    upvotes: 195,
-    comments: 1,
-    hasJoined: false,
-    userVote: 1,
-  },
-];
+import { useAuth } from '@/lib/auth/auth-context';
+import { useUI } from '@/lib/store/ui-context';
+import { mapThreadSummaryToPostItem } from '@/lib/utils/thread-mapper';
 
 export default function HomePage() {
-  const [posts, setPosts] = useState<PostItem[]>(INITIAL_POSTS);
+  const { activeFeedTab, feedSort, searchQuery, setActiveFeedTab } = useUI();
+  const { isAuthenticated, openAuthModal } = useAuth();
+
+  const [posts, setPosts] = useState<PostItem[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const loadFeed = useCallback(
+    async (cursor?: string) => {
+      if (activeFeedTab === 'following' && !isAuthenticated) {
+        setPosts([]);
+        setNextCursor(null);
+        setHasMore(false);
+        setLoading(false);
+        setErrorMsg(null);
+        return;
+      }
+
+      const isAppend = Boolean(cursor);
+      if (isAppend) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+        setErrorMsg(null);
+      }
+
+      try {
+        const [feedRes, spaces] = await Promise.all([
+          activeFeedTab === 'following'
+            ? CommunityApi.getHomeFeed({ sort: feedSort, limit: 20, cursor })
+            : CommunityApi.getPopularFeed({ sort: feedSort, limit: 20, cursor }),
+          isAuthenticated && !isAppend
+            ? CommunityApi.getSpaces(50, 0).catch(() => [])
+            : Promise.resolve([]),
+        ]);
+
+        const joinedSlugs = new Set(spaces.filter((s) => s.isJoined).map((s) => s.slug));
+        const mapped = feedRes.items.map((item) =>
+          mapThreadSummaryToPostItem(item, {
+            joinedSlugs: joinedSlugs.size > 0 ? joinedSlugs : undefined,
+          }),
+        );
+
+        setPosts((prev) => (isAppend ? [...prev, ...mapped] : mapped));
+        setNextCursor(feedRes.nextCursor);
+        setHasMore(feedRes.hasMore);
+      } catch (err: unknown) {
+        setErrorMsg(err instanceof Error ? err.message : 'Không thể tải bảng tin từ máy chủ');
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    },
+    [activeFeedTab, feedSort, isAuthenticated],
+  );
 
   useEffect(() => {
-    let isMounted = true;
-    async function fetchLiveFeed() {
-      try {
-        const liveThreads = await CommunityApi.getPopularFeed(20);
-        if (isMounted && liveThreads && liveThreads.length > 0) {
-          const mapped: PostItem[] = liveThreads.map((t) => ({
-            id: t.id,
-            spaceSlug: t.spaceSlug || 'devops-arch',
-            spaceName: `s/${t.spaceSlug || 'devops-arch'}`,
-            spaceColor: t.flair?.colorHex || '#E1D9BC',
-            author: t.authorUsername || 'cloud_architect',
-            timeAgo: new Date(t.createdAt).toLocaleDateString('vi-VN'),
-            title: t.title,
-            bodySnippet:
-              'contentText' in t && typeof t.contentText === 'string'
-                ? `${t.contentText.slice(0, 180)}...`
-                : '',
-            upvotes: t.netScore ?? t.upvotes ?? 0,
-            comments: t.commentsCount,
-            hasJoined: false,
-            userVote: t.userVote === 1 ? 1 : t.userVote === -1 ? -1 : null,
-          }));
-          setPosts(mapped);
-        }
-      } catch {
-        // Fallback to initial realistic seed posts
-      }
-    }
-    fetchLiveFeed();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    void loadFeed();
+  }, [loadFeed]);
+
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const visiblePosts = normalizedQuery
+    ? posts.filter(
+        (p) =>
+          p.title.toLowerCase().includes(normalizedQuery) ||
+          (p.bodySnippet || '').toLowerCase().includes(normalizedQuery) ||
+          p.spaceSlug.toLowerCase().includes(normalizedQuery) ||
+          p.author.toLowerCase().includes(normalizedQuery),
+      )
+    : posts;
 
   return (
     <div className="app-shell">
-      {/* 1. Sticky Navigation Header */}
       <Header />
 
-      {/* 2. Holy Grail 3-Column Layout */}
       <div className="app-container">
-        {/* Left Sidebar (260px) */}
         <LeftSidebar />
 
-        {/* Center Main Feed Stream (max 680px) */}
         <main
           style={{
             flex: 1,
@@ -149,25 +103,92 @@ export default function HomePage() {
             width: '100%',
           }}
         >
-          {/* Feed Header (Tabs: For You/Following, Sorters: Hot/New/Top/Best, View Modes) */}
           <FeedHeader />
 
-          {/* Posts Stream */}
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {posts.map((post) => (
-              <PostCard key={post.id} post={post} />
-            ))}
-          </div>
+          {loading ? (
+            <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              Đang tải bảng tin...
+            </div>
+          ) : errorMsg ? (
+            <div
+              className="reddit-card"
+              style={{ padding: '28px', textAlign: 'center', color: '#f43f5e' }}
+            >
+              <div style={{ marginBottom: '12px', fontWeight: 700 }}>{errorMsg}</div>
+              <button
+                type="button"
+                className="reddit-pill-btn primary"
+                onClick={() => void loadFeed()}
+              >
+                Thử lại
+              </button>
+            </div>
+          ) : activeFeedTab === 'following' && !isAuthenticated ? (
+            <div className="reddit-card" style={{ padding: '32px', textAlign: 'center' }}>
+              <h3
+                style={{
+                  fontSize: '16px',
+                  fontWeight: 700,
+                  color: 'var(--text-primary)',
+                  marginBottom: '8px',
+                }}
+              >
+                Đăng nhập để xem Home Feed cá nhân
+              </h3>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                Bảng tin Following hiển thị bài viết từ các không gian thảo luận mà bạn đã tham gia.
+              </p>
+              <button
+                type="button"
+                className="reddit-pill-btn primary"
+                onClick={() => openAuthModal('login')}
+              >
+                Đăng nhập ngay
+              </button>
+            </div>
+          ) : visiblePosts.length === 0 ? (
+            <div className="reddit-card" style={{ padding: '32px', textAlign: 'center' }}>
+              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+                {activeFeedTab === 'following'
+                  ? 'Bạn chưa tham gia không gian nào hoặc chưa có bài viết mới.'
+                  : 'Chưa có bài viết phù hợp với bộ lọc hiện tại.'}
+              </p>
+              {activeFeedTab === 'following' && (
+                <button
+                  type="button"
+                  className="reddit-pill-btn primary"
+                  onClick={() => setActiveFeedTab('for_you')}
+                >
+                  Khám phá Popular Feed
+                </button>
+              )}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {visiblePosts.map((post) => (
+                <PostCard key={post.id} post={post} />
+              ))}
+
+              {hasMore && nextCursor && (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0' }}>
+                  <button
+                    type="button"
+                    disabled={loadingMore}
+                    className="reddit-pill-btn"
+                    onClick={() => void loadFeed(nextCursor)}
+                  >
+                    {loadingMore ? 'Đang tải thêm...' : 'Tải thêm bài viết'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </main>
 
-        {/* Right Rail Contextual Widget (316px) */}
         <RightRail />
       </div>
 
-      {/* 3. Mobile Navigation Bottom Bar (< 768px) */}
       <BottomNav />
-
-      {/* 4. Realtime Floating Chat Widget (Bottom Right Pill / Docked Modal) */}
       <FloatingChatWidget />
     </div>
   );

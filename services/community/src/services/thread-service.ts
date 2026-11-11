@@ -5,7 +5,14 @@
 
 import { randomBytes } from 'node:crypto';
 import type { CreateThreadInput, ThreadDetail, ThreadSummary } from '@acad/contracts';
-import type { ICommunityRepository, ThreadEntity } from '../repository/community-repository.js';
+import type { ICommunityRepository } from '../repository/community-repository.js';
+import type { IVoteStorageEngine } from '../voting/lua-vote-engine.js';
+import {
+  assertSpaceMembershipIfPrivate,
+  mapEntityToThreadDetail,
+  mapEntityToThreadSummary,
+  resolveViewerThreadState,
+} from './thread-mapper.js';
 
 export class ThreadNotFoundError extends Error {
   constructor(message: string = 'Không tìm thấy bài viết yêu cầu') {
@@ -15,7 +22,10 @@ export class ThreadNotFoundError extends Error {
 }
 
 export class ThreadService {
-  constructor(private repo: ICommunityRepository) {}
+  constructor(
+    private repo: ICommunityRepository,
+    private voteEngine?: IVoteStorageEngine,
+  ) {}
 
   public static generateSlug(title: string): string {
     const baseSlug = title
@@ -31,51 +41,8 @@ export class ThreadService {
     return `${baseSlug || 'bai-viet'}-${suffix}`;
   }
 
-  private toThreadSummary(entity: ThreadEntity): ThreadSummary {
-    return {
-      id: entity.id,
-      spaceId: entity.spaceId,
-      spaceSlug: entity.spaceSlug || '',
-      spaceName: entity.spaceName || '',
-      authorId: entity.authorId,
-      authorUsername: entity.authorUsername || '',
-      authorAvatarUrl: entity.authorAvatarUrl || null,
-      flair: entity.flairId
-        ? {
-            id: entity.flairId,
-            spaceId: entity.spaceId,
-            name: entity.flairName || '',
-            slug: (entity.flairName || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-            colorHex: entity.flairColor || '#DFD0B8',
-            backgroundHex: '#30364F',
-            createdAt: entity.createdAt,
-          }
-        : null,
-      title: entity.title,
-      slug: entity.slug,
-      linkUrl: entity.linkUrl,
-      isPinned: entity.isPinned,
-      isLocked: entity.isLocked,
-      upvotes: entity.upvotesCount,
-      downvotes: entity.downvotesCount,
-      netScore: entity.upvotesCount - entity.downvotesCount,
-      commentsCount: entity.commentCount,
-      userVote: 0,
-      isSaved: false,
-      createdAt: entity.createdAt,
-      updatedAt: entity.updatedAt,
-    };
-  }
-
-  private toThreadDetail(entity: ThreadEntity): ThreadDetail {
-    return {
-      ...this.toThreadSummary(entity),
-      contentText: entity.content,
-      contentAst: entity.content ? { text: entity.content } : null,
-    };
-  }
-
   public async createThread(input: CreateThreadInput, authorId: string): Promise<ThreadDetail> {
+    await assertSpaceMembershipIfPrivate(this.repo, input.spaceId, undefined, authorId);
     const slug = ThreadService.generateSlug(input.title);
 
     const thread = await this.repo.createThread({
@@ -89,17 +56,45 @@ export class ThreadService {
       threadType: input.linkUrl ? 'LINK' : 'TEXT',
     });
 
-    return this.toThreadDetail(thread);
+    return mapEntityToThreadDetail(thread);
   }
 
-  public async getThreadById(id: string): Promise<ThreadDetail | null> {
+  public async getThreadById(id: string, viewerId?: string): Promise<ThreadDetail | null> {
     const thread = await this.repo.findThreadById(id);
-    return thread ? this.toThreadDetail(thread) : null;
+    if (!thread) return null;
+
+    await assertSpaceMembershipIfPrivate(
+      this.repo,
+      thread.spaceId,
+      thread.spaceIsPrivate,
+      viewerId,
+    );
+    const viewerState = await resolveViewerThreadState(
+      this.repo,
+      this.voteEngine,
+      thread.id,
+      viewerId,
+    );
+    return mapEntityToThreadDetail(thread, viewerState);
   }
 
-  public async getThreadBySlug(slug: string): Promise<ThreadDetail | null> {
+  public async getThreadBySlug(slug: string, viewerId?: string): Promise<ThreadDetail | null> {
     const thread = await this.repo.findThreadBySlug(slug);
-    return thread ? this.toThreadDetail(thread) : null;
+    if (!thread) return null;
+
+    await assertSpaceMembershipIfPrivate(
+      this.repo,
+      thread.spaceId,
+      thread.spaceIsPrivate,
+      viewerId,
+    );
+    const viewerState = await resolveViewerThreadState(
+      this.repo,
+      this.voteEngine,
+      thread.id,
+      viewerId,
+    );
+    return mapEntityToThreadDetail(thread, viewerState);
   }
 
   public async listSpaceThreads(
@@ -109,13 +104,41 @@ export class ThreadService {
       limit?: number | undefined;
       offset?: number | undefined;
     },
+    viewerId?: string,
   ): Promise<ThreadSummary[]> {
+    await assertSpaceMembershipIfPrivate(this.repo, spaceId, undefined, viewerId);
     const threads = await this.repo.listThreadsBySpace(spaceId, options);
-    return threads.map((t) => this.toThreadSummary(t));
+    return Promise.all(
+      threads.map(async (t) => {
+        const viewerState = await resolveViewerThreadState(
+          this.repo,
+          this.voteEngine,
+          t.id,
+          viewerId,
+        );
+        return mapEntityToThreadSummary(t, viewerState);
+      }),
+    );
   }
 
-  public async searchThreads(spaceId: string, query: string, limit = 20): Promise<ThreadSummary[]> {
+  public async searchThreads(
+    spaceId: string,
+    query: string,
+    limit = 20,
+    viewerId?: string,
+  ): Promise<ThreadSummary[]> {
+    await assertSpaceMembershipIfPrivate(this.repo, spaceId, undefined, viewerId);
     const threads = await this.repo.searchThreadsInSpace(spaceId, query, limit);
-    return threads.map((t) => this.toThreadSummary(t));
+    return Promise.all(
+      threads.map(async (t) => {
+        const viewerState = await resolveViewerThreadState(
+          this.repo,
+          this.voteEngine,
+          t.id,
+          viewerId,
+        );
+        return mapEntityToThreadSummary(t, viewerState);
+      }),
+    );
   }
 }

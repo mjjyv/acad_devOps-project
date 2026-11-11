@@ -39,7 +39,7 @@ export class SpaceService {
       slug: entity.slug,
       name: entity.name,
       description: entity.description,
-      iconUrl: entity.avatarUrl,
+      iconUrl: entity.iconUrl,
       bannerUrl: entity.bannerUrl,
       rules: entity.rules,
       creatorId: entity.creatorId,
@@ -95,7 +95,7 @@ export class SpaceService {
   ): Promise<Space[]> {
     const entities = await this.repo.listSpaces(options);
     if (!userId) {
-      return entities.map((e) => this.toSpaceContract(e, false, null));
+      return entities.filter((e) => !e.isPrivate).map((e) => this.toSpaceContract(e, false, null));
     }
     const spacesWithMembership = await Promise.all(
       entities.map(async (e) => {
@@ -103,13 +103,22 @@ export class SpaceService {
         return this.toSpaceContract(e, Boolean(membership), membership?.role || null);
       }),
     );
-    return spacesWithMembership;
+    return spacesWithMembership.filter((s) => !s.isPrivate || s.isJoined);
   }
 
   public async joinSpace(spaceId: string, userId: string): Promise<void> {
     const space = await this.repo.findSpaceById(spaceId);
     if (!space) {
       throw new SpaceNotFoundError();
+    }
+    if (space.isPrivate) {
+      const existing = await this.repo.getMembership(spaceId, userId);
+      if (!existing) {
+        throw new InsufficientSpacePermissionError(
+          'Không gian riêng tư không cho phép tự tham gia; cần được Quản trị viên thêm vào',
+        );
+      }
+      return;
     }
     await this.repo.joinSpace(spaceId, userId, 'MEMBER');
   }
@@ -143,14 +152,19 @@ export class SpaceService {
       throw new InsufficientSpacePermissionError('Chỉ Quản trị viên mới được tạo Flair');
     }
 
-    const flair = await this.repo.createFlair(spaceId, input.name, input.colorHex);
+    const flair = await this.repo.createFlair(spaceId, {
+      name: input.name,
+      slug: input.slug,
+      colorHex: input.colorHex,
+      backgroundHex: input.backgroundHex,
+    });
     return {
       id: flair.id,
       spaceId: flair.spaceId,
       name: flair.name,
-      slug: input.slug,
-      colorHex: flair.color,
-      backgroundHex: input.backgroundHex,
+      slug: flair.slug,
+      colorHex: flair.colorHex,
+      backgroundHex: flair.backgroundHex,
       createdAt: flair.createdAt,
     };
   }
@@ -161,10 +175,34 @@ export class SpaceService {
       id: f.id,
       spaceId: f.spaceId,
       name: f.name,
-      slug: f.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-      colorHex: f.color,
-      backgroundHex: '#393E46',
+      slug: f.slug,
+      colorHex: f.colorHex,
+      backgroundHex: f.backgroundHex,
       createdAt: f.createdAt,
     }));
+  }
+
+  /**
+   * Kiểm tra quyền truy cập cho Private Space (dành cho đọc chi tiết/feed).
+   */
+  public async assertSpaceReadable(spaceId: string, viewerId?: string): Promise<Space> {
+    const space = await this.repo.findSpaceById(spaceId);
+    if (!space) {
+      throw new SpaceNotFoundError();
+    }
+    if (space.isPrivate) {
+      if (!viewerId) {
+        throw new InsufficientSpacePermissionError(
+          'Không gian này ở chế độ riêng tư, yêu cầu đăng nhập và tham gia thành viên',
+        );
+      }
+      const membership = await this.repo.getMembership(spaceId, viewerId);
+      if (!membership) {
+        throw new InsufficientSpacePermissionError(
+          'Bạn cần là thành viên của không gian riêng tư này để xem nội dung',
+        );
+      }
+    }
+    return this.toSpaceContract(space);
   }
 }

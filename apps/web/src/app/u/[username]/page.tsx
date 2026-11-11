@@ -1,62 +1,33 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SessionsModal } from '@/components/auth/sessions-modal';
 import { FloatingChatWidget } from '@/components/chat/floating-chat-widget';
 import { PostCard, type PostItem } from '@/components/feed/post-card';
 import { BottomNav } from '@/components/layout/bottom-nav';
 import { Header } from '@/components/layout/header';
 import { FireIcon, ShieldIcon } from '@/components/ui/icons';
+import { CommunityApi } from '@/lib/api/community';
 import { useAuth } from '@/lib/auth/auth-context';
 import { useUI } from '@/lib/store/ui-context';
-
-const USER_MOCK_POSTS: PostItem[] = [
-  {
-    id: 'user-post-1',
-    spaceSlug: 'devops-arch',
-    spaceName: 'DevOps Architecture',
-    spaceColor: '#10b981',
-    author: 'demo_user',
-    timeAgo: '1 day ago',
-    title:
-      'Triển khai Self-Hosted Homelab Monorepo: Podman Rootless, Cloudflare Tunnel và Next.js 15 SSR High Availability',
-    bodySnippet:
-      'Tối ưu hóa tài nguyên phần cứng, triệt tiêu chi phí Cloud đắt đỏ với mô hình Zero Trust Cloudflare Tunnel kết hợp Systemd User Daemons và PostgreSQL 16 ltree nested tree CMS.',
-    upvotes: 562,
-    comments: 112,
-    hasJoined: true,
-  },
-  {
-    id: 'user-post-2',
-    spaceSlug: 'vozforums',
-    spaceName: 'Voz Forums',
-    spaceColor: '#ff4500',
-    author: 'demo_user',
-    timeAgo: '3 days ago',
-    title:
-      'Chia sẻ kinh nghiệm phỏng vấn DevOps Engineer và SRE tại các công ty Big Tech & Unicorn',
-    bodySnippet:
-      'Roadmap ôn tập từ Linux kernel internals, networking TCP/IP, Kubernetes architecture, và deep-dive distributed system...',
-    upvotes: 428,
-    comments: 89,
-    hasJoined: true,
-  },
-];
+import { mapThreadSummaryToPostItem } from '@/lib/utils/thread-mapper';
 
 export default function UserProfilePage() {
   const params = useParams();
-  const username = typeof params?.username === 'string' ? params.username : 'User';
-  const { user: currentUser } = useAuth();
+  const username = typeof params?.username === 'string' ? params.username : '';
+  const { user: currentUser, isAuthenticated } = useAuth();
   const { showToast } = useUI();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'posts' | 'comments' | 'saved'>(
-    'overview',
-  );
+  const [activeTab, setActiveTab] = useState<'overview' | 'posts' | 'saved'>('overview');
   const [isSessionsOpen, setIsSessionsOpen] = useState(false);
 
-  const isOwnProfile = currentUser?.username === username;
-  const karmaScore = isOwnProfile ? currentUser?.karmaScore || 0 : 1240;
+  const [userPosts, setUserPosts] = useState<PostItem[]>([]);
+  const [savedPosts, setSavedPosts] = useState<PostItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const isOwnProfile = Boolean(currentUser && currentUser.username === username);
+  const karmaScore = isOwnProfile ? currentUser?.karmaScore || 0 : 0;
   const role = isOwnProfile ? currentUser?.role || 'USER' : 'USER';
   const joinedDate =
     isOwnProfile && currentUser?.createdAt
@@ -64,16 +35,66 @@ export default function UserProfilePage() {
           month: 'long',
           year: 'numeric',
         })
-      : 'Tháng 11 năm 2026';
+      : 'Thành viên SYNAPSE';
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadUserActivity() {
+      if (!username) return;
+      try {
+        setLoading(true);
+        const [popularRes, homeRes, savedList, spacesList] = await Promise.all([
+          CommunityApi.getPopularFeed({ sort: 'new', limit: 50 }).catch(() => ({
+            items: [],
+            nextCursor: null,
+            hasMore: false,
+          })),
+          isOwnProfile
+            ? CommunityApi.getHomeFeed({ sort: 'new', limit: 50 }).catch(() => ({
+                items: [],
+                nextCursor: null,
+                hasMore: false,
+              }))
+            : Promise.resolve({ items: [], nextCursor: null, hasMore: false }),
+          isOwnProfile ? CommunityApi.getSavedThreads(30, 0).catch(() => []) : Promise.resolve([]),
+          isAuthenticated ? CommunityApi.getSpaces(50, 0).catch(() => []) : Promise.resolve([]),
+        ]);
+
+        if (!isMounted) return;
+
+        const joinedSlugs = new Set(spacesList.filter((s) => s.isJoined).map((s) => s.slug));
+        const mergedById = new Map<string, (typeof popularRes.items)[number]>();
+        for (const t of [...popularRes.items, ...homeRes.items]) {
+          if (t.authorUsername.toLowerCase() === username.toLowerCase()) {
+            mergedById.set(t.id, t);
+          }
+        }
+
+        const authored = Array.from(mergedById.values()).map((t) =>
+          mapThreadSummaryToPostItem(t, { joinedSlugs }),
+        );
+        const saved = savedList.map((t) => mapThreadSummaryToPostItem(t, { joinedSlugs }));
+
+        setUserPosts(authored);
+        setSavedPosts(saved);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    void loadUserActivity();
+    return () => {
+      isMounted = false;
+    };
+  }, [username, isOwnProfile, isAuthenticated]);
+
+  const displayedPosts = activeTab === 'saved' ? savedPosts : userPosts;
 
   return (
     <div className="app-shell">
       <Header />
 
       <div className="app-container" style={{ maxWidth: '1080px' }}>
-        {/* Main Profile Feed Stream */}
         <main style={{ flex: 1, minWidth: 0 }}>
-          {/* Profile Banner & Header */}
           <div
             className="reddit-card"
             style={{
@@ -82,68 +103,63 @@ export default function UserProfilePage() {
               marginBottom: '16px',
             }}
           >
-            {/* Banner Background */}
             <div
               style={{
                 height: '110px',
-                background:
-                  'linear-gradient(135deg, #090a0f 0%, #111420 40%, #06b6d4 120%, #10b981 180%)',
+                background: 'linear-gradient(135deg, #30364F 0%, #444C6E 50%, #ACBAC4 130%)',
               }}
             />
 
-            {/* Profile Avatar Bar */}
             <div style={{ padding: '0 20px 20px 20px', position: 'relative' }}>
               <div
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'flex-end',
-                  marginTop: '-44px',
+                  marginTop: '-36px',
                   marginBottom: '14px',
                 }}
               >
                 <div
                   style={{
-                    width: '84px',
-                    height: '84px',
+                    width: '80px',
+                    height: '80px',
                     borderRadius: '50%',
-                    backgroundColor: '#1a1a1b',
+                    backgroundColor: '#30364F',
                     border: '4px solid var(--bg-surface)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: '32px',
                     fontWeight: 800,
-                    color: 'var(--color-brand)',
-                    boxShadow: 'var(--shadow-dropdown)',
+                    color: '#F0F0DB',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
                   }}
                 >
                   {username.charAt(0).toUpperCase()}
                 </div>
 
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  {isOwnProfile && (
+                {isOwnProfile ? (
+                  <div style={{ display: 'flex', gap: '8px' }}>
                     <button
                       type="button"
                       onClick={() => setIsSessionsOpen(true)}
                       className="reddit-pill-btn"
-                      style={{ gap: '6px' }}
                     >
-                      <ShieldIcon size={14} />
-                      <span>Phiên Đăng Nhập</span>
+                      <ShieldIcon size={14} /> Quản lý Phiên (Sessions)
                     </button>
-                  )}
+                  </div>
+                ) : (
                   <button
                     type="button"
-                    onClick={() => showToast('Chia sẻ hồ sơ cá nhân')}
-                    className="reddit-pill-btn"
+                    onClick={() => showToast(`Hồ sơ công khai của u/${username}`)}
+                    className="reddit-pill-btn primary"
                   >
-                    Chia Sẻ
+                    u/{username}
                   </button>
-                </div>
+                )}
               </div>
 
-              {/* Username & Bio */}
               <div
                 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}
               >
@@ -167,11 +183,10 @@ export default function UserProfilePage() {
               <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
                 {isOwnProfile && currentUser?.bio
                   ? currentUser.bio
-                  : 'Kỹ sư hệ thống & Thành viên tích cực đóng góp trên cộng đồng SYNAPSE Platform.'}
+                  : 'Thành viên cộng đồng kỹ thuật trên nền tảng SYNAPSE Platform.'}
               </p>
             </div>
 
-            {/* Profile Navigation Tabs */}
             <div
               style={{
                 display: 'flex',
@@ -180,16 +195,17 @@ export default function UserProfilePage() {
                 borderTop: '1px solid var(--border-subtle)',
               }}
             >
-              {(['overview', 'posts', 'comments', 'saved'] as const).map((tab) => {
+              {(isOwnProfile
+                ? (['overview', 'posts', 'saved'] as const)
+                : (['overview', 'posts'] as const)
+              ).map((tab) => {
                 const isActive = activeTab === tab;
                 const label =
                   tab === 'overview'
                     ? 'Tổng quan'
                     : tab === 'posts'
                       ? 'Bài viết'
-                      : tab === 'comments'
-                        ? 'Bình luận'
-                        : 'Đã lưu';
+                      : `Đã lưu (${savedPosts.length})`;
                 return (
                   <button
                     key={tab}
@@ -226,20 +242,32 @@ export default function UserProfilePage() {
             </div>
           </div>
 
-          {/* Tab Content Stream */}
-          <div>
-            {USER_MOCK_POSTS.map((post) => (
-              <PostCard key={post.id} post={{ ...post, author: username }} />
-            ))}
-          </div>
+          {loading ? (
+            <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              Đang tải dữ liệu hoạt động của u/{username}...
+            </div>
+          ) : displayedPosts.length === 0 ? (
+            <div
+              className="reddit-card"
+              style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}
+            >
+              {activeTab === 'saved'
+                ? 'Bạn chưa lưu bài viết nào.'
+                : `Chưa có bài viết nào của u/${username}.`}
+            </div>
+          ) : (
+            <div>
+              {displayedPosts.map((post) => (
+                <PostCard key={post.id} post={post} />
+              ))}
+            </div>
+          )}
         </main>
 
-        {/* Right Info Rail */}
         <aside
           style={{ width: '300px', display: 'flex', flexDirection: 'column', gap: '16px' }}
           className="app-right-rail"
         >
-          {/* Karma & Stats Widget */}
           <div className="reddit-card">
             <h3
               style={{
@@ -249,7 +277,7 @@ export default function UserProfilePage() {
                 marginBottom: '14px',
               }}
             >
-              Điểm Tín Nhiệm & Thành Tích
+              Thống Kê Hoạt Động
             </h3>
 
             <div
@@ -298,7 +326,9 @@ export default function UserProfilePage() {
                     marginBottom: '2px',
                   }}
                 >
-                  {isOwnProfile ? currentUser?.threadsCount || 2 : 2}
+                  {isOwnProfile
+                    ? (currentUser?.threadsCount ?? userPosts.length)
+                    : userPosts.length}
                 </span>
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Bài Thảo Luận</span>
               </div>
@@ -313,7 +343,7 @@ export default function UserProfilePage() {
               }}
             >
               <span>
-                🗓️ Gia nhập từ: <strong>{joinedDate}</strong>
+                🗓️ Gia nhập: <strong>{joinedDate}</strong>
               </span>
             </div>
           </div>
@@ -323,7 +353,6 @@ export default function UserProfilePage() {
       <BottomNav />
       <FloatingChatWidget />
 
-      {/* Sessions Modal */}
       <SessionsModal isOpen={isSessionsOpen} onClose={() => setIsSessionsOpen(false)} />
     </div>
   );

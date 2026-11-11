@@ -209,46 +209,14 @@ export function Header() {
                 fontWeight: 700,
                 color: 'var(--text-muted)',
                 textTransform: 'uppercase',
-                marginBottom: '8px',
+                marginBottom: '6px',
               }}
             >
-              Trending Communities
+              Gợi ý tìm kiếm nhanh
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <div
-                style={{
-                  padding: '8px',
-                  borderRadius: 'var(--radius-md)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  cursor: 'pointer',
-                  background: 'transparent',
-                }}
-                onMouseDown={() => setSearchQuery('s/devops-arch')}
-              >
-                <span style={{ color: 'var(--color-brand)', fontWeight: 700 }}>s/devops-arch</span>
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                  • 1.2k engineers
-                </span>
-              </div>
-              <div
-                style={{
-                  padding: '8px',
-                  borderRadius: 'var(--radius-md)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  cursor: 'pointer',
-                  background: 'transparent',
-                }}
-                onMouseDown={() => setSearchQuery('s/vozforums')}
-              >
-                <span style={{ color: 'var(--color-brand)', fontWeight: 700 }}>s/vozforums</span>
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                  • 4.5k discussions
-                </span>
-              </div>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              Nhập tiêu đề bài viết, tên tác giả hoặc tên không gian (ví dụ <code>devops-arch</code>
+              ) để lọc bảng tin theo thời gian thực.
             </div>
           </div>
         )}
@@ -300,26 +268,6 @@ export function Header() {
               style={{ position: 'relative', width: '38px', height: '38px', padding: 0 }}
             >
               <ChatBubbleIcon size={20} />
-              <span
-                style={{
-                  position: 'absolute',
-                  top: '4px',
-                  right: '4px',
-                  backgroundColor: '#ff4500',
-                  color: '#ffffff',
-                  fontSize: '10px',
-                  fontWeight: 800,
-                  width: '16px',
-                  height: '16px',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 0 0 2px var(--bg-surface)',
-                }}
-              >
-                3
-              </span>
             </button>
 
             {/* Create Post Button */}

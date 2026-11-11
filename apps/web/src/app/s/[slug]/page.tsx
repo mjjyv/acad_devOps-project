@@ -10,145 +10,119 @@ import { Header } from '@/components/layout/header';
 import { LeftSidebar } from '@/components/layout/left-sidebar';
 import { SpaceHeader } from '@/components/spaces/space-header';
 import { SpaceSidebar } from '@/components/spaces/space-sidebar';
-import { CommunityApi } from '@/lib/api/community';
+import { ApiHttpError, CommunityApi } from '@/lib/api/community';
+import { useAuth } from '@/lib/auth/auth-context';
+import { mapThreadSummaryToPostItem } from '@/lib/utils/thread-mapper';
 
 export default function SpacePage() {
   const params = useParams();
-  const slug = (params?.slug as string) || 'devops-arch';
+  const slug = (params?.slug as string) || '';
+  const { isAuthenticated, openAuthModal } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'posts' | 'about'>('posts');
   const [selectedFlairId, setSelectedFlairId] = useState<string | undefined>();
-  const [loading, setLoading] = useState(true);
+  const [space, setSpace] = useState<Space | null>(null);
+  const [flairs, setFlairs] = useState<SpaceFlair[]>([]);
+  const [posts, setPosts] = useState<PostItem[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
 
-  const [space, setSpace] = useState<Space>({
-    id: '00000000-0000-0000-0000-000000000001',
-    slug,
-    name: slug === 'devops-arch' ? 'DevOps Architecture' : slug.toUpperCase(),
-    description: 'Không gian chuyên sâu về thiết kế hệ thống, DevOps hạ tầng và phân tán.',
-    isPrivate: false,
-    creatorId: '00000000-0000-0000-0000-000000000002',
-    membersCount: 1240,
-    threadsCount: 25,
-    isJoined: false,
-    rules: [
-      {
-        title: 'Tôn trọng thành viên',
-        description: 'Tranh luận kỹ thuật văn minh, không công kích cá nhân.',
-      },
-      {
-        title: 'Bảo mật thông tin',
-        description: 'Không chia sẻ secret key, token hoặc dữ liệu nội bộ production.',
-      },
-    ],
-    createdAt: new Date().toISOString(),
-  });
-
-  const [flairs, setFlairs] = useState<SpaceFlair[]>([
-    {
-      id: '00000000-0000-0000-0000-000000000011',
-      spaceId: '00000000-0000-0000-0000-000000000001',
-      name: 'Architecture',
-      slug: 'architecture',
-      colorHex: '#06b6d4',
-      backgroundHex: '#12151f',
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: '00000000-0000-0000-0000-000000000012',
-      spaceId: '00000000-0000-0000-0000-000000000001',
-      name: 'DevOps',
-      slug: 'devops',
-      colorHex: '#10b981',
-      backgroundHex: '#12151f',
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: '00000000-0000-0000-0000-000000000013',
-      spaceId: '00000000-0000-0000-0000-000000000001',
-      name: 'Q&A',
-      slug: 'qa',
-      colorHex: '#f59e0b',
-      backgroundHex: '#12151f',
-      createdAt: new Date().toISOString(),
-    },
-  ]);
-
-  const [posts, setPosts] = useState<PostItem[]>([
-    {
-      id: 'thread-sample-1',
-      spaceSlug: slug,
-      spaceName: `s/${slug}`,
-      spaceColor: '#10b981',
-      author: 'lead_architect',
-      timeAgo: '2 hr. ago',
-      title: `Tổng quan kiến trúc phân tán và kinh nghiệm vận hành tại s/${slug}`,
-      bodySnippet:
-        'Hệ thống microservices với Event-driven architecture, sử dụng Redis Lua scripts cho bộ đếm karma nguyên tử và Postgres ltree cho cây bình luận đa tầng...',
-      upvotes: 245,
-      comments: 38,
-      hasJoined: true,
-    },
-    {
-      id: 'thread-sample-2',
-      spaceSlug: slug,
-      spaceName: `s/${slug}`,
-      spaceColor: '#06b6d4',
-      author: 'devops_ninja',
-      timeAgo: '5 hr. ago',
-      title: 'Tự động hóa CI/CD và triển khai Cloudflare Zero Trust Tunnel cho Homelab',
-      bodySnippet:
-        'Bảo mật tuyệt đối hạ tầng máy chủ cục bộ, không mở port NAT router, quản lý qua systemd user service và Podman rootless isolation...',
-      upvotes: 182,
-      comments: 19,
-      hasJoined: true,
-    },
-  ]);
+  const [loadingSpace, setLoadingSpace] = useState(true);
+  const [loadingPosts, setLoadingPosts] = useState(true);
+  const [isForbidden, setIsForbidden] = useState(false);
+  const [notFoundError, setNotFoundError] = useState<string | null>(null);
 
   useEffect(() => {
+    void isAuthenticated;
     let isMounted = true;
-    async function loadData() {
+    async function loadSpaceMeta() {
+      if (!slug) return;
       try {
-        setLoading(true);
+        setLoadingSpace(true);
+        setNotFoundError(null);
         const data = await CommunityApi.getSpace(slug);
-        if (isMounted && data.space) {
+        if (isMounted) {
           setSpace(data.space);
-          if (data.flairs && data.flairs.length > 0) {
-            setFlairs(data.flairs);
+          setFlairs(data.flairs);
+        }
+      } catch (err: unknown) {
+        if (isMounted) {
+          setSpace(null);
+          if (err instanceof ApiHttpError && err.status === 403) {
+            setIsForbidden(true);
+          } else {
+            setNotFoundError(
+              err instanceof Error ? err.message : `Không tìm thấy không gian s/${slug}`,
+            );
           }
         }
-      } catch {
-        // Use default fallback space
-      }
-
-      try {
-        const threadList = await CommunityApi.getSpaceThreads(slug);
-        if (isMounted && threadList && threadList.length > 0) {
-          const mapped: PostItem[] = threadList.map((t) => ({
-            id: t.id,
-            spaceSlug: t.spaceSlug,
-            spaceName: `s/${t.spaceSlug}`,
-            spaceColor: '#06b6d4',
-            author: t.authorUsername,
-            timeAgo: 'Vừa xong',
-            title: t.title,
-            bodySnippet: '',
-            upvotes: t.netScore,
-            comments: t.commentsCount,
-            userVote: t.userVote === 1 ? 1 : t.userVote === -1 ? -1 : null,
-          }));
-          setPosts(mapped);
-        }
-      } catch {
-        // Fallback to sample posts
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted) setLoadingSpace(false);
       }
     }
-    loadData();
+    void loadSpaceMeta();
     return () => {
       isMounted = false;
     };
-  }, [slug]);
+  }, [slug, isAuthenticated]);
+
+  useEffect(() => {
+    void isAuthenticated;
+    let isMounted = true;
+    async function loadThreads() {
+      if (!slug) return;
+      try {
+        setLoadingPosts(true);
+        setIsForbidden(false);
+        const feedRes = await CommunityApi.getSpaceThreads(slug, {
+          sort: 'hot',
+          limit: 25,
+          flairId: selectedFlairId,
+        });
+        if (!isMounted) return;
+
+        if (feedRes.forbidden) {
+          setIsForbidden(true);
+          setPosts([]);
+          setNextCursor(null);
+          setHasMore(false);
+          return;
+        }
+
+        const joinedSlugs = space?.isJoined ? new Set([slug]) : undefined;
+        setPosts(feedRes.items.map((item) => mapThreadSummaryToPostItem(item, { joinedSlugs })));
+        setNextCursor(feedRes.nextCursor);
+        setHasMore(feedRes.hasMore);
+      } catch {
+        if (isMounted) {
+          setPosts([]);
+        }
+      } finally {
+        if (isMounted) setLoadingPosts(false);
+      }
+    }
+    void loadThreads();
+    return () => {
+      isMounted = false;
+    };
+  }, [slug, selectedFlairId, isAuthenticated, space?.isJoined]);
+
+  const handleLoadMore = async () => {
+    if (!nextCursor || !slug) return;
+    const feedRes = await CommunityApi.getSpaceThreads(slug, {
+      sort: 'hot',
+      limit: 25,
+      cursor: nextCursor,
+      flairId: selectedFlairId,
+    });
+    const joinedSlugs = space?.isJoined ? new Set([slug]) : undefined;
+    setPosts((prev) => [
+      ...prev,
+      ...feedRes.items.map((item) => mapThreadSummaryToPostItem(item, { joinedSlugs })),
+    ]);
+    setNextCursor(feedRes.nextCursor);
+    setHasMore(feedRes.hasMore);
+  };
 
   return (
     <div className="app-shell">
@@ -158,118 +132,198 @@ export default function SpacePage() {
         <LeftSidebar />
 
         <main className="main-content" style={{ maxWidth: '1060px' }}>
-          <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
-            {/* Cột Chính */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <SpaceHeader space={space} activeTab={activeTab} onTabChange={setActiveTab} />
+          {loadingSpace ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              Đang tải thông tin không gian s/{slug}...
+            </div>
+          ) : notFoundError || !space ? (
+            <div className="reddit-card" style={{ padding: '36px', textAlign: 'center' }}>
+              <h2
+                style={{ fontSize: '18px', fontWeight: 800, color: '#f43f5e', marginBottom: '8px' }}
+              >
+                Không thể tải Không gian s/{slug}
+              </h2>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                {notFoundError || 'Không gian này không tồn tại hoặc đã bị xóa.'}
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
+              {/* Cột Chính */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <SpaceHeader
+                  key={`${space.id}-${Boolean(space.isJoined)}-${space.membersCount}`}
+                  space={space}
+                  activeTab={activeTab}
+                  onTabChange={setActiveTab}
+                />
 
-              {activeTab === 'posts' ? (
-                <div>
-                  {loading && posts.length === 0 ? (
-                    <div
-                      style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}
-                    >
-                      Đang tải bài viết của không gian...
-                    </div>
-                  ) : (
-                    posts.map((post) => <PostCard key={post.id} post={post} />)
-                  )}
-                </div>
-              ) : (
-                /* Tab Giới thiệu & Nội quy */
-                <div
-                  style={{
-                    borderRadius: 'var(--radius-lg)',
-                    border: '1px solid var(--border-subtle)',
-                    backgroundColor: 'var(--bg-surface)',
-                    padding: '24px',
-                  }}
-                >
-                  <h3
-                    style={{
-                      fontSize: '18px',
-                      fontWeight: 800,
-                      color: 'var(--text-primary)',
-                      margin: '0 0 12px 0',
-                    }}
-                  >
-                    Về Không Gian s/{space.slug}
-                  </h3>
-                  <p
-                    style={{
-                      fontSize: '14px',
-                      lineHeight: 1.6,
-                      color: 'var(--text-secondary)',
-                      marginBottom: '20px',
-                    }}
-                  >
-                    {space.description || 'Không gian thảo luận chuyên sâu trên nền tảng SYNAPSE.'}
-                  </p>
-
-                  <h4
-                    style={{
-                      fontSize: '15px',
-                      fontWeight: 800,
-                      color: 'var(--text-primary)',
-                      margin: '20px 0 10px 0',
-                    }}
-                  >
-                    Nội Quy Quy Định
-                  </h4>
-                  {space.rules && space.rules.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      {space.rules.map((rule, idx) => (
-                        <div
-                          key={rule.title}
+                {activeTab === 'posts' ? (
+                  <div>
+                    {isForbidden ? (
+                      <div className="reddit-card" style={{ padding: '32px', textAlign: 'center' }}>
+                        <h3
                           style={{
-                            padding: '12px 16px',
-                            borderRadius: 'var(--radius-md)',
-                            backgroundColor: 'var(--bg-subtle)',
-                            border: '1px solid var(--border-subtle)',
+                            fontSize: '16px',
+                            fontWeight: 800,
+                            color: 'var(--color-brand)',
+                            marginBottom: '8px',
                           }}
                         >
+                          Không gian Riêng Tư (Private Space)
+                        </h3>
+                        <p
+                          style={{
+                            fontSize: '13px',
+                            color: 'var(--text-secondary)',
+                            marginBottom: '14px',
+                          }}
+                        >
+                          Nội dung bên trong s/{space.slug} được bảo vệ bởi RBAC. Chỉ thành viên
+                          được Quản trị viên phê duyệt mới có thể xem hoặc đăng bài.
+                        </p>
+                        {!isAuthenticated && (
+                          <button
+                            type="button"
+                            className="reddit-pill-btn primary"
+                            onClick={() => openAuthModal('login')}
+                          >
+                            Đăng nhập tài khoản thành viên
+                          </button>
+                        )}
+                      </div>
+                    ) : loadingPosts && posts.length === 0 ? (
+                      <div
+                        style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}
+                      >
+                        Đang tải bài viết của không gian...
+                      </div>
+                    ) : posts.length === 0 ? (
+                      <div
+                        className="reddit-card"
+                        style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}
+                      >
+                        Chưa có bài viết nào trong không gian này
+                        {selectedFlairId ? ' theo nhãn đã chọn' : ''}.
+                      </div>
+                    ) : (
+                      <>
+                        {posts.map((post) => (
+                          <PostCard key={post.id} post={post} />
+                        ))}
+                        {hasMore && nextCursor && (
                           <div
+                            style={{ display: 'flex', justifyContent: 'center', padding: '12px 0' }}
+                          >
+                            <button
+                              type="button"
+                              className="reddit-pill-btn"
+                              onClick={() => void handleLoadMore()}
+                            >
+                              Tải thêm bài viết
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      borderRadius: 'var(--radius-lg)',
+                      border: '1px solid var(--border-subtle)',
+                      backgroundColor: 'var(--bg-surface)',
+                      padding: '24px',
+                    }}
+                  >
+                    <h3
+                      style={{
+                        fontSize: '18px',
+                        fontWeight: 800,
+                        color: 'var(--text-primary)',
+                        margin: '0 0 12px 0',
+                      }}
+                    >
+                      Về Không Gian s/{space.slug}
+                    </h3>
+                    <p
+                      style={{
+                        fontSize: '14px',
+                        lineHeight: 1.6,
+                        color: 'var(--text-secondary)',
+                        marginBottom: '20px',
+                      }}
+                    >
+                      {space.description ||
+                        'Không gian thảo luận chuyên sâu trên nền tảng SYNAPSE.'}
+                    </p>
+
+                    <h4
+                      style={{
+                        fontSize: '15px',
+                        fontWeight: 800,
+                        color: 'var(--text-primary)',
+                        margin: '20px 0 10px 0',
+                      }}
+                    >
+                      Nội Quy Quy Định
+                    </h4>
+                    {space.rules && space.rules.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {space.rules.map((rule, idx) => (
+                          <div
+                            key={rule.title}
                             style={{
-                              fontWeight: 700,
-                              color: 'var(--text-primary)',
-                              fontSize: '13px',
+                              padding: '12px 16px',
+                              borderRadius: 'var(--radius-md)',
+                              backgroundColor: 'var(--bg-subtle)',
+                              border: '1px solid var(--border-subtle)',
                             }}
                           >
-                            {idx + 1}. {rule.title}
-                          </div>
-                          {rule.description && (
                             <div
                               style={{
-                                fontSize: '12px',
-                                color: 'var(--text-secondary)',
-                                marginTop: '4px',
+                                fontWeight: 700,
+                                color: 'var(--text-primary)',
+                                fontSize: '13px',
                               }}
                             >
-                              {rule.description}
+                              {idx + 1}. {rule.title}
                             </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
-                      Chưa có nội quy cụ thể. Vui lòng tuân thủ quy chuẩn ứng xử chung của nền tảng.
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+                            {rule.description && (
+                              <div
+                                style={{
+                                  fontSize: '12px',
+                                  color: 'var(--text-secondary)',
+                                  marginTop: '4px',
+                                }}
+                              >
+                                {rule.description}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
+                        Chưa có nội quy cụ thể. Vui lòng tuân thủ quy chuẩn ứng xử chung của nền
+                        tảng.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
-            {/* Cột Phải Đặc Thù Không Gian */}
-            <div className="desktop-only-rail">
-              <SpaceSidebar
-                space={space}
-                flairs={flairs}
-                selectedFlairId={selectedFlairId}
-                onSelectFlair={setSelectedFlairId}
-              />
+              {/* Cột Phải Đặc Thù Không Gian */}
+              <div className="desktop-only-rail">
+                <SpaceSidebar
+                  space={space}
+                  flairs={flairs}
+                  selectedFlairId={selectedFlairId}
+                  onSelectFlair={setSelectedFlairId}
+                />
+              </div>
             </div>
-          </div>
+          )}
         </main>
       </div>
 

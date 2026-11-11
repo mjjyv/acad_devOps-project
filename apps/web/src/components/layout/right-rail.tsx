@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useUI } from '../../lib/store/ui-context';
 import { TrashIcon } from '../ui/icons';
 
@@ -180,9 +181,12 @@ export function RightRail() {
               <h3 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-primary)' }}>
                 SYNAPSE Homelab Engine
               </h3>
-              <span style={{ fontSize: '11px', color: 'var(--color-brand)' }}>
-                s/synapse-network
-              </span>
+              <Link
+                href="/s/devops-arch"
+                style={{ fontSize: '11px', color: 'var(--color-brand)', textDecoration: 'none' }}
+              >
+                s/devops-arch
+              </Link>
             </div>
           </div>
 
