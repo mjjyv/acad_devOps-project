@@ -1,21 +1,24 @@
 # Cẩm Nang Chỉ Dẫn Vận Hành AI Agent (AGENT.md)
 
-> **Dự án:** Acad DevOps Fullstack Monorepo  
-> **Phiên bản:** `v2.0.0` (Chiến lược Backend-First & Tái thiết Sạch từ đầu)  
-> **Trạng thái thực tế:** **Khởi động Tái thiết Sạch (Zero-Base Clean Rebuild - Đã xong Phase B0: 10%)**  
-> **Kho lưu trữ mã cũ:** Toàn bộ mã nguồn cũ và tài liệu v1 đã được bảo lưu nguyên vẹn tại [`archive/legacy_codebase/`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/archive/legacy_codebase)  
-> **Tài liệu đặc tả chủ đạo:** [`docs/docs.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/docs.md), [`docs/reddit.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/reddit.md) và cẩm nang vận hành [`docs/guide.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/guide.md)  
+> **Dự án:** Acad DevOps Fullstack Monorepo (**SYNAPSE Engine**)  
+> **Phiên bản:** `v3.0.0` (Tái thiết Sạch trên Nền Tảng Hạ Tầng `deploy/` 000007 & Tài Liệu SAD Đã Chuẩn Hóa)  
+> **Trạng thái thực tế:** **Kho lưu trữ v2.1.0 đã khóa + Git Tag `v2.1.0-e2e-verified` — Sẵn sàng triển khai v3 từ Phase B0**  
+> **Kho lưu trữ lịch sử:**  
+> - Mã nguồn v2.1.0 (đã qua E2E): [`archive/v2_codebase_20261112/`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/archive/v2_codebase_20261112) & [`archive/codebase_snapshots/acad_devops_codebase_v2.1.0_20261112.tar.gz`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/archive/codebase_snapshots/acad_devops_codebase_v2.1.0_20261112.tar.gz)  
+> - Mã nguồn v1 lịch sử: [`archive/legacy_codebase/`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/archive/legacy_codebase)  
+> **Tài liệu đặc tả chủ đạo:** [`docs/README.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/README.md), [`docs/SYSTEM ANALYSIS & DESIGN LIFECYCLE FRAMEWORK.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/SYSTEM%20ANALYSIS%20%26%20DESIGN%20LIFECYCLE%20FRAMEWORK.md), các phân hệ [`docs/02_core_engines/`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/02_core_engines) và hợp đồng API [`docs/03_standards_and_contracts/01_api_contracts_openapi.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/03_standards_and_contracts/01_api_contracts_openapi.md)  
+> **Skill nghiệm thu bắt buộc:** [`.agents/skills/real-user-e2e-verification/SKILL.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/.agents/skills/real-user-e2e-verification/SKILL.md)  
 > **Phạm vi áp dụng:** Bắt buộc tuân thủ đối với mọi AI Agent (Antigravity) và Kỹ sư tham gia phát triển.
 
 ---
 
-## 1. VAI TRÒ, TÔN CHỈ & BỐI CẢNH TÁI THIẾT SẠCH (ZERO-BASE REBUILD)
+## 1. VAI TRÒ, TÔN CHỈ & BỐI CẢNH TÁI THIẾT V3 (DEPLOY-ANCHORED REBUILD)
 
-1. **Vai trò của Agent:** Agent đóng vai trò là **Lead Architect, Senior Fullstack & DevOps Engineer**, chịu trách nhiệm toàn diện từ thiết kế hợp đồng dữ liệu, thiết lập hạ tầng monorepo, lập trình nghiệp vụ backend, kiểm thử tải, tới phát triển giao diện và triển khai sản xuất.
-2. **Bối cảnh Tái thiết Sạch từ Đầu (Clean-Slate Rebuild):**
-   - Toàn bộ mã nguồn cũ v1.2.0 có những hạn chế kỹ thuật (như sử dụng in-memory mock trong production, kiến trúc router cồng kềnh, phân mảnh cấu hình) và đã được chuyển vào thư mục [`archive/legacy_codebase/`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/archive/legacy_codebase).
-   - Tiến độ thực thi hiện tại được xác lập tại **Phase B0 (0% - Foundation & Scaffolding)**.
-   - **Nguyên tắc kế thừa an toàn:** Agent được phép đọc, tham khảo các thuật toán ưu việt trong `archive/legacy_codebase/` (như `ltree-path-generator.ts`, `execute_vote.lua`, `tree-virtualizer`), nhưng **tuyệt đối không copy bừa bãi mã cũ bị lỗi vào root workspace**. Mọi module tái lập phải được viết chuẩn chỉ theo tiêu chuẩn kiến trúc v2.0.
+1. **Vai trò của Agent:** Agent đóng vai trò là **Lead Architect, Senior Fullstack & DevOps Engineer**, chịu trách nhiệm toàn diện từ hợp đồng dữ liệu, lập trình nghiệp vụ backend, kiểm thử tải/DB thật, tới giao diện người dùng và kiểm định E2E trên trình duyệt thật.
+2. **Bối cảnh Tái thiết Sạch trên Nền Deploy & DB Chuẩn (`deploy/`):**
+   - Toàn bộ hạ tầng cơ sở dữ liệu [`deploy/migrations/`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/deploy/migrations) (`000001` $\rightarrow$ `000007`), dữ liệu mẫu 0% số ảo [`deploy/seeds/`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/deploy/seeds), Lua script [`deploy/redis/execute_vote.lua`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/deploy/redis/execute_vote.lua), Docker/Render configs và [`scripts/manage-homelab.sh`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/scripts/manage-homelab.sh) **đã hoàn chỉnh và được giữ nguyên**.
+   - Mã nguồn ứng dụng v2.1.0 đã được đóng băng tại `archive/v2_codebase_20261112/` và tag `v2.1.0-e2e-verified`.
+   - **Nguyên tắc kế thừa có kỷ luật:** Agent được tham khảo các giải pháp đã nghiệm thu trong `archive/v2_codebase_20261112/` (như Base36 `ltree`, Redis Lua FSM, SSE RFC 8895, Read-Through Redis Overlay), nhưng mọi module v3 được tái lập mới trên nền tảng vững hơn — khắc phục ngay 5 điểm yếu đã rút kinh nghiệm từ v2 (Project References `composite`, tách Rate Limit cho `/login|/register|/refresh`, Read-Through Redis Overlay mặc định, Token Resilience khi `429/5xx`, UX `Explore`/`Topics`/Chat username search).
 
 ---
 
@@ -68,21 +71,23 @@ Hệ thống tổ chức theo cấu trúc phân tầng nghiêm ngặt:
 
 ---
 
-## 4. QUY CHUẨN THIẾT KẾ: MINIMALIST BRUTALISM DARK MODE
+## 4. QUY CHUẨN THIẾT KẾ & BÀI HỌC GIA CỐ NỀN TẢNG V3
 
-Khi bước vào Stream F (Frontend), Agent phải áp dụng nhất quán bảng Design Tokens từ [`docs/03_standards_and_contracts/04_minimalist_brutalist_tokens.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/03_standards_and_contracts/04_minimalist_brutalist_tokens.md):
-- **Bảng 4 màu cốt lõi:**
-  1. `#222831` (40% - Deep Void Charcoal): Canvas chính, nền trang web.
-  2. `#393E46` (25% - Industrial Graphite): Bề mặt thẻ card, thanh điều hướng Navbar, khung chat.
-  3. `#948979` (15% - Muted Earthy Taupe): Đường viền 1px sắc nét, đường kẻ phân nhánh bình luận, metadata phụ.
-  4. `#DFD0B8` (15% - Warm Parchment): Tiêu đề, chữ chính, nút bấm tương tác nổi bật (CTA).
-- **Quy tắc hình học:**
-  - **Triệt tiêu bo góc:** `border-radius: 0px` (Không dùng `rounded-lg`, `rounded-full`).
-  - **Đổ bóng phẳng dứt khoát (Hard Flat Shadows):** `box-shadow: 3px 3px 0px #948979`. Khi hover, dịch chuyển vị trí `transform: translate(-1px, -1px)` và tăng tương phản bóng `4px 4px 0px #DFD0B8`.
+### 4.1. Design System (Slate-Champagne & CSS Semantic Tokens)
+Khi bước vào Stream F (Frontend), Agent phải áp dụng nhất quán hệ thống Design Tokens từ [`docs/01_architecture_and_data/05_frontend_design_system_and_ux_guidelines.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/01_architecture_and_data/05_frontend_design_system_and_ux_guidelines.md) và [`docs/03_standards_and_contracts/04_minimalist_brutalist_tokens.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/03_standards_and_contracts/04_minimalist_brutalist_tokens.md), bảo đảm hỗ trợ Dark/Light mode thông qua CSS variables (`--bg-canvas`, `--bg-surface`, `--bg-input`, `--color-brand`, `--text-primary`, `--border-subtle`) và **không tạo nút/link giả `showToast(...)`**.
+
+### 4.2. 5 Ràng Buộc Kỹ Thuật Bắt Buộc Cho Nền Tảng v3
+1. **TypeScript Project References (`composite: true`):** Luôn build theo chuỗi phụ thuộc (`packages/*` $\rightarrow$ `services/*` $\rightarrow$ `apps/*`) trước khi `typecheck` để không đọc nhầm `dist/*.d.ts` cũ.
+2. **Phân tầng Rate Limiter theo ngữ nghĩa:** Tách `authRateLimiter` (`max: 10/60s`) chỉ áp cho `POST /login`, `/register`, `/refresh`; các API đọc/tìm kiếm (`GET /me`, `GET /users/search`, `GET /sessions`) chạy qua `globalRateLimiter`.
+3. **Read-Through Redis Counter Overlay:** Mọi endpoint đọc thread/feed (`GET /threads/:id`, `/feed/*`, `/spaces/:slug/threads`) phải hợp nhất live counter từ Redis (`target:{id}:counters`) trước khi trả về client để loại bỏ độ trễ xả queue 5s của `VoteFlushWorker`.
+4. **Resilient Session Lifecycle ở Client SDK:** Chỉ thu hồi `localStorage` tokens và đăng xuất khi server trả `401/403` thực sự hoặc phát hiện Reuse Attack; lỗi tạm thời (`429`, `503`, timeout) không được xóa phiên đăng nhập.
+5. **Tách biệt Empty-State & User Discovery:** Người dùng trắng mới (0 space, 0 kênh chat) phải thao tác trọn vẹn từ rỗng (`Home` $\rightarrow$ CTA `/explore` $\rightarrow$ lọc `Topics` $\rightarrow$ Join; `Chat` $\rightarrow$ `Create Chat / Search by username` $\rightarrow$ Sent/Incoming Requests $\rightarrow$ Accept $\rightarrow$ SSE Real-time).
 
 ---
 
-## 5. LỘ TRÌNH THỰC THI CHI TIẾT (PHASED EXECUTION PROTOCOL)
+## 5. LỘ TRÌNH THỰC THI CHI TIẾT V3 (ĐỐI CHIẾU `deploy/` HIỆN HỮU)
+
+> Lưu ý: Schema `deploy/migrations/000001..000007`, `deploy/seeds/` và `deploy/redis/execute_vote.lua` **đã sẵn sàng**. Mỗi Phase chỉ kiểm chứng trực tiếp trên schema + Redis thật, không tự ý bơm số giả lập vào seed.
 
 Agent phải thực hiện lần lượt từng Phase theo thứ tự tuyến tính, cập nhật tài liệu và bảng kiểm sau mỗi Phase:
 
@@ -139,20 +144,21 @@ Agent phải thực hiện lần lượt từng Phase theo thứ tự tuyến t�
 
 ---
 
-## 6. VÒNG LẶP KIỂM THỬ KHÉP KÍN, API-FIRST & 5 CHIẾN THUẬT VẬN HÀNH (TỪ `docs/guide.md`)
+## 6. VÒNG LẶP KIỂM THỬ KHÉP KÍN, REAL-USER E2E & 5 CHIẾN THUẬT VẬN HÀNH
 
-Theo cẩm nang vận hành [`docs/guide.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/guide.md), Agent không bao giờ được coi một tác vụ là hoàn tất nếu chỉ mới viết xong mã nguồn hoặc chỉ biên dịch thành công. Mọi tính năng, module, hoặc bản vá đều bắt buộc phải trải qua vòng lặp kiểm định thực tế khép kín:
+Theo quy chuẩn tại [`.agents/skills/real-user-e2e-verification/SKILL.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/.agents/skills/real-user-e2e-verification/SKILL.md) và [`docs/05_guides_and_verification/`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/05_guides_and_verification), Agent **tuyệt đối không** nghiệm thu chỉ bằng `HTTP 200` SSR rỗng hoặc tài khoản seed `admin_pro`. Mọi tính năng, module phải trải qua vòng lặp thực tế khép kín:
 
 ```mermaid
 flowchart TD
-    Code["Viết mã / Tái cấu trúc"] --> Build["Biên dịch sạch (0 Error, 0 Warning)"]
-    Build --> Test["Ưu tiên Test API / Chạy Test Suite"]
-    Test -- "Có lỗi / Sai lệch đầu ra" --> Diag["Phân tích Server Log & Stack Trace"]
-    Diag --> Heal["Tự sửa lỗi (Self-Correction)"]
+    Code["Viết mã / Tái cấu trúc"] --> Build["Lint + Typecheck + Build sạch"]
+    Build --> Test["Unit + Real Postgres/Redis Integration"]
+    Test -- "Có lỗi" --> Diag["Phân tích Stack Trace & Network"]
+    Diag --> Heal["Tự sửa lỗi"]
     Heal --> Build
-    Test -- "Thành công (200/201)" --> SideEffect["Xác thực biến đổi dữ liệu (Side-Effect DB Check)"]
-    SideEffect --> Log["Ghi vết Test Log & Đối soát RFC 7807"]
-    Log --> Commit["Bàn giao & Commit Git Semantic"]
+    Test -- "Pass 100%" --> E2E["Playwright Two-Fresh-User E2E + DB Invariant"]
+    E2E -- "Lệch UI / DB" --> Diag
+    E2E -- "0% Sai lệch" --> Log["Cập nhật 03_test_logs_registry.md"]
+    Log --> Commit["Commit Git Semantic"]
 ```
 
 ### 6.1. Quy Trình 4 Bước Kiểm Thử API Thực Tế (API-First Testing Protocol)
@@ -178,49 +184,26 @@ flowchart TD
 
 ---
 
-## 7. 4 CỔNG KIỂM ĐỊNH TỰ ĐỘNG (CI GATES) & CHECKLIST ĐỊNH NGHĨA HOÀN THÀNH (DOD)
+## 7. 5 CỔNG KIỂM ĐỊNH TỰ ĐỘNG (CI/E2E GATES) & CHECKLIST ĐỊNH NGHĨA HOÀN THÀNH (DOD)
 
-### 7.1. 4 Cổng Kiểm Định CI Tự Động Bắt Buộc
-Trước khi commit và push bất kỳ thay đổi nào, Agent **bắt buộc phải chạy và bảo đảm 100% vượt qua 4 cổng kiểm định sau**:
+### 7.1. 5 Cổng Kiểm Định Bắt Buộc
+Trước khi xác nhận hoàn thành bất kỳ Phase hay tính năng nào trên v3, Agent **bắt buộc phải chạy và đạt 100% các cổng sau**:
 
-```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                        4 CỔNG KIỂM ĐỊNH TỰ ĐỘNG BẮT BUỘC (CI GATES)                    │
-├───────────────────┬───────────────────┬──────────────────────┬─────────────────────────┤
-│ CỔNG 1: LINTING   │ CỔNG 2: TYPECHECK │ CỔNG 3: AUTOMATED QA │ CỔNG 4: CONTAINER BUILD │
-├───────────────────┼───────────────────┼──────────────────────┼─────────────────────────┤
-│ • Biome Linter    │ • TypeScript 5.9  │ • Vitest Test Runner │ • Docker compose build  │
-│ • Thời gian <0.5s │   Strict Mode     │ • 100% Suites Pass   │ • Multi-stage Alpine    │
-│ • Format 2 spaces │ • No implicit any │ • Unit + Integration │ • Core API < 100MB      │
-│ • Nháy đơn (')    │ • .js extensions  │ • Regression safety  │ • Web Client < 150MB    │
-└───────────────────┴───────────────────┴──────────────────────┴─────────────────────────┘
-```
-
-Lệnh thực thi 4 cổng kiểm định:
-```bash
-# Cổng 1: Linting & Formatting qua Biome (< 0.5s)
-pnpm run lint
-
-# Cổng 2: Strict Typecheck toàn bộ Monorepo
-pnpm run typecheck
-
-# Cổng 3: Chạy toàn bộ Unit & Integration Tests qua Vitest
-pnpm test
-
-# Cổng 4: Xác thực cấu hình Docker Compose
-docker compose -f deploy/docker/docker-compose.dev.yml config
-```
+1. **Cổng 1 (Linting):** `pnpm run lint` (Biome check, 0 errors).
+2. **Cổng 2 (Build & Strict Typecheck):** `pnpm run typecheck` (`tsc -b` / workspace builds trước khi check).
+3. **Cổng 3 (Unit & Real DB Integration):** `pnpm test && pnpm run test:integration` (trên PostgreSQL 16 + Redis 7 thật).
+4. **Cổng 4 (Real-User Playwright E2E):** `pnpm run test:e2e` chạy kịch bản 2 tài khoản trắng mới trên trình duyệt Chromium Headless.
+5. **Cổng 5 (DB Counter Invariant & Homelab Ops):** Chạy `./scripts/manage-homelab.sh qa` và `SELECT * FROM reconcile_platform_counters();` bảo đảm 0% sai lệch `thread_counters`/`thread_votes`/`comments`/`spaces`.
 
 ### 7.2. Checklist Định Nghĩa Hoàn Thành (Definition of Done - DoD 8 Tiêu Chí)
-Trước khi xác nhận hoàn thành bất kỳ Phase hay tính năng nào, Agent phải tự rà soát và đạt đủ 8/8 tiêu chí:
-- [ ] **1. Compile sạch:** Toàn bộ mã nguồn biên dịch thành công (0 Error, 0 Warning).
-- [ ] **2. Khởi chạy thử nghiệm:** Dịch vụ/Backend đã khởi chạy thử nghiệm thành công trên môi trường cục bộ.
-- [ ] **3. Happy Path thực tế:** Đã chạy lệnh cURL/API thành công, trả về HTTP 200/201 và payload chuẩn.
-- [ ] **4. Negative Path thực tế:** Dữ liệu sai bị chặn bởi HTTP 400/401/403/404/409/422 rõ ràng, tuyệt đối không có lỗi 500.
-- [ ] **5. Nhật ký sạch:** Server log không còn ngoại lệ ẩn (unhandled exceptions) hay warning rò rỉ bộ nhớ.
-- [ ] **6. Đối soát Side-effect:** Dữ liệu ngầm trong PostgreSQL/Redis đã được đối soát qua truy vấn thực tế.
-- [ ] **7. Cập nhật Test Guide:** Bổ sung kịch bản kiểm thử mẫu cURL vào `docs/05_guides_and_verification/01_backend_testing_curl_guide.md`.
-- [ ] **8. Commit & Push chuẩn:** Mã nguồn được commit Semantic Commits và push lên nhánh `main`.
+- [ ] **1. Compile & Lint sạch:** `biome check` + `typecheck` + `build` đạt 0 errors.
+- [ ] **2. Khởi chạy Homelab thực tế:** `./scripts/manage-homelab.sh restart && ./scripts/manage-homelab.sh test` (PostgreSQL, Redis, API :10000, Web :3000 đều xanh).
+- [ ] **3. Happy Path & Two-Fresh-User E2E:** Tài khoản trắng mới (`fresh_a`, `fresh_b`) đi trọn luồng từ trạng thái rỗng (`Explore`, `Home`, `Vote/Comment`, `Chat username search -> Request -> Accept -> SSE`) qua Playwright thật.
+- [ ] **4. Negative Path thực tế:** Dữ liệu sai/quyền hạn sai bị chặn bằng HTTP 400/401/403/404/409/422 RFC 7807, tuyệt đối không trả HTTP 500 và không để `authRateLimiter` khóa nhầm `GET /auth/me`.
+- [ ] **5. Nhật ký sạch:** `journalctl --user -u acad-api.service` & browser console không có ngoại lệ ẩn.
+- [ ] **6. Đối soát Side-effect & Zero Fake Data:** Dữ liệu trong `PostgreSQL` & `Redis` khớp 100% (`vote_mismatches = 0`, `comment_mismatches = 0`, `PG = REDIS`).
+- [ ] **7. Cập nhật Biên bản & Tài liệu:** Cập nhật [`docs/05_guides_and_verification/03_test_logs_registry.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/05_guides_and_verification/03_test_logs_registry.md) và ma trận tiến độ bằng đúng số đo thực tế sau lần sửa cuối.
+- [ ] **8. Commit Semantic:** Commit rõ ràng sau khi đã qua đầy đủ các cổng trên.
 
 ---
 

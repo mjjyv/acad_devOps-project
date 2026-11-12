@@ -1,7 +1,7 @@
 # Thư Mục Lưu Trữ Tài Liệu & Mã Nguồn Cũ (Archive Repository)
 
-> **Thời điểm đóng gói:** 2026-11-05T20:13:00+07:00  
-> **Mục đích:** Lưu trữ toàn bộ các phiên bản tài liệu đặc tả ban đầu, các kế hoạch triển khai sơ khởi và bản chụp (snapshot) mã nguồn hệ thống để phục vụ công tác tra cứu lịch sử và làm tiền đề tái thiết lập hệ thống tài liệu kỹ thuật chuẩn mới.
+> **Cập nhật gần nhất:** 2026-11-12T15:48:00+07:00  
+> **Mục đích:** Lưu trữ nguyên vẹn các phiên bản tài liệu đặc tả và bản chụp (snapshot) mã nguồn qua từng thế hệ (`v1.2.0`, `v2.1.0`) để phục vụ tra cứu, đối chiếu và khôi phục nhanh khi tái thiết nền tảng mới.
 
 ---
 
@@ -10,49 +10,40 @@
 ```text
 archive/
 ├── README.md                                 # Bản hướng dẫn & mục lục lưu trữ
-├── legacy_codebase/                          # Toàn bộ mã nguồn cũ nguyên bản (apps, services, packages, deploy)
+├── v2_codebase_20261112/                     # Toàn bộ mã nguồn v2.1.0 đã qua QA + Playwright E2E (apps, services, packages, tests)
+├── legacy_codebase/                          # Toàn bộ mã nguồn cũ v1 nguyên bản
 │   ├── apps/                                 # api, web cũ
 │   ├── services/                             # auth, community cũ
 │   ├── packages/                             # contracts, auth-client, tree-virtualizer, ui-tokens cũ
 │   ├── deploy/                               # docker, migrations, redis, render, scripts cũ
 │   └── package.json, pnpm-workspace.yaml...  # Cấu hình workspace cũ
 ├── codebase_snapshots/                       # Bản nén nguyên vẹn mã nguồn dự án
-│   └── acad_devops_codebase_v1.2.0_20261105.tar.gz  # Snapshot toàn bộ apps, services, packages, deploy (clean)
-├── legacy_reference_docs/                    # Toàn bộ tài liệu tham chiếu & đặc tả từ reference-docs
-│   ├── stage-1/                              # PRD_STAGE_1_DISCOVERY.md, AUTH_SECURITY_SPECIFICATION.md
-│   ├── stage-2/                              # UI_UX_DESIGN_SPECIFICATION.md
-│   ├── stage-3/                              # DEVOPS_SETUP_GUIDE.md
-│   ├── plan/                                 # 18 kế hoạch và biên bản walkthrough cũ (001 -> 008)
-│   ├── acad_devOps-project-docs.md           # Tài liệu tổng hợp ban đầu
-│   ├── acad_devOps-project-docs-checklist.md # Bảng kiểm checklist sơ khởi (2050 dòng)
-│   ├── acad_devOps-project-docs-checklist-note.md
-│   ├── SKILL_UI.md                           # Tiêu chuẩn thiết kế giao diện ban đầu
-│   ├── os.md                                 # Thông số môi trường Debian 13
-│   └── UPDATE_AUTH.md                        # Ghi chú nâng cấp Auth ban đầu
-└── legacy_docs_v1/                           # Snapshot hệ thống tài liệu docs/ phiên bản v1
-    ├── architechure/                         # system-overview, database-schema, data-flows, frontend-architecture
-    ├── core-analysis/                        # auth-subsystem, voting-reputation, tree-virtualization
-    ├── standards/                            # git-workflow, code-quality, ui-design-tokens, api-contracts
-    ├── roadmap/                              # phases-overview, progress-checklist, modules-matrix, multi-dimensional
-    ├── plan/                                 # supabase-migration-plan, brutalist-ui-redesign-plan, phase4-next-steps
-    ├── guides/                               # backend-testing-guide, developer-os-setup, testing guides
-    ├── logs/                                 # log_001 đến log_006
-    └── supabase.md                           # Ghi chú kết nối Supabase cũ
+│   ├── acad_devops_codebase_v2.1.0_20261112.tar.gz         # Snapshot sạch v2.1.0 (Giai đoạn A–D hoàn tất)
+│   ├── acad_devops_codebase_v2.1.0_20261112.tar.gz.sha256  # Checksum toàn vẹn SHA-256
+│   └── acad_devops_codebase_v1.2.0_20261105.tar.gz         # Snapshot cũ v1.2.0
+├── legacy_reference_docs/                    # Tài liệu tham chiếu & đặc tả v1
+└── legacy_docs_v1/                           # Snapshot docs/ phiên bản v1
 ```
 
 ---
 
 ## 📦 Hướng Dẫn Giải Nén & Khôi Phục Mã Nguồn Snapshot
 
-Nếu cần khôi phục lại mã nguồn tại thời điểm đóng gói:
+### Khôi phục nhanh từ bản v2.1.0 (hoặc dùng Git Tag `v2.1.0-e2e-verified`)
 ```bash
-# Tạo thư mục đích khôi phục
-mkdir -p /tmp/acad_restore
-cd /tmp/acad_restore
+# Cách 1: Kiểm tra checksum & giải nén snapshot v2.1.0
+(cd archive/codebase_snapshots && sha256sum -c acad_devops_codebase_v2.1.0_20261112.tar.gz.sha256)
+mkdir -p /tmp/acad_v2_restore && cd /tmp/acad_v2_restore
+tar -xzf /home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/archive/codebase_snapshots/acad_devops_codebase_v2.1.0_20261112.tar.gz
+pnpm install
 
-# Giải nén
+# Cách 2: Checkout trực tiếp qua Git Tag bất biến
+git show v2.1.0-e2e-verified
+```
+
+### Khôi phục bản v1.2.0 lịch sử
+```bash
+mkdir -p /tmp/acad_restore && cd /tmp/acad_restore
 tar -xzf /path/to/archive/codebase_snapshots/acad_devops_codebase_v1.2.0_20261105.tar.gz
-
-# Cài đặt lại thư viện phụ thuộc
 pnpm install
 ```

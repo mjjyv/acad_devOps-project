@@ -18,7 +18,8 @@
       "apps/**/*.json",
       "tests/**/*.ts",
       "*.json",
-      "*.ts"
+      "*.ts",
+      "!archive"
     ]
   },
   "formatter": {
