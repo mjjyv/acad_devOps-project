@@ -78,6 +78,13 @@ export class RecipientNotFoundError extends Error {
   }
 }
 
+export class CannotCreateSoloGroupError extends Error {
+  constructor() {
+    super('Phòng chat nhóm cần tối thiểu 1 thành viên khác ngoài người tạo');
+    this.name = 'CannotCreateSoloGroupError';
+  }
+}
+
 export class ChatService {
   constructor(
     private repo: IChatRepository,
@@ -109,15 +116,34 @@ export class ChatService {
     }
 
     const sender = await this.repo.findUserById(senderId);
+    void sender;
 
-    // 1. Kiểm tra xem người nhận có đang chặn người gửi không
+    // 1. Kiểm tra quan hệ yêu cầu trò chuyện hiện tại giữa 2 người
     const existingRequest = await this.repo.findChatRequestBetween(senderId, recipientId);
     if (existingRequest) {
       if (existingRequest.status === 'BLOCKED') {
         throw new UserBlockedError();
       }
       if (existingRequest.status === 'PENDING') {
+        // Nếu người kia đã gửi request đang chờ cho mình -> tự động chấp nhận và mở kênh luôn
+        if (existingRequest.receiverId === senderId) {
+          const accepted = await this.respondChatRequest(existingRequest.id, senderId, 'ACCEPTED');
+          if (accepted.channel) {
+            const msg = await this.sendMessage(senderId, {
+              channelId: accepted.channel.id,
+              content: initialMessage,
+            });
+            const chEntity = await this.repo.findChannelById(accepted.channel.id);
+            const channelDto = chEntity
+              ? await this.enrichChannelDto(chEntity, senderId, msg)
+              : accepted.channel;
+            return { isRequest: false, channel: channelDto };
+          }
+        }
         throw new DuplicateChatRequestError();
+      }
+      if (existingRequest.status === 'IGNORED') {
+        await this.repo.deleteChatRequest(existingRequest.id);
       }
     }
 
@@ -140,17 +166,7 @@ export class ChatService {
       initialMessage,
     });
 
-    const requestDto: ChatRequest = {
-      id: reqEntity.id,
-      senderId: reqEntity.senderId,
-      senderUsername: sender?.username ?? 'Anonymous',
-      senderAvatarUrl: sender?.avatarUrl ?? null,
-      receiverId: reqEntity.receiverId,
-      initialMessage: reqEntity.initialMessage,
-      status: reqEntity.status,
-      createdAt: reqEntity.createdAt.toISOString(),
-      updatedAt: reqEntity.updatedAt.toISOString(),
-    };
+    const requestDto = await this.mapRequestDto(reqEntity);
 
     // Đẩy thông báo SSE thời gian thực cho người nhận
     this.sseManager.sendToUser(recipientId, 'chat_request:new', requestDto);
@@ -198,31 +214,26 @@ export class ChatService {
       // 3. Cập nhật trạng thái Request
       await this.repo.updateChatRequestStatus(requestId, 'ACCEPTED', channel.id);
 
-      channelDto = await this.enrichChannelDto(
+      const firstMsgDto = await this.mapMessageDto(firstMsg);
+      channelDto = await this.enrichChannelDto(channel, receiverId, firstMsgDto);
+      const senderChannelDto = await this.enrichChannelDto(
         channel,
-        receiverId,
-        await this.mapMessageDto(firstMsg),
+        reqEntity.senderId,
+        firstMsgDto,
       );
 
-      // Phát sự kiện SSE cho cả 2 người
-      this.sseManager.sendToUser(reqEntity.senderId, 'channel:created', channelDto);
+      // Phát sự kiện SSE theo đúng góc nhìn của từng người
+      this.sseManager.sendToUser(reqEntity.senderId, 'channel:created', senderChannelDto);
       this.sseManager.sendToUser(reqEntity.receiverId, 'channel:created', channelDto);
     } else {
       await this.repo.updateChatRequestStatus(requestId, status);
     }
 
-    const sender = await this.repo.findUserById(reqEntity.senderId);
-    const updatedDto: ChatRequest = {
-      id: reqEntity.id,
-      senderId: reqEntity.senderId,
-      senderUsername: sender?.username ?? 'Anonymous',
-      senderAvatarUrl: sender?.avatarUrl ?? null,
-      receiverId: reqEntity.receiverId,
-      initialMessage: reqEntity.initialMessage,
+    const updatedDto = await this.mapRequestDto({
+      ...reqEntity,
       status,
-      createdAt: reqEntity.createdAt.toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+      updatedAt: new Date(),
+    });
 
     this.sseManager.sendToUser(reqEntity.senderId, 'chat_request:updated', updatedDto);
     return { request: updatedDto, channel: channelDto };
@@ -236,13 +247,18 @@ export class ChatService {
     name: string,
     memberIds: string[],
   ): Promise<ChatChannel> {
+    const otherMembers = Array.from(new Set(memberIds.filter((id) => id !== creatorId)));
+    if (otherMembers.length === 0) {
+      throw new CannotCreateSoloGroupError();
+    }
+
     const channelEntity = await this.repo.createChannel({
       type: 'GROUP',
       name,
       creatorId,
     });
 
-    const uniqueMembers = Array.from(new Set([creatorId, ...memberIds]));
+    const uniqueMembers = [creatorId, ...otherMembers];
     for (const uid of uniqueMembers) {
       await this.repo.addMember(channelEntity.id, uid);
     }
@@ -344,27 +360,65 @@ export class ChatService {
   }
 
   /**
-   * Lấy danh sách yêu cầu chat đang chờ duyệt
+   * Lấy danh sách yêu cầu chat đang chờ duyệt (incoming / sent / all)
+   */
+  public async listRequests(
+    userId: string,
+    direction: 'incoming' | 'sent' | 'all' = 'incoming',
+  ): Promise<{ incoming: ChatRequest[]; sent: ChatRequest[] }> {
+    const [incomingEntities, sentEntities] = await Promise.all([
+      direction === 'sent' ? Promise.resolve([]) : this.repo.listPendingRequestsForReceiver(userId),
+      direction === 'incoming'
+        ? Promise.resolve([])
+        : this.repo.listPendingRequestsForSender(userId),
+    ]);
+
+    const [incoming, sent] = await Promise.all([
+      Promise.all(incomingEntities.map((r) => this.mapRequestDto(r))),
+      Promise.all(sentEntities.map((r) => this.mapRequestDto(r))),
+    ]);
+
+    return { incoming, sent };
+  }
+
+  /**
+   * Lấy danh sách yêu cầu chat đang chờ duyệt (backward-compatible helper)
    */
   public async listPendingRequests(receiverId: string): Promise<ChatRequest[]> {
-    const reqs = await this.repo.listPendingRequestsForReceiver(receiverId);
-    const result: ChatRequest[] = [];
+    const { incoming } = await this.listRequests(receiverId, 'incoming');
+    return incoming;
+  }
 
-    for (const r of reqs) {
-      const sender = await this.repo.findUserById(r.senderId);
-      result.push({
-        id: r.id,
-        senderId: r.senderId,
-        senderUsername: sender?.username ?? 'Anonymous',
-        senderAvatarUrl: sender?.avatarUrl ?? null,
-        receiverId: r.receiverId,
-        initialMessage: r.initialMessage,
-        status: r.status,
-        createdAt: r.createdAt.toISOString(),
-        updatedAt: r.updatedAt.toISOString(),
-      });
+  /**
+   * Thu hồi yêu cầu chat đang chờ do chính mình gửi đi
+   */
+  public async cancelChatRequest(requestId: string, senderId: string): Promise<void> {
+    const reqEntity = await this.repo.findChatRequestById(requestId);
+    if (!reqEntity || reqEntity.senderId !== senderId || reqEntity.status !== 'PENDING') {
+      throw new ChatRequestNotFoundError(requestId);
     }
-    return result;
+
+    await this.repo.deleteChatRequest(requestId);
+    this.sseManager.sendToUser(reqEntity.receiverId, 'chat_request:cancelled', { id: requestId });
+  }
+
+  /**
+   * Đánh dấu kênh chat đã đọc đến messageId (hoặc tin nhắn mới nhất)
+   */
+  public async markChannelAsRead(
+    channelId: string,
+    userId: string,
+    messageId?: string | undefined,
+  ): Promise<void> {
+    const isMember = await this.repo.isMember(channelId, userId);
+    if (!isMember) {
+      throw new NotChannelMemberError();
+    }
+
+    const targetMessageId = messageId ?? (await this.repo.getLatestMessage(channelId))?.id;
+    if (targetMessageId) {
+      await this.repo.updateLastRead(channelId, userId, targetMessageId);
+    }
   }
 
   /**
@@ -391,6 +445,34 @@ export class ChatService {
   }
 
   // --- Helper Methods ---
+  private async mapRequestDto(r: {
+    id: string;
+    senderId: string;
+    receiverId: string;
+    initialMessage: string;
+    status: ChatRequest['status'];
+    createdAt: Date;
+    updatedAt: Date;
+  }): Promise<ChatRequest> {
+    const [sender, receiver] = await Promise.all([
+      this.repo.findUserById(r.senderId),
+      this.repo.findUserById(r.receiverId),
+    ]);
+    return {
+      id: r.id,
+      senderId: r.senderId,
+      senderUsername: sender?.username ?? 'Anonymous',
+      senderAvatarUrl: sender?.avatarUrl ?? null,
+      receiverId: r.receiverId,
+      receiverUsername: receiver?.username ?? 'Anonymous',
+      receiverAvatarUrl: receiver?.avatarUrl ?? null,
+      initialMessage: r.initialMessage,
+      status: r.status,
+      createdAt: r.createdAt.toISOString(),
+      updatedAt: r.updatedAt.toISOString(),
+    };
+  }
+
   private async mapMessageDto(entity: ChatMessageEntity): Promise<ChatMessage> {
     const sender = await this.repo.findUserById(entity.senderId);
     return {

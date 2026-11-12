@@ -176,6 +176,45 @@ export class PostgresUserRepository implements IUserRepository {
     }
   }
 
+  public async searchActiveUsers(
+    query: string,
+    excludeUserId?: string,
+    limit = 10,
+  ): Promise<UserEntity[]> {
+    const safeLimit = Math.min(Math.max(limit, 1), 25);
+    const trimmed = query.trim();
+    const params: unknown[] = [safeLimit];
+    const conditions: string[] = ["status = 'ACTIVE'"];
+
+    if (excludeUserId) {
+      params.push(excludeUserId);
+      conditions.push(`id <> $${params.length}`);
+    }
+
+    let orderClause = 'karma_score DESC, username ASC';
+    if (trimmed.length > 0) {
+      params.push(`%${trimmed}%`);
+      const likeParam = `$${params.length}`;
+      params.push(`${trimmed}%`);
+      const prefixParam = `$${params.length}`;
+      conditions.push(`username ILIKE ${likeParam}`);
+      orderClause = `CASE WHEN username ILIKE ${prefixParam} THEN 0 ELSE 1 END, karma_score DESC, username ASC`;
+    }
+
+    const sql = `
+      SELECT * FROM users
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY ${orderClause}
+      LIMIT $1;
+    `;
+    try {
+      const res = await this.pool.query(sql, params);
+      return res.rows.map((row) => this.mapRow(row));
+    } catch (err) {
+      throw new DatabaseConnectionError('Lỗi tìm kiếm người dùng theo username', err);
+    }
+  }
+
   public async updateStatus(id: string, status: UserStatus): Promise<void> {
     try {
       await this.pool.query('UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2;', [

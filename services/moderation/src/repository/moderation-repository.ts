@@ -897,6 +897,7 @@ export class PostgresModerationRepository implements IModerationRepository {
       id: r.id,
       name: r.name,
       slug: r.slug,
+      topic: r.topic ?? 'DevOps & SRE',
       description: r.description,
       iconUrl: r.icon_url ?? null,
       bannerUrl: r.banner_url,

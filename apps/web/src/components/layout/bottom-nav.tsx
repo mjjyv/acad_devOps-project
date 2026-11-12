@@ -38,7 +38,7 @@ export function BottomNav() {
     >
       {/* 1. Home */}
       <Link
-        href="/"
+        href={isAuthenticated ? '/?tab=following' : '/'}
         onClick={() => {
           setActiveFeedTab(isAuthenticated ? 'following' : 'for_you');
           window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -61,11 +61,7 @@ export function BottomNav() {
 
       {/* 2. Explore */}
       <Link
-        href="/"
-        onClick={() => {
-          setActiveFeedTab('for_you');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
+        href="/explore"
         style={{
           color: 'var(--text-secondary)',
           display: 'flex',

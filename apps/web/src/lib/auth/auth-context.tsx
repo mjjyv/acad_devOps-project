@@ -55,10 +55,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (mounted) {
           setUser(profile);
         }
-      } catch (_err) {
-        // Session invalid or expired
+      } catch (err) {
+        // Chỉ thu hồi phiên cục bộ khi server từ chối xác thực (401/403), tránh xóa nhầm token khi 429/5xx tạm thời
         if (mounted) {
-          resetApiClient();
+          if (err instanceof HttpError && (err.status === 401 || err.status === 403)) {
+            resetApiClient();
+          }
           setUser(null);
         }
       } finally {

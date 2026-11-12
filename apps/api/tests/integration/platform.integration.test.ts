@@ -422,12 +422,16 @@ describe('Real PostgreSQL 16 + Redis 7 Integration Tests (Subsystems 1-5)', () =
     );
     expect(softDeletedNode?.isDeleted).toBe(true);
 
-    // Kiểm tra comment_count trigger = 9
+    // Kiểm tra comment_count trigger = 8 (9 nút ltree trong đó 1 nút đã soft-delete is_deleted = TRUE)
     const threadCountersRow = await pool.query(
       'SELECT comment_count FROM thread_counters WHERE thread_id = $1',
       [threadId],
     );
-    expect(threadCountersRow.rows[0]?.comment_count).toBe(9);
+    expect(threadCountersRow.rows[0]?.comment_count).toBe(8);
+    const threadRow = await pool.query('SELECT comment_count FROM threads WHERE id = $1', [
+      threadId,
+    ]);
+    expect(threadRow.rows[0]?.comment_count).toBe(8);
   });
 
   it('3. Atomic Vote FSM + Redis Lua + VoteFlushWorker + Karma DB Trigger + UserVote Reload Persistence', async () => {

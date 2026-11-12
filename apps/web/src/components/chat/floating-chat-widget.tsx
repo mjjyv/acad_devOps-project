@@ -7,7 +7,9 @@ import { useState } from 'react';
 import { useRealtimeChat } from '@/lib/hooks/use-realtime-chat';
 import { useAuth } from '../../lib/auth/auth-context';
 import { useUI } from '../../lib/store/ui-context';
-import { ChatBubbleIcon, CheckIcon, CloseIcon, ExternalLinkIcon } from '../ui/icons';
+import { ChatBubbleIcon, CloseIcon, ExternalLinkIcon } from '../ui/icons';
+import { ChatRequestsPanel } from './chat-requests-panel';
+import { NewChatComposer } from './new-chat-composer';
 
 export function FloatingChatWidget() {
   const pathname = usePathname();
@@ -17,10 +19,8 @@ export function FloatingChatWidget() {
   const [activeTab, setActiveTab] = useState<'direct' | 'groups' | 'requests'>('direct');
   const [inputText, setInputText] = useState('');
   const [threadDraft, setThreadDraft] = useState('');
-  const [showCreateGroup, setShowCreateGroup] = useState(false);
-  const [groupName, setGroupName] = useState('');
-  const [groupMembersInput, setGroupMembersInput] = useState('');
-  const [creatingGroup, setCreatingGroup] = useState(false);
+  const [showNewChat, setShowNewChat] = useState(false);
+  const [composerMode, setComposerMode] = useState<'direct' | 'group'>('direct');
 
   const chat = useRealtimeChat({
     isAuthenticated,
@@ -87,21 +87,12 @@ export function FloatingChatWidget() {
     }
   };
 
-  const handleCreateGroup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!groupName.trim()) return;
+  const handleCancelSentRequest = async (requestId: string) => {
     try {
-      setCreatingGroup(true);
-      await chat.createGroupByUsernames(groupName, groupMembersInput);
-      setGroupName('');
-      setGroupMembersInput('');
-      setShowCreateGroup(false);
-      setActiveTab('groups');
-      showToast('Đã tạo nhóm chat mới');
+      await chat.cancelSentRequest(requestId);
+      showToast('Đã thu hồi lời mời trò chuyện');
     } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : 'Không thể tạo nhóm chat');
-    } finally {
-      setCreatingGroup(false);
+      showToast(err instanceof Error ? err.message : 'Không thể thu hồi lời mời');
     }
   };
 
@@ -268,8 +259,8 @@ export function FloatingChatWidget() {
           type="button"
           onClick={() => {
             setActiveTab('direct');
-            setShowCreateGroup(false);
-            if (directChannels[0]) chat.setSelectedChannelId(directChannels[0].id);
+            setShowNewChat(false);
+            chat.setSelectedChannelId(directChannels[0]?.id ?? null);
           }}
           style={{
             flex: 1,
@@ -289,7 +280,8 @@ export function FloatingChatWidget() {
           type="button"
           onClick={() => {
             setActiveTab('groups');
-            if (groupChannels[0]) chat.setSelectedChannelId(groupChannels[0].id);
+            setShowNewChat(false);
+            chat.setSelectedChannelId(groupChannels[0]?.id ?? null);
           }}
           style={{
             flex: 1,
@@ -309,7 +301,7 @@ export function FloatingChatWidget() {
           type="button"
           onClick={() => {
             setActiveTab('requests');
-            setShowCreateGroup(false);
+            setShowNewChat(false);
           }}
           style={{
             flex: 1,
@@ -328,7 +320,7 @@ export function FloatingChatWidget() {
           }}
         >
           <span>Requests</span>
-          {chat.requests.length > 0 && (
+          {(chat.requests.length > 0 || chat.sentRequests.length > 0) && (
             <span
               style={{
                 backgroundColor: 'var(--color-brand)',
@@ -339,7 +331,7 @@ export function FloatingChatWidget() {
                 borderRadius: '9999px',
               }}
             >
-              {chat.requests.length}
+              {chat.requests.length + chat.sentRequests.length}
             </span>
           )}
         </button>
@@ -358,25 +350,26 @@ export function FloatingChatWidget() {
             alignItems: 'center',
           }}
         >
-          {activeTab === 'groups' && (
-            <button
-              type="button"
-              onClick={() => setShowCreateGroup((p) => !p)}
-              style={{
-                padding: '4px 10px',
-                borderRadius: '9999px',
-                border: '1px dashed var(--color-brand)',
-                backgroundColor: 'transparent',
-                color: 'var(--color-brand)',
-                fontSize: '11px',
-                fontWeight: 700,
-                whiteSpace: 'nowrap',
-                cursor: 'pointer',
-              }}
-            >
-              + Nhóm
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => {
+              setComposerMode(activeTab === 'groups' ? 'group' : 'direct');
+              setShowNewChat((p) => !p);
+            }}
+            style={{
+              padding: '4px 10px',
+              borderRadius: '9999px',
+              border: '1px dashed var(--color-brand)',
+              backgroundColor: 'transparent',
+              color: 'var(--color-brand)',
+              fontSize: '11px',
+              fontWeight: 700,
+              whiteSpace: 'nowrap',
+              cursor: 'pointer',
+            }}
+          >
+            {activeTab === 'groups' ? '+ Tạo nhóm' : '+ Chat mới'}
+          </button>
           {visibleChannels.map((ch) => {
             const isSelected = ch.id === chat.selectedChannelId;
             return (
@@ -404,68 +397,27 @@ export function FloatingChatWidget() {
         </div>
       )}
 
-      {/* Create Group inline drawer */}
-      {showCreateGroup && activeTab === 'groups' && (
-        <form
-          onSubmit={handleCreateGroup}
-          style={{
-            padding: '10px 12px',
-            backgroundColor: 'var(--bg-input)',
-            borderBottom: '1px solid var(--border-subtle)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '6px',
+      {/* Create Chat / Group composer drawer */}
+      {isAuthenticated && showNewChat && activeTab !== 'requests' && (
+        <NewChatComposer
+          initialMode={composerMode}
+          compact
+          onStartDirect={chat.startDirectChat}
+          onCreateGroup={chat.createGroupChannel}
+          onCancel={() => setShowNewChat(false)}
+          onSuccess={(res) => {
+            setShowNewChat(false);
+            if (res.mode === 'group') {
+              setActiveTab('groups');
+              showToast('Đã tạo nhóm chat mới');
+            } else if (res.isRequest) {
+              setActiveTab('requests');
+              showToast(`Đã gửi yêu cầu trò chuyện tới u/${res.recipientUsername}`);
+            } else {
+              setActiveTab('direct');
+            }
           }}
-        >
-          <input
-            type="text"
-            required
-            placeholder="Tên phòng chat nhóm..."
-            value={groupName}
-            onChange={(e) => setGroupName(e.target.value)}
-            style={{
-              padding: '6px 10px',
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--border-subtle)',
-              backgroundColor: 'var(--bg-surface)',
-              color: 'var(--text-primary)',
-              fontSize: '12px',
-            }}
-          />
-          <input
-            type="text"
-            required
-            placeholder="Thành viên (vd: admin_pro, devops_coder)"
-            value={groupMembersInput}
-            onChange={(e) => setGroupMembersInput(e.target.value)}
-            style={{
-              padding: '6px 10px',
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--border-subtle)',
-              backgroundColor: 'var(--bg-surface)',
-              color: 'var(--text-primary)',
-              fontSize: '12px',
-            }}
-          />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
-            <button
-              type="button"
-              className="reddit-pill-btn"
-              style={{ height: '26px', fontSize: '11px' }}
-              onClick={() => setShowCreateGroup(false)}
-            >
-              Hủy
-            </button>
-            <button
-              type="submit"
-              disabled={creatingGroup}
-              className="reddit-pill-btn primary"
-              style={{ height: '26px', fontSize: '11px' }}
-            >
-              {creatingGroup ? 'Đang tạo...' : 'Tạo nhóm'}
-            </button>
-          </div>
-        </form>
+        />
       )}
 
       {/* Body */}
@@ -494,85 +446,17 @@ export function FloatingChatWidget() {
           style={{
             flex: 1,
             overflowY: 'auto',
-            padding: '16px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
+            padding: '14px',
             backgroundColor: 'var(--bg-canvas)',
           }}
         >
-          {chat.requests.length === 0 ? (
-            <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
-              Không có yêu cầu trò chuyện nào đang chờ duyệt.
-            </div>
-          ) : (
-            chat.requests.map((reqItem) => (
-              <div
-                key={reqItem.id}
-                style={{
-                  backgroundColor: 'var(--bg-surface)',
-                  padding: '12px',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--border-subtle)',
-                }}
-              >
-                <div
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}
-                >
-                  <div
-                    style={{
-                      width: '24px',
-                      height: '24px',
-                      borderRadius: '50%',
-                      backgroundColor: '#30364F',
-                      color: '#F0F0DB',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '11px',
-                      fontWeight: 800,
-                    }}
-                  >
-                    {reqItem.senderUsername.charAt(0).toUpperCase()}
-                  </div>
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                    u/{reqItem.senderUsername}
-                  </span>
-                </div>
-                <p
-                  style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '10px' }}
-                >
-                  {reqItem.initialMessage}
-                </p>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <button
-                    type="button"
-                    onClick={() => void handleRespondRequest(reqItem.id, 'ACCEPTED')}
-                    className="reddit-pill-btn primary"
-                    style={{ height: '26px', fontSize: '11px' }}
-                  >
-                    <CheckIcon size={12} /> Accept
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleRespondRequest(reqItem.id, 'IGNORED')}
-                    className="reddit-pill-btn"
-                    style={{ height: '26px', fontSize: '11px' }}
-                  >
-                    Ignore
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleRespondRequest(reqItem.id, 'BLOCKED')}
-                    className="reddit-pill-btn"
-                    style={{ height: '26px', fontSize: '11px', color: '#f43f5e' }}
-                  >
-                    Block
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
+          <ChatRequestsPanel
+            compact
+            incoming={chat.requests}
+            sent={chat.sentRequests}
+            onRespond={handleRespondRequest}
+            onCancelSent={handleCancelSentRequest}
+          />
         </div>
       ) : chat.threadParent ? (
         /* Sub-thread Drawer */
@@ -711,10 +595,38 @@ export function FloatingChatWidget() {
               Đang tải lịch sử trò chuyện...
             </div>
           ) : chat.messages.length === 0 ? (
-            <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
-              {chat.selectedChannelId
-                ? 'Chưa có tin nhắn nào trong kênh này.'
-                : 'Bạn chưa tham gia kênh chat nào.'}
+            <div
+              style={{
+                textAlign: 'center',
+                color: 'var(--text-muted)',
+                fontSize: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '10px',
+                paddingTop: '16px',
+              }}
+            >
+              <span>
+                {chat.selectedChannelId
+                  ? 'Chưa có tin nhắn nào trong kênh này.'
+                  : activeTab === 'groups'
+                    ? 'Bạn chưa tham gia nhóm chat nào.'
+                    : 'Chưa có cuộc trò chuyện trực tiếp nào.'}
+              </span>
+              {!chat.selectedChannelId && (
+                <button
+                  type="button"
+                  className="reddit-pill-btn primary"
+                  style={{ height: '30px', fontSize: '12px' }}
+                  onClick={() => {
+                    setComposerMode(activeTab === 'groups' ? 'group' : 'direct');
+                    setShowNewChat(true);
+                  }}
+                >
+                  {activeTab === 'groups' ? '+ Tạo nhóm chat' : '+ Tìm username để chat'}
+                </button>
+              )}
             </div>
           ) : (
             chat.messages.map((m) => {

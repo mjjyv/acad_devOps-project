@@ -2,10 +2,12 @@
 
 import type React from 'react';
 import { useState } from 'react';
+import { ChatRequestsPanel } from '@/components/chat/chat-requests-panel';
+import { NewChatComposer } from '@/components/chat/new-chat-composer';
 import { BottomNav } from '@/components/layout/bottom-nav';
 import { Header } from '@/components/layout/header';
 import { LeftSidebar } from '@/components/layout/left-sidebar';
-import { ChatBubbleIcon, CheckIcon } from '@/components/ui/icons';
+import { ChatBubbleIcon } from '@/components/ui/icons';
 import { useAuth } from '@/lib/auth/auth-context';
 import { useRealtimeChat } from '@/lib/hooks/use-realtime-chat';
 import { useUI } from '@/lib/store/ui-context';
@@ -17,10 +19,7 @@ export default function FullscreenChatPage() {
   const [tab, setTab] = useState<'channels' | 'requests'>('channels');
   const [messageDraft, setMessageDraft] = useState('');
   const [threadDraft, setThreadDraft] = useState('');
-  const [showNewGroup, setShowNewGroup] = useState(false);
-  const [groupName, setGroupName] = useState('');
-  const [groupUsernames, setGroupUsernames] = useState('');
-  const [creatingGroup, setCreatingGroup] = useState(false);
+  const [showNewChat, setShowNewChat] = useState(false);
 
   const chat = useRealtimeChat({
     isAuthenticated,
@@ -52,21 +51,12 @@ export default function FullscreenChatPage() {
     }
   };
 
-  const handleCreateGroup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!groupName.trim()) return;
+  const handleCancelSent = async (requestId: string) => {
     try {
-      setCreatingGroup(true);
-      await chat.createGroupByUsernames(groupName, groupUsernames);
-      setGroupName('');
-      setGroupUsernames('');
-      setShowNewGroup(false);
-      setTab('channels');
-      showToast('Đã tạo nhóm chat mới');
+      await chat.cancelSentRequest(requestId);
+      showToast('Đã thu hồi lời mời trò chuyện');
     } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : 'Không thể tạo nhóm chat');
-    } finally {
-      setCreatingGroup(false);
+      showToast(err instanceof Error ? err.message : 'Không thể thu hồi lời mời');
     }
   };
 
@@ -160,63 +150,28 @@ export default function FullscreenChatPage() {
                     type="button"
                     className="reddit-pill-btn"
                     style={{ height: '28px', fontSize: '11px' }}
-                    onClick={() => setShowNewGroup((p) => !p)}
+                    onClick={() => setShowNewChat((p) => !p)}
                   >
-                    + Nhóm
+                    + Chat mới
                   </button>
                 </div>
 
-                {showNewGroup && (
-                  <form
-                    onSubmit={handleCreateGroup}
-                    style={{
-                      padding: '10px',
-                      borderBottom: '1px solid var(--border-subtle)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '6px',
-                      backgroundColor: 'var(--bg-surface)',
+                {showNewChat && (
+                  <NewChatComposer
+                    onStartDirect={chat.startDirectChat}
+                    onCreateGroup={chat.createGroupChannel}
+                    onCancel={() => setShowNewChat(false)}
+                    onSuccess={(res) => {
+                      setShowNewChat(false);
+                      if (res.mode === 'direct' && res.isRequest) {
+                        setTab('requests');
+                        showToast(`Đã gửi yêu cầu trò chuyện tới u/${res.recipientUsername}`);
+                      } else {
+                        setTab('channels');
+                        if (res.mode === 'group') showToast('Đã tạo nhóm chat mới');
+                      }
                     }}
-                  >
-                    <input
-                      type="text"
-                      required
-                      placeholder="Tên nhóm..."
-                      value={groupName}
-                      onChange={(e) => setGroupName(e.target.value)}
-                      style={{
-                        padding: '6px 8px',
-                        borderRadius: 'var(--radius-sm)',
-                        border: '1px solid var(--border-subtle)',
-                        backgroundColor: 'var(--bg-input)',
-                        color: 'var(--text-primary)',
-                        fontSize: '12px',
-                      }}
-                    />
-                    <input
-                      type="text"
-                      required
-                      placeholder="Usernames: admin_pro, sre_expert"
-                      value={groupUsernames}
-                      onChange={(e) => setGroupUsernames(e.target.value)}
-                      style={{
-                        padding: '6px 8px',
-                        borderRadius: 'var(--radius-sm)',
-                        border: '1px solid var(--border-subtle)',
-                        backgroundColor: 'var(--bg-input)',
-                        color: 'var(--text-primary)',
-                        fontSize: '12px',
-                      }}
-                    />
-                    <button
-                      type="submit"
-                      disabled={creatingGroup}
-                      className="reddit-pill-btn primary"
-                      style={{ height: '28px', fontSize: '11px' }}
-                    >
-                      {creatingGroup ? 'Đang tạo...' : 'Tạo nhóm'}
-                    </button>
-                  </form>
+                  />
                 )}
 
                 <div style={{ display: 'flex', borderBottom: '1px solid var(--border-subtle)' }}>
@@ -258,7 +213,7 @@ export default function FullscreenChatPage() {
                       cursor: 'pointer',
                     }}
                   >
-                    Requests ({chat.requests.length})
+                    Requests ({chat.requests.length + chat.sentRequests.length})
                   </button>
                 </div>
 
@@ -280,9 +235,21 @@ export default function FullscreenChatPage() {
                           fontSize: '12px',
                           color: 'var(--text-muted)',
                           textAlign: 'center',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '10px',
+                          alignItems: 'center',
                         }}
                       >
-                        Chưa có kênh chat nào. Hãy vào hồ sơ thành viên khác để bắt đầu nhắn tin.
+                        <span>Chưa có kênh chat nào. Hãy tìm người theo username để bắt đầu!</span>
+                        <button
+                          type="button"
+                          className="reddit-pill-btn primary"
+                          style={{ height: '28px', fontSize: '11px' }}
+                          onClick={() => setShowNewChat(true)}
+                        >
+                          + Tìm người để chat
+                        </button>
                       </div>
                     ) : (
                       chat.channels.map((ch) => {
@@ -350,78 +317,18 @@ export default function FullscreenChatPage() {
                         );
                       })
                     )
-                  ) : chat.requests.length === 0 ? (
-                    <div
-                      style={{
-                        padding: '16px',
-                        fontSize: '12px',
-                        color: 'var(--text-muted)',
-                        textAlign: 'center',
-                      }}
-                    >
-                      Không có yêu cầu trò chuyện nào đang chờ duyệt.
-                    </div>
                   ) : (
-                    chat.requests.map((reqItem) => (
-                      <div
-                        key={reqItem.id}
-                        style={{
-                          padding: '10px',
-                          borderRadius: 'var(--radius-md)',
-                          border: '1px solid var(--border-subtle)',
-                          backgroundColor: 'var(--bg-surface)',
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontWeight: 700,
-                            fontSize: '12px',
-                            color: 'var(--text-primary)',
-                          }}
-                        >
-                          u/{reqItem.senderUsername}
-                        </div>
-                        <p
-                          style={{
-                            fontSize: '12px',
-                            color: 'var(--text-secondary)',
-                            margin: '4px 0 8px',
-                          }}
-                        >
-                          {reqItem.initialMessage}
-                        </p>
-                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                          <button
-                            type="button"
-                            className="reddit-pill-btn primary"
-                            style={{ height: '24px', fontSize: '11px' }}
-                            onClick={() =>
-                              void chat
-                                .respondRequest(reqItem.id, 'ACCEPTED')
-                                .then(() => setTab('channels'))
-                            }
-                          >
-                            <CheckIcon size={11} /> Accept
-                          </button>
-                          <button
-                            type="button"
-                            className="reddit-pill-btn"
-                            style={{ height: '24px', fontSize: '11px' }}
-                            onClick={() => void chat.respondRequest(reqItem.id, 'IGNORED')}
-                          >
-                            Ignore
-                          </button>
-                          <button
-                            type="button"
-                            className="reddit-pill-btn"
-                            style={{ height: '24px', fontSize: '11px', color: '#f43f5e' }}
-                            onClick={() => void chat.respondRequest(reqItem.id, 'BLOCKED')}
-                          >
-                            Block
-                          </button>
-                        </div>
-                      </div>
-                    ))
+                    <ChatRequestsPanel
+                      incoming={chat.requests}
+                      sent={chat.sentRequests}
+                      onRespond={async (requestId, status) => {
+                        const res = await chat.respondRequest(requestId, status);
+                        if (status === 'ACCEPTED' && res.channel) {
+                          setTab('channels');
+                        }
+                      }}
+                      onCancelSent={handleCancelSent}
+                    />
                   )}
                 </div>
               </div>

@@ -1,43 +1,118 @@
-# Phân Tích Chuyên Sâu: Phân Hệ Định Danh & An Ninh (Auth Subsystem)
+# Module M1: Định Danh, Bảo Mật Phiên & Tìm Kiếm Người Dùng (Auth & Identity v2.2)
 
 > **Mã tài liệu:** `CORE-AUTH-ENGINE`  
-> **Dự án:** Acad DevOps Fullstack Monorepo  
-> **Mã nguồn triển khai:** [`services/auth`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/services/auth), [`packages/auth-client`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/packages/auth-client)  
-> **Tiêu chuẩn an ninh:** Zero-Trust Identity, OWASP ASVS Level 2+, RFC 6749
+> **Khung chuẩn:** Giai đoạn 4 & 5 trong [`SYSTEM ANALYSIS & DESIGN LIFECYCLE FRAMEWORK.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/SYSTEM%20ANALYSIS%20%26%20DESIGN%20LIFECYCLE%20FRAMEWORK.md)  
+> **Mã nguồn triển khai:** [`services/auth`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/services/auth), [`packages/auth-client`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/packages/auth-client), [`apps/api/src/routes/auth-router.ts`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/apps/api/src/routes/auth-router.ts)
 
 ---
 
-## 1. TIÊU CHUẨN MẬT MÃ (CRYPTOGRAPHY STANDARDS)
+## 1. PHẠM VI, ACTORS & QUY TẮC NGHIỆP VỤ (BUSINESS RULES)
 
-### 1.1. Băm Mật Khẩu (Password Hashing với Argon2id)
-- Thuật toán đạt giải Password Hashing Competition (PHC) với cấu hình kháng tấn công phần cứng GPU/ASIC:
-  - `memoryCost`: 65,536 KB (yêu cầu 64MB RAM vật lý trên mỗi phép tính băm).
-  - `timeCost`: 3 iterations.
-  - `parallelism`: 4 threads.
-- Cơ chế tự động tương thích và chuyển đổi ngược với `scrypt` hoặc `bcrypt` để đảm bảo hệ thống không bị gián đoạn khi nâng cấp.
-- Chống tấn công dò thời gian (Timing Attack) thông qua hàm `crypto.timingSafeEqual` khi so khớp chuỗi băm.
-
-### 1.2. Chiến Lược Ký Số Token (Dual Token Strategy)
-- **Access Token:** Ký số theo chuẩn **HMAC-SHA256 (HS256)** với khóa bí mật `JWT_SECRET` tối thiểu 256 bits entropy. Thời gian sống ngắn: **15 phút (900 giây)**.
-- **Refresh Token:** Chuỗi nhị phân ngẫu nhiên bảo mật cao **64 bytes** sinh từ bộ sinh số ngẫu nhiên mật mã (CSPRNG), mã hóa dạng URL-safe Base64 (86 ký tự). Thời gian sống dài: **7 ngày (604,800 giây)**.
+- **Actors:** `ACT-01 Guest` (Đăng ký/Đăng nhập, xem hồ sơ công khai `/u/[username]`), `ACT-02 Member` (Refresh Token, `/settings/sessions`, tìm kiếm username), `ACT-05 Admin` (Thu hồi phiên cưỡng chế).
+- **Mật mã học:** Node.js `crypto.scrypt` (`N=16384,r=8,p=1`) lưu dạng `$scrypt$N=16384,r=8,p=1${salt}${hash}` kết hợp `crypto.timingSafeEqual`.
+- **Dual-Token Rotation:** Access Token JWT HS256 (15 phút) + Refresh Token CSPRNG (7 ngày, chỉ lưu SHA-256 hash trên Redis & PostgreSQL `user_sessions`).
+- **30s Grace Period & Token Reuse Attack:** Giữ `previous_token_hash` trong 30 giây cho đa tab song song; quá 30s mà token cũ vẫn bị gửi lại $\rightarrow$ thu hồi toàn bộ phiên của `user_id` trên Redis (`session:{userId}:*`) và DB (`is_revoked = TRUE`).
+- **Bảo vệ PII:** Mọi endpoint công khai (`/auth/users/:username`, `/auth/users/search`) **tuyệt đối loại bỏ** `email` và `passwordHash`.
 
 ---
 
-## 2. GIAO THỨC XOAY VÒNG TOKEN (TOKEN ROTATION & 30S GRACE PERIOD)
+## 2. BIỂU ĐỒ HOẠT ĐỘNG (ACTIVITY DIAGRAM — ĐĂNG NHẬP & TÌM KIẾM USER)
 
-- **Nguyên lý RFC 6749:** Mỗi khi Access Token hết hạn, client gửi Refresh Token lên endpoint `/api/v1/auth/refresh`. Hệ thống lập tức thu hồi token cũ và cấp phát một cặp Access/Refresh Token hoàn toàn mới.
-- **Cửa Sổ An Toàn 30 Giây (30s Grace Period):**
-  - Khi mở nhiều tab trình duyệt, các tab sẽ gửi đồng thời cùng 1 refresh token cũ trong khoảng vài mili-giây.
-  - Hệ thống lưu trữ `previous_token_hash` trong đúng 30 giây. Mọi yêu cầu hợp lệ đến trong cửa sổ này đều được cấp lại Access Token mới mà không phá hủy phiên làm việc.
-- **Phát Hiện Xâm Nhập (Token Reuse Attack Detection):**
-  - Nếu token cũ bị dùng lại sau 30 giây, hệ thống nhận diện đây là hành vi đánh cắp phiên (Session Hijacking) hoặc Replay Attack.
-  - Biện pháp phòng vệ tức thì: Thu hồi toàn bộ gia đình phiên làm việc (`is_revoked = TRUE` trên PostgreSQL và xóa toàn bộ key `session:{userId}:*` trên Redis), buộc kẻ tấn công và nạn nhân phải đăng nhập lại từ đầu.
+```mermaid
+flowchart TD
+    Start(["Bắt đầu phiên truy cập"]) --> CheckStorage{"Có refreshToken trong localStorage?"}
+    CheckStorage -- Không --> GuestMode["Chế độ Guest (Chỉ đọc công khai)"]
+    GuestMode --> LoginSubmit["User nhập identifier + password"]
+    LoginSubmit --> ScryptVerify{"scrypt.verify và status == ACTIVE?"}
+    ScryptVerify -- Sai hoặc SUSPENDED --> RejectAuth["Trả HTTP 401 / 403 RFC 7807"]
+    ScryptVerify -- Hợp lệ --> IssuePair["Tạo user_sessions + Redis Hash + Cấp Access/Refresh Token"]
+    CheckStorage -- Có --> CallGetMe["AcadClient gọi GET /api/v1/auth/me"]
+    CallGetMe --> IsExpired{"Access Token hết hạn 401?"}
+    IsExpired -- Không --> AuthReady["Phiên hợp lệ (Giữ đăng nhập sau reload)"]
+    IsExpired -- Có --> RefreshMutex["Mutex Lock gọi POST /api/v1/auth/refresh"]
+    RefreshMutex --> AuthReady
+```
 
 ---
 
-## 3. CLIENT INTERCEPTOR MUTEX LOCK (CHỐNG THUNDERING HERD)
+## 3. BIỂU ĐỒ TUẦN TỰ (SEQUENCE DIAGRAM — REFRESH 30S GRACE & REUSE ATTACK)
 
-Triển khai tại [`packages/auth-client/src/interceptor.ts`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/packages/auth-client/src/interceptor.ts):
-- Khi nhiều API đồng thời nhận lỗi HTTP 401, chỉ có request đầu tiên được cấp quyền gọi API refresh token (`MUTEX_ACQUIRED`).
-- Các request đến sau sẽ được chuyển vào hàng đợi `subscriberQueue` ở trạng thái chờ (Pending Promise).
-- Sau khi có Access Token mới, Mutex Lock mở ra và phân phát token mới cho toàn bộ các request đang chờ, loại bỏ hoàn toàn hiện tượng bão yêu cầu (Thundering Herd).
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Browser as Web Client (Multi-Tab)
+    participant Interceptor as AcadClient Mutex
+    participant Gateway as AuthRouter (/api/v1/auth)
+    participant Redis as RedisSessionStore
+    participant DB as PostgreSQL (user_sessions)
+
+    Browser->>Interceptor: Đồng thời gửi API khi Access Token hết hạn (401)
+    Interceptor->>Interceptor: Tab 1 giữ Mutex; Tab 2 chờ subscriberQueue
+    Interceptor->>Gateway: POST /api/v1/auth/refresh (refreshToken_1)
+    Gateway->>Redis: Lookup session_lookup:{SHA256(token_1)}
+
+    alt Khớp currentTokenHash
+        Gateway->>Redis: Xoay hash mới (token_2), giữ previousTokenHash=token_1 (grace=30s)
+        Gateway->>DB: UPDATE user_sessions SET refresh_token_hash, previous_token_hash
+        Gateway-->>Interceptor: Trả token_2 + accessToken mới
+        Interceptor->>Interceptor: Giải phóng Mutex & replay toàn bộ queue
+    else Khớp previousTokenHash trong <= 30s
+        Gateway-->>Interceptor: Cấp lại accessToken mới (giữ nguyên token_2)
+    else Token cũ bị gửi lại sau > 30s (Reuse Attack)
+        Gateway->>Redis: DEL toàn bộ session:{userId}:*
+        Gateway->>DB: UPDATE user_sessions SET is_revoked = TRUE WHERE user_id = $1
+        Gateway-->>Interceptor: HTTP 401 Token Reuse Attack Detected
+    end
+```
+
+---
+
+## 4. BIỂU ĐỒ TRẠNG THÁI (STATE MACHINE — VÒNG ĐỜI PHIÊN LÀM VIỆC)
+
+```mermaid
+stateDiagram-v2
+    [*] --> ACTIVE : Login / Register thành công
+    ACTIVE --> GRACE_WINDOW : Xoay vòng Refresh Token (previousTokenHash giữ 30s)
+    GRACE_WINDOW --> ACTIVE : Hết cửa sổ 30s (Chỉ currentTokenHash hợp lệ)
+    ACTIVE --> REVOKED : Logout hoặc Revoke từ /settings/sessions
+    GRACE_WINDOW --> FAMILY_REVOKED : Phát hiện gửi lại previousTokenHash quá 30s
+    ACTIVE --> EXPIRED : Quá hạn TTL 7 ngày
+    REVOKED --> [*]
+    FAMILY_REVOKED --> [*]
+    EXPIRED --> [*]
+```
+
+---
+
+## 5. BIỂU ĐỒ LỚP MIỀN & CẬP NHẬT DB SUY XUẤT
+
+```mermaid
+classDiagram
+    class AuthService {
+        +register(input, meta)
+        +login(input, meta)
+        +refresh(refreshToken)
+        +listSessions(userId, currentSessionId)
+        +revokeSession(userId, sessionId)
+        +getPublicProfileByUsername(username)
+        +searchActiveUsers(query, excludeUserId, limit)
+    }
+    class PostgresUserRepository {
+        +findByIdentifier(id)
+        +createUser(data)
+        +saveSession(session)
+        +searchUsersByUsername(q, excludeId, limit)
+    }
+    class RedisSessionStore {
+        +saveSession(session)
+        +findSessionByTokenHash(hash)
+        +revokeAllForUser(userId)
+    }
+
+    AuthService --> PostgresUserRepository : ACID Persistence
+    AuthService --> RedisSessionStore : O(1) Session Lookup
+```
+
+### Ràng buộc & Cập nhật DB suy xuất cho Giai đoạn B (`000007`)
+1. **Bổ sung GIN Trigram Index trên `users.username` (`idx_users_username_trgm`):** Hỗ trợ luồng **Search for people by username** (`GET /api/v1/auth/users/search?q=...`) tìm kiếm gần đúng chỉ trong tập `status = 'ACTIVE'` với tốc độ $\mathcal{O}(\log N)$.
+2. **Đếm bài viết chính xác trên hồ sơ công khai:** `users.threads_count` phải đồng bộ qua trigger & `reconcile_platform_counters()`.

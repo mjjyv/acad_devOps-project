@@ -158,7 +158,7 @@ export function CommentTree({ threadId, initialComments = [] }: CommentTreeProps
         }}
       >
         <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
-          Bình Luận ({comments.length})
+          Bình Luận ({comments.filter((c) => !c.isDeleted).length})
         </h3>
 
         <div style={{ display: 'flex', gap: '6px' }}>

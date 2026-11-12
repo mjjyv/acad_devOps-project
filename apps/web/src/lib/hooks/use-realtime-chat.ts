@@ -21,6 +21,7 @@ export function useRealtimeChat(options: {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [requests, setRequests] = useState<ChatRequest[]>([]);
+  const [sentRequests, setSentRequests] = useState<ChatRequest[]>([]);
   const [threadParent, setThreadParent] = useState<ChatMessage | null>(null);
   const [threadReplies, setThreadReplies] = useState<ChatMessage[]>([]);
   const [typingByChannel, setTypingByChannel] = useState<
@@ -28,6 +29,7 @@ export function useRealtimeChat(options: {
   >({});
 
   const [sseConnected, setSseConnected] = useState(false);
+  const [sseReconnectNonce, setSseReconnectNonce] = useState(0);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [loadingThread, setLoadingThread] = useState(false);
   const [sending, setSending] = useState(false);
@@ -44,6 +46,7 @@ export function useRealtimeChat(options: {
     if (!isAuthenticated) {
       setChannels([]);
       setRequests([]);
+      setSentRequests([]);
       setMessages([]);
       setThreadParent(null);
       setThreadReplies([]);
@@ -54,10 +57,11 @@ export function useRealtimeChat(options: {
     try {
       const [loadedChannels, loadedRequests] = await Promise.all([
         ChatApi.listChannels(),
-        ChatApi.listRequests(),
+        ChatApi.listAllRequests(),
       ]);
       setChannels(loadedChannels);
-      setRequests(loadedRequests);
+      setRequests(loadedRequests.incoming);
+      setSentRequests(loadedRequests.sent);
 
       if (!selectedChannelIdRef.current && loadedChannels.length > 0) {
         setSelectedChannelId(loadedChannels[0]?.id ?? null);
@@ -74,6 +78,9 @@ export function useRealtimeChat(options: {
   // Load main channel messages when selectedChannelId changes
   useEffect(() => {
     if (!isAuthenticated || !enabled || !selectedChannelId) {
+      setMessages([]);
+      setThreadParent(null);
+      setThreadReplies([]);
       return;
     }
     let isMounted = true;
@@ -139,6 +146,8 @@ export function useRealtimeChat(options: {
 
   // Real SSE EventSource listener matching ChatService events
   useEffect(() => {
+    // Depend on sseReconnectNonce to re-open EventSource with a refreshed token
+    void sseReconnectNonce;
     if (!isAuthenticated) {
       setSseConnected(false);
       return;
@@ -146,6 +155,9 @@ export function useRealtimeChat(options: {
 
     const es = ChatApi.openEventStream();
     if (!es) return;
+
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
 
     es.addEventListener('connected', () => {
       setSseConnected(true);
@@ -181,6 +193,9 @@ export function useRealtimeChat(options: {
           } else {
             setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
           }
+          if (msg.senderId !== currentUserId) {
+            void ChatApi.markChannelRead(msg.channelId, msg.id);
+          }
         }
         void refreshMetadata();
       } catch {
@@ -201,7 +216,17 @@ export function useRealtimeChat(options: {
       try {
         const updatedReq = JSON.parse((event as MessageEvent).data) as ChatRequest;
         setRequests((prev) => prev.filter((r) => r.id !== updatedReq.id));
+        setSentRequests((prev) => prev.filter((r) => r.id !== updatedReq.id));
         void refreshMetadata();
+      } catch {
+        // Ignore malformed SSE JSON
+      }
+    });
+
+    es.addEventListener('chat_request:cancelled', (event) => {
+      try {
+        const payload = JSON.parse((event as MessageEvent).data) as { id: string };
+        setRequests((prev) => prev.filter((r) => r.id !== payload.id));
       } catch {
         // Ignore malformed SSE JSON
       }
@@ -240,13 +265,30 @@ export function useRealtimeChat(options: {
 
     es.onerror = () => {
       setSseConnected(false);
+      es.close();
+      if (!reconnectTimer && !cancelled) {
+        reconnectTimer = setTimeout(() => {
+          reconnectTimer = null;
+          if (cancelled) return;
+          // Trigger AcadClient token refresh via lightweight API call before opening new EventSource
+          void ChatApi.listChannels()
+            .catch(() => undefined)
+            .finally(() => {
+              if (!cancelled) {
+                setSseReconnectNonce((n) => n + 1);
+              }
+            });
+        }, 5000);
+      }
     };
 
     return () => {
+      cancelled = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
       setSseConnected(false);
       es.close();
     };
-  }, [isAuthenticated, currentUserId, refreshMetadata]);
+  }, [isAuthenticated, currentUserId, refreshMetadata, sseReconnectNonce]);
 
   const notifyTyping = useCallback((channelId: string) => {
     const now = Date.now();
@@ -334,6 +376,49 @@ export function useRealtimeChat(options: {
     [refreshMetadata],
   );
 
+  const startDirectChat = useCallback(
+    async (recipientId: string, initialMessage: string) => {
+      const res = await ChatApi.initiateDirectChat(recipientId, initialMessage.trim());
+      await refreshMetadata();
+      if (!res.isRequest) {
+        setSelectedChannelId(res.channel.id);
+      }
+      return res;
+    },
+    [refreshMetadata],
+  );
+
+  const cancelSentRequest = useCallback(
+    async (requestId: string) => {
+      await ChatApi.cancelRequest(requestId);
+      setSentRequests((prev) => prev.filter((r) => r.id !== requestId));
+      await refreshMetadata();
+    },
+    [refreshMetadata],
+  );
+
+  const selectChannel = useCallback((channelId: string | null) => {
+    setSelectedChannelId(channelId);
+    if (channelId) {
+      setChannels((prev) =>
+        prev.map((ch) =>
+          ch.id === channelId && ch.unreadCount > 0 ? { ...ch, unreadCount: 0 } : ch,
+        ),
+      );
+      void ChatApi.markChannelRead(channelId);
+    }
+  }, []);
+
+  const createGroupChannel = useCallback(
+    async (name: string, memberIds: string[]) => {
+      const channel = await ChatApi.createGroupChannel(name.trim(), memberIds);
+      await refreshMetadata();
+      setSelectedChannelId(channel.id);
+      return channel;
+    },
+    [refreshMetadata],
+  );
+
   const createGroupByUsernames = useCallback(
     async (name: string, rawUsernames: string) => {
       const cleanNames = rawUsernames
@@ -373,9 +458,10 @@ export function useRealtimeChat(options: {
   return {
     channels,
     selectedChannelId,
-    setSelectedChannelId,
+    setSelectedChannelId: selectChannel,
     messages,
     requests,
+    sentRequests,
     threadParent,
     threadReplies,
     openThread,
@@ -388,6 +474,9 @@ export function useRealtimeChat(options: {
     notifyTyping,
     sendMessage,
     respondRequest,
+    startDirectChat,
+    cancelSentRequest,
+    createGroupChannel,
     createGroupByUsernames,
     refreshMetadata,
   };

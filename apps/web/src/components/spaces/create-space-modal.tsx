@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import type React from 'react';
 import { useState } from 'react';
 import { CloseIcon } from '@/components/ui/icons';
-import { CommunityApi } from '@/lib/api/community';
+import { CommunityApi, SPACE_TOPICS } from '@/lib/api/community';
 import { useUI } from '@/lib/store/ui-context';
 
 interface CreateSpaceModalProps {
@@ -32,6 +32,7 @@ export function CreateSpaceModal({ isOpen, onClose, onCreated }: CreateSpaceModa
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [slugEdited, setSlugEdited] = useState(false);
+  const [topic, setTopic] = useState<string>(SPACE_TOPICS[0]);
   const [description, setDescription] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -65,6 +66,7 @@ export function CreateSpaceModal({ isOpen, onClose, onCreated }: CreateSpaceModa
       const created = await CommunityApi.createSpace({
         name: name.trim(),
         slug: normalizedSlug,
+        topic,
         description: description.trim() || undefined,
         isPrivate,
       });
@@ -73,6 +75,7 @@ export function CreateSpaceModal({ isOpen, onClose, onCreated }: CreateSpaceModa
       setName('');
       setSlug('');
       setSlugEdited(false);
+      setTopic(SPACE_TOPICS[0]);
       setDescription('');
       setIsPrivate(false);
       onClose();
@@ -225,6 +228,41 @@ export function CreateSpaceModal({ isOpen, onClose, onCreated }: CreateSpaceModa
                 fontFamily: 'monospace',
               }}
             />
+          </div>
+
+          <div>
+            <label
+              htmlFor="create-space-topic"
+              style={{
+                display: 'block',
+                fontSize: '12px',
+                fontWeight: 700,
+                color: 'var(--text-secondary)',
+                marginBottom: '6px',
+              }}
+            >
+              Chủ đề (Topic)
+            </label>
+            <select
+              id="create-space-topic"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-subtle)',
+                backgroundColor: 'var(--bg-input)',
+                color: 'var(--text-primary)',
+                fontSize: '14px',
+              }}
+            >
+              {SPACE_TOPICS.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# ĐỒNG BỘ BỘ ĐẾM BIỂU QUYẾT & VOTERS REDIS PHÂN HỆ 3
+# ĐỒNG BỘ BỘ ĐẾM BIỂU QUYẾT & VOTERS REDIS TỪ POSTGRESQL (100% DỮ LIỆU THẬT)
 # Keyspace chính thức khớp deploy/redis/execute_vote.lua:
 #   target:{targetId}:counters  |  target:{targetId}:voters
 # File: deploy/seeds/003_voting_redis_seed.sh
@@ -12,57 +12,51 @@ if [ -n "$REDIS_CLI" ]; then
 elif command -v redis-cli >/dev/null 2>&1; then
   REDIS_CMD="redis-cli"
 else
-  REDIS_CMD="podman exec -i acad-redis redis-cli"
+  REDIS_CMD="podman exec acad-redis redis-cli"
 fi
 
-echo "--- Đang đồng bộ Bộ đếm Biểu quyết Phân hệ 3 vào Redis (target:{id}:*) ---"
+if [ -n "$DATABASE_URL" ] && command -v psql >/dev/null 2>&1; then
+  PSQL_CMD="psql $DATABASE_URL"
+else
+  PSQL_CMD="podman exec acad-postgres psql -U postgres -d acad_dev"
+fi
 
-ADMIN_ID="a0000000-0000-0000-0000-000000000001"
-MOD_ID="a0000000-0000-0000-0000-000000000002"
-ARCH_ID="a0000000-0000-0000-0000-000000000003"
-CODER_ID="a0000000-0000-0000-0000-000000000004"
-SPAMMER_ID="a0000000-0000-0000-0000-000000000005"
+echo "--- Đang đồng bộ Bộ đếm Biểu quyết Redis từ PostgreSQL (0% Dữ liệu Giả Lập) ---"
 
-sync_target() {
-  local tid="$1"
-  local up="$2"
-  local down="$3"
-  local net="$4"
-  $REDIS_CMD DEL "target:${tid}:counters" "target:${tid}:voters" >/dev/null
-  $REDIS_CMD HSET "target:${tid}:counters" upvotes "$up" downvotes "$down" net_score "$net" >/dev/null
-  $REDIS_CMD EXPIRE "target:${tid}:counters" 2592000 >/dev/null
-}
+# Dọn tập dirty:votes và toàn bộ target:* key cũ trước khi nạp lại sạch
+$REDIS_CMD DEL "dirty:votes" >/dev/null </dev/null
+existing_keys="$($REDIS_CMD KEYS 'target:*' </dev/null 2>/dev/null || true)"
+if [ -n "$existing_keys" ]; then
+  while IFS= read -r key <&3; do
+    [ -n "$key" ] && $REDIS_CMD DEL "$key" >/dev/null </dev/null
+  done 3<<< "$existing_keys"
+fi
 
-sync_target "d0000000-0000-0000-0000-000000000001" 562 4 558
-$REDIS_CMD HSET "target:d0000000-0000-0000-0000-000000000001:voters" "$ADMIN_ID" 1 "$MOD_ID" 1 "$CODER_ID" 1 >/dev/null
-$REDIS_CMD EXPIRE "target:d0000000-0000-0000-0000-000000000001:voters" 2592000 >/dev/null
+# 1. Đồng bộ thread_counters -> target:{thread_id}:counters
+while IFS='|' read -r tid up down net <&3; do
+  [ -z "$tid" ] && continue
+  $REDIS_CMD HSET "target:${tid}:counters" upvotes "$up" downvotes "$down" net_score "$net" >/dev/null </dev/null
+  $REDIS_CMD EXPIRE "target:${tid}:counters" 2592000 >/dev/null </dev/null
+done 3< <($PSQL_CMD -tAc "SELECT thread_id || '|' || upvotes || '|' || downvotes || '|' || net_score FROM thread_counters;" </dev/null)
 
-sync_target "d0000000-0000-0000-0000-000000000002" 428 2 426
-$REDIS_CMD HSET "target:d0000000-0000-0000-0000-000000000002:voters" "$ARCH_ID" 1 "$ADMIN_ID" 1 "$SPAMMER_ID" -1 >/dev/null
-$REDIS_CMD EXPIRE "target:d0000000-0000-0000-0000-000000000002:voters" 2592000 >/dev/null
+# 2. Đồng bộ thread_votes -> target:{thread_id}:voters
+while IFS='|' read -r tid uid dir <&3; do
+  [ -z "$tid" ] && continue
+  $REDIS_CMD HSET "target:${tid}:voters" "$uid" "$dir" >/dev/null </dev/null
+  $REDIS_CMD EXPIRE "target:${tid}:voters" 2592000 >/dev/null </dev/null
+done 3< <($PSQL_CMD -tAc "SELECT thread_id || '|' || user_id || '|' || direction FROM thread_votes;" </dev/null)
 
-sync_target "d0000000-0000-0000-0000-000000000003" 315 25 290
-$REDIS_CMD HSET "target:d0000000-0000-0000-0000-000000000003:voters" "$ADMIN_ID" 1 "$ARCH_ID" 1 >/dev/null
-$REDIS_CMD EXPIRE "target:d0000000-0000-0000-0000-000000000003:voters" 2592000 >/dev/null
+# 3. Đồng bộ comments vote counters & comment_votes
+while IFS='|' read -r cid up down net <&3; do
+  [ -z "$cid" ] && continue
+  $REDIS_CMD HSET "target:${cid}:counters" upvotes "$up" downvotes "$down" net_score "$net" >/dev/null </dev/null
+  $REDIS_CMD EXPIRE "target:${cid}:counters" 2592000 >/dev/null </dev/null
+done 3< <($PSQL_CMD -tAc "SELECT id || '|' || upvotes_count || '|' || downvotes_count || '|' || (upvotes_count - downvotes_count) FROM comments WHERE upvotes_count > 0 OR downvotes_count > 0;" </dev/null)
 
-sync_target "d0000000-0000-0000-0000-000000000004" 240 0 240
-$REDIS_CMD HSET "target:d0000000-0000-0000-0000-000000000004:voters" "$ARCH_ID" 1 "$CODER_ID" 1 >/dev/null
-$REDIS_CMD EXPIRE "target:d0000000-0000-0000-0000-000000000004:voters" 2592000 >/dev/null
+while IFS='|' read -r cid uid dir <&3; do
+  [ -z "$cid" ] && continue
+  $REDIS_CMD HSET "target:${cid}:voters" "$uid" "$dir" >/dev/null </dev/null
+  $REDIS_CMD EXPIRE "target:${cid}:voters" 2592000 >/dev/null </dev/null
+done 3< <($PSQL_CMD -tAc "SELECT comment_id || '|' || user_id || '|' || direction FROM comment_votes;" </dev/null)
 
-sync_target "d0000000-0000-0000-0000-000000000005" 145 5 140
-sync_target "d0000000-0000-0000-0000-000000000006" 289 0 289
-$REDIS_CMD HSET "target:d0000000-0000-0000-0000-000000000006:voters" "$ADMIN_ID" 1 "$CODER_ID" 1 >/dev/null
-$REDIS_CMD EXPIRE "target:d0000000-0000-0000-0000-000000000006:voters" 2592000 >/dev/null
-
-sync_target "d0000000-0000-0000-0000-000000000007" 195 1 194
-$REDIS_CMD HSET "target:d0000000-0000-0000-0000-000000000007:voters" "$ADMIN_ID" 1 "$MOD_ID" 1 >/dev/null
-$REDIS_CMD EXPIRE "target:d0000000-0000-0000-0000-000000000007:voters" 2592000 >/dev/null
-
-sync_target "d0000000-0000-0000-0000-000000000008" 48 0 48
-
-# Comment 1 (e0...0001)
-sync_target "e0000000-0000-0000-0000-000000000001" 18 0 18
-$REDIS_CMD HSET "target:e0000000-0000-0000-0000-000000000001:voters" "$ADMIN_ID" 1 "$ARCH_ID" 1 >/dev/null
-$REDIS_CMD EXPIRE "target:e0000000-0000-0000-0000-000000000001:voters" 2592000 >/dev/null
-
-echo "✅ Đã đồng bộ thành công bộ đếm biểu quyết Redis Phân hệ 3 (target:{id}:*)."
+echo "✅ Đã đồng bộ 100% bộ đếm & phiếu bầu thật từ PostgreSQL sang Redis."

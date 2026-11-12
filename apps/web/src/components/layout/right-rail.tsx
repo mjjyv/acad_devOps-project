@@ -5,7 +5,7 @@ import { useUI } from '../../lib/store/ui-context';
 import { TrashIcon } from '../ui/icons';
 
 export function RightRail() {
-  const { recentPosts, clearRecentPosts, showToast } = useUI();
+  const { recentPosts, clearRecentPosts } = useUI();
 
   return (
     <aside
@@ -69,9 +69,9 @@ export function RightRail() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {recentPosts.map((post) => (
-              <div
+              <Link
                 key={post.id}
-                onClick={() => showToast(`Xem bài viết: ${post.title}`)}
+                href={`/threads/${post.id}`}
                 style={{
                   display: 'flex',
                   alignItems: 'flex-start',
@@ -79,6 +79,7 @@ export function RightRail() {
                   gap: '10px',
                   cursor: 'pointer',
                   padding: '4px 0',
+                  textDecoration: 'none',
                 }}
               >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
@@ -135,7 +136,7 @@ export function RightRail() {
                     />
                   </div>
                 )}
-              </div>
+              </Link>
             ))}
           </div>
         </div>

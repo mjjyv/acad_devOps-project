@@ -228,6 +228,15 @@ export class AuthService {
     return publicProfile;
   }
 
+  public async searchActiveUsers(
+    query: string,
+    excludeUserId?: string,
+    limit = 10,
+  ): Promise<PublicUserProfile[]> {
+    const rows = await this.userRepository.searchActiveUsers(query, excludeUserId, limit);
+    return rows.map(({ email: _email, passwordHash: _passwordHash, ...pub }) => pub);
+  }
+
   public async listSessions(userId: string, currentSessionId?: string): Promise<SessionInfo[]> {
     const rawSessions = await this.sessionStore.listUserSessions(userId);
     return rawSessions.map((s) => ({

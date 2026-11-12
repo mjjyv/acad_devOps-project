@@ -38,6 +38,7 @@ export class SpaceService {
       id: entity.id,
       slug: entity.slug,
       name: entity.name,
+      topic: entity.topic ?? 'DevOps & SRE',
       description: entity.description,
       iconUrl: entity.iconUrl,
       bannerUrl: entity.bannerUrl,
@@ -57,6 +58,7 @@ export class SpaceService {
     const space = await this.repo.createSpace({
       name: input.name,
       slug: input.slug,
+      topic: input.topic ?? 'DevOps & SRE',
       description: input.description || null,
       rules: input.rules || [],
       creatorId,
@@ -90,7 +92,7 @@ export class SpaceService {
   }
 
   public async listSpaces(
-    options?: { limit?: number; offset?: number },
+    options?: { limit?: number; offset?: number; topic?: string; q?: string },
     userId?: string,
   ): Promise<Space[]> {
     const entities = await this.repo.listSpaces(options);

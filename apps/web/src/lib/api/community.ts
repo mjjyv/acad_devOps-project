@@ -29,6 +29,14 @@ export interface FeedPageResult {
 export type FeedSortOption = 'hot' | 'new' | 'top' | 'best';
 export type FeedTimeOption = 'day' | 'week' | 'month' | 'year' | 'all';
 
+export const SPACE_TOPICS = [
+  'DevOps & SRE',
+  'Kubernetes Architecture',
+  'PostgreSQL 16 & Redis 7',
+  'Cloudflare Zero Trust',
+  'Debian Linux Homelab',
+] as const;
+
 export class ApiHttpError extends Error {
   constructor(
     public readonly status: number,
@@ -43,9 +51,19 @@ export class CommunityApi {
   /**
    * Lấy danh sách các Không gian thảo luận (Spaces)
    */
-  public static async getSpaces(limit = 20, offset = 0): Promise<Space[]> {
+  public static async getSpaces(
+    limit = 20,
+    offset = 0,
+    options?: { topic?: string | undefined; q?: string | undefined },
+  ): Promise<Space[]> {
     const client = getApiClient();
-    const res = await client.request(`/api/v1/spaces?limit=${limit}&offset=${offset}`, {
+    const params = new URLSearchParams();
+    params.set('limit', String(limit));
+    params.set('offset', String(offset));
+    if (options?.topic) params.set('topic', options.topic);
+    if (options?.q) params.set('q', options.q);
+
+    const res = await client.request(`/api/v1/spaces?${params.toString()}`, {
       method: 'GET',
     });
     if (!res.ok) {

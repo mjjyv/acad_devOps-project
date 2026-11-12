@@ -106,6 +106,8 @@ export interface IChatRepository {
     channelId?: string | null | undefined,
   ): Promise<ChatRequestEntity | null>;
   listPendingRequestsForReceiver(receiverId: string): Promise<ChatRequestEntity[]>;
+  listPendingRequestsForSender(senderId: string): Promise<ChatRequestEntity[]>;
+  deleteChatRequest(id: string): Promise<boolean>;
 
   // User details
   findUserById(userId: string): Promise<UserSummary | null>;
@@ -412,6 +414,16 @@ export class InMemoryChatRepository implements IChatRepository {
     return Array.from(this.chatRequests.values())
       .filter((r) => r.receiverId === receiverId && r.status === 'PENDING')
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  public async listPendingRequestsForSender(senderId: string): Promise<ChatRequestEntity[]> {
+    return Array.from(this.chatRequests.values())
+      .filter((r) => r.senderId === senderId && r.status === 'PENDING')
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  public async deleteChatRequest(id: string): Promise<boolean> {
+    return this.chatRequests.delete(id);
   }
 
   // --- User details ---
@@ -861,6 +873,31 @@ export class PostgresChatRepository implements IChatRepository {
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),
     }));
+  }
+
+  public async listPendingRequestsForSender(senderId: string): Promise<ChatRequestEntity[]> {
+    const query = `
+      SELECT id, sender_id, receiver_id, channel_id, initial_message, status, created_at, updated_at
+      FROM chat_requests
+      WHERE sender_id = $1 AND status = 'PENDING'
+      ORDER BY created_at DESC
+    `;
+    const res = await this.pool.query(query, [senderId]);
+    return res.rows.map((row) => ({
+      id: row.id,
+      senderId: row.sender_id,
+      receiverId: row.receiver_id,
+      channelId: row.channel_id,
+      initialMessage: row.initial_message,
+      status: row.status,
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at),
+    }));
+  }
+
+  public async deleteChatRequest(id: string): Promise<boolean> {
+    const res = await this.pool.query('DELETE FROM chat_requests WHERE id = $1', [id]);
+    return (res.rowCount ?? 0) > 0;
   }
 
   public async findUserById(userId: string): Promise<UserSummary | null> {

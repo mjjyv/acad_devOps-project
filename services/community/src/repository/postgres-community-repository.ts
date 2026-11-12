@@ -59,6 +59,7 @@ export class PostgresCommunityRepository implements ICommunityRepository {
       id: String(row.id),
       name: String(row.name),
       slug: String(row.slug),
+      topic: String(row.topic ?? 'DevOps & SRE'),
       description: (row.description as string | null) || null,
       iconUrl: (row.icon_url as string | null) || null,
       bannerUrl: (row.banner_url as string | null) || null,
@@ -154,6 +155,7 @@ export class PostgresCommunityRepository implements ICommunityRepository {
   public async createSpace(data: {
     name: string;
     slug: string;
+    topic?: string;
     description?: string | null;
     iconUrl?: string | null;
     bannerUrl?: string | null;
@@ -166,13 +168,14 @@ export class PostgresCommunityRepository implements ICommunityRepository {
       await client.query('BEGIN');
 
       const query = `
-        INSERT INTO spaces (name, slug, description, icon_url, banner_url, rules, creator_id, is_private, member_count)
-        VALUES ($1, LOWER($2), $3, $4, $5, $6, $7, $8, 0)
+        INSERT INTO spaces (name, slug, topic, description, icon_url, banner_url, rules, creator_id, is_private, member_count)
+        VALUES ($1, LOWER($2), $3, $4, $5, $6, $7, $8, $9, 0)
         RETURNING *;
       `;
       const res = await client.query(query, [
         data.name,
         data.slug,
+        data.topic || 'DevOps & SRE',
         data.description || null,
         data.iconUrl || null,
         data.bannerUrl || null,
@@ -229,13 +232,37 @@ export class PostgresCommunityRepository implements ICommunityRepository {
     }
   }
 
-  public async listSpaces(options?: { limit?: number; offset?: number }): Promise<SpaceEntity[]> {
+  public async listSpaces(options?: {
+    limit?: number;
+    offset?: number;
+    topic?: string;
+    q?: string;
+  }): Promise<SpaceEntity[]> {
     try {
       const limit = options?.limit || 20;
       const offset = options?.offset || 0;
+      const topicFilter = options?.topic?.trim() || null;
+      const qFilter = options?.q?.trim() ? `%${options.q.trim()}%` : null;
+
+      const params: unknown[] = [limit, offset];
+      const conditions: string[] = [];
+
+      if (topicFilter) {
+        params.push(topicFilter);
+        conditions.push(`topic = $${params.length}`);
+      }
+      if (qFilter) {
+        params.push(qFilter);
+        const p = `$${params.length}`;
+        conditions.push(
+          `(name ILIKE ${p} OR slug ILIKE ${p} OR COALESCE(description, '') ILIKE ${p})`,
+        );
+      }
+
+      const whereSql = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
       const res = await this.pool.query(
-        'SELECT * FROM spaces ORDER BY member_count DESC, created_at DESC LIMIT $1 OFFSET $2;',
-        [limit, offset],
+        `SELECT * FROM spaces ${whereSql} ORDER BY member_count DESC, created_at DESC LIMIT $1 OFFSET $2;`,
+        params,
       );
       return res.rows.map((r) => this.mapSpaceRow(r));
     } catch (err) {

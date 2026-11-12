@@ -1,41 +1,111 @@
-# Động Cơ Không Gian Thảo Luận & Nội Dung Đa Định Dạng (Spaces & CMS Engine)
+# Module M2: Không Gian Thảo Luận, Chủ Đề, Explore & CMS (Spaces & Content v2.2)
 
 > **Mã tài liệu:** `CORE-SPACES-CMS`  
-> **Dự án:** Acad DevOps Fullstack Monorepo  
-> **Mã nguồn:** [`services/community`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/services/community), [`apps/api/src/routes/community-router.ts`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/apps/api/src/routes/community-router.ts)
+> **Khung chuẩn:** Giai đoạn 4 & 5 trong [`SYSTEM ANALYSIS & DESIGN LIFECYCLE FRAMEWORK.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/SYSTEM%20ANALYSIS%20%26%20DESIGN%20LIFECYCLE%20FRAMEWORK.md)  
+> **Mã nguồn triển khai:** [`services/community`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/services/community), [`apps/api/src/routes/community-router.ts`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/apps/api/src/routes/community-router.ts)
 
 ---
 
-## 1. MÔ HÌNH KHÔNG GIAN THẢO LUẬN (SPACES / SUBREDDIT ANALOGUE)
+## 1. PHẠM VI, ACTORS & QUY TẮC NGHIỆP VỤ (BUSINESS RULES)
 
-Mỗi không gian (Space `/s/[slug]`) là một cộng đồng độc lập tương tự Subreddit (`r/...`):
-- **Quy tắc cộng đồng (Space Rules):** Danh sách các quy chuẩn được lưu dưới dạng JSONB trong CSDL (`rules`), hiển thị trên thanh công cụ bên phải để thành viên tuân thủ trước khi đăng bài.
-- **Vai trò trong không gian (Space Roles):**
-  - `MEMBER`: Thành viên thông thường, có quyền đăng bài, bình luận, vote.
-  - `MODERATOR`: Quản trị viên không gian, có quyền ghim bài (Pin/Highlight), khóa bình luận (Lock), xóa bài vi phạm.
-  - `ADMIN`: Người tạo không gian, có toàn quyền chỉnh sửa thông tin, banner, rules, và phân quyền cho moderators.
-- **Thống kê thời gian thực:** Tự động đếm chính xác số lượng thành viên (`memberCount`) và số lượng bài viết (`threadCount`).
+- **Actors:** `ACT-01 Guest` (xem Space công khai & bài viết), `ACT-02 Member` (Explore/lọc Topic, Join/Leave, tạo Space, đăng bài `TEXT`/`LINK`/`MEDIA` + Flair, upload ảnh Zero-Hop), `ACT-03/05 Mod/Admin` (Pin/Unpin, Lock/Unlock, quản trị Rules/Flairs).
+- **Space Riêng Tư (`is_private = TRUE`):** Mọi truy vấn bài viết hoặc bình luận trong Space riêng tư từ người không phải thành viên đều trả **HTTP 403 Forbidden**.
+- **Post Flairs:** Gắn màu chuẩn Slate Indigo (`#E1D9BC` trên `#30364F`), mỗi Space có tập `slug` flair duy nhất (`uq_space_flair_slug`).
+- **Zero-Hop Media Upload:** Client kiểm tra Magic Bytes/MIME -> xin Presigned PUT URL (`POST /api/v1/media/presigned-url`) -> upload trực tiếp S3/R2 không qua Node.js Gateway -> gắn URL đã qua [`SsrfGuard`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/apps/api/src/security/ssrf-guard.ts) vào bài viết.
 
 ---
 
-## 2. HỆ THỐNG NHÃN PHÂN LOẠI (POST FLAIRS)
+## 2. BIỂU ĐỒ HOẠT ĐỘNG (ACTIVITY DIAGRAM — EXPLORE, LỌC TOPIC & ĐĂNG BÀI)
 
-Để phục vụ môi trường kỹ thuật chuyên sâu, bài viết trong mỗi Space có thể được gắn kèm một nhãn phân loại (Post Flair):
-
-| Nhãn Flair | Màu Sắc Brutalist | Ý Nghĩa Chuyên Môn |
-| :--- | :---: | :--- |
-| **`[DevOps]`** | `#DFD0B8` trên `#393E46` | Quy trình phát triển, tích hợp CI/CD, Container, Automation |
-| **`[SecOps]`** | `#EF4444` trên `#393E46` | An ninh hệ thống, phát hiện lỗ hổng, Zero-Trust |
-| **`[SystemArch]`** | `#3B82F6` trên `#393E46` | Thiết kế kiến trúc chịu tải cao, Microservices, Database |
-| **`[Incident]`** | `#F97316` trên `#393E46` | Báo cáo phân tích sự cố thực tế (Post-Mortem Reports) |
-| **`[Question]`** | `#22C55E` trên `#393E46` | Thắc mắc kỹ thuật, gỡ lỗi, yêu cầu trợ giúp |
+```mermaid
+flowchart TD
+    Start(["User bấm Explore hoặc Topic ở Sidebar"]) --> OpenExplore["Mở trang /explore?topic=..."]
+    OpenExplore --> FetchSpaces["Gọi GET /api/v1/spaces?topic=...&q=..."]
+    FetchSpaces --> ShowList["Hiển thị Spaces thật kèm memberCount, threadCount, isJoined"]
+    ShowList --> ClickJoin{"User bấm Join Space?"}
+    ClickJoin -- Chưa đăng nhập --> PromptLogin["Mở AuthModal đăng nhập"]
+    ClickJoin -- Đã đăng nhập --> JoinAPI["POST /api/v1/spaces/:slug/join"]
+    JoinAPI --> TriggerCount["DB Trigger tăng spaces.member_count (+1)"]
+    TriggerCount --> SubmitPost["Vào /submit chọn Space đã tham gia & Flair"]
+    SubmitPost --> TypeCheck{"Loại bài viết?"}
+    TypeCheck -- MEDIA --> UploadPut["Xin Presigned URL & PUT trực tiếp S3/R2"]
+    TypeCheck -- LINK --> CheckSSRF["Kiểm duyệt URL qua SsrfGuard"]
+    TypeCheck -- TEXT --> CreateThread["POST /api/v1/threads (Tạo bài & init thread_counters)"]
+    UploadPut --> CreateThread
+    CheckSSRF --> CreateThread
+    CreateThread --> End(["Điều hướng sang /threads/:id"])
+```
 
 ---
 
-## 3. CƠ CHẾ TẢI NỘI DUNG ĐA PHƯƠNG TIỆN ZERO-HOP (ZERO-HOP MEDIA UPLOAD)
+## 3. BIỂU ĐỒ TUẦN TỰ (SEQUENCE DIAGRAM — TRUY CẬP SPACE RIÊNG TƯ & ĐĂNG BÀI)
 
-Nhằm bảo vệ băng thông và tài nguyên CPU của máy chủ Backend API:
-1. Client gửi yêu cầu lấy URL tải ảnh lên: `POST /api/v1/media/presigned-url { filename, mimeType, size }`.
-2. Backend kiểm tra quyền hạn và cấp phát một URL ký trước (Presigned PUT URL) kết nối trực tiếp tới kho lưu trữ đối tượng tương thích S3 (Cloudflare R2 / AWS S3) có thời hạn 5 phút.
-3. Trình duyệt người dùng thực hiện lệnh `PUT` tải ảnh trực tiếp lên Cloudflare R2 mà không đi qua máy chủ Node.js trung gian (Zero-hop).
-4. Sau khi tải thành công, Client đính kèm URL CDN công khai vào nội dung bài viết và gửi lệnh tạo bài viết.
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Web Client
+    participant Gateway as CommunityRouter
+    participant SpaceSvc as SpaceService / ThreadService
+    participant DB as PostgreSQL (spaces, threads)
+
+    User->>Gateway: GET /api/v1/spaces/:slug/threads
+    Gateway->>SpaceSvc: listThreadsBySpace(slug, viewerId)
+    SpaceSvc->>DB: SELECT space & check space_memberships(space_id, viewerId)
+
+    alt is_private = TRUE và viewerId không phải thành viên
+        SpaceSvc-->>Gateway: Throw SpacePrivateForbiddenError
+        Gateway-->>User: HTTP 403 Forbidden (Hiển thị màn hình yêu cầu Join/Private)
+    else Công khai hoặc là thành viên
+        DB-->>SpaceSvc: Danh sách Threads + Flair + Keyset nextCursor
+        SpaceSvc-->>Gateway: Items DTO
+        Gateway-->>User: HTTP 200 OK
+    end
+```
+
+---
+
+## 4. BIỂU ĐỒ TRẠNG THÁI (STATE MACHINE — VÒNG ĐỜI BÀI VIẾT THREAD)
+
+```mermaid
+stateDiagram-v2
+    [*] --> DRAFT_CLIENT : Đang soạn thảo tại /submit
+    DRAFT_CLIENT --> PUBLISHED : POST /api/v1/threads (is_pinned=false, is_locked=false)
+    PUBLISHED --> PINNED : Admin/Mod ghim bài (is_pinned=true)
+    PINNED --> PUBLISHED : Admin/Mod bỏ ghim
+    PUBLISHED --> LOCKED : Admin/Mod khóa bình luận (is_locked=true)
+    LOCKED --> PUBLISHED : Admin/Mod mở khóa
+    PUBLISHED --> DELETED : Xóa bài (ON DELETE CASCADE counters & comments)
+    LOCKED --> DELETED : Xóa bài
+    DELETED --> [*]
+```
+
+---
+
+## 5. BIỂU ĐỒ LỚP MIỀN & CẬP NHẬT DB SUY XUẤT
+
+```mermaid
+classDiagram
+    class SpaceService {
+        +listSpaces(limit, offset, viewerId, topic, q)
+        +createSpace(creatorId, input)
+        +joinSpace(userId, slug)
+        +leaveSpace(userId, slug)
+        +listFlairs(slug)
+    }
+    class ThreadService {
+        +createThread(authorId, input)
+        +getThreadById(id, viewerId)
+        +listSpaceThreads(slug, options)
+        +searchSpaceThreads(slug, q, limit)
+    }
+    class ZeroHopStorageService {
+        +generatePresignedUploadUrl(fileName, fileType)
+    }
+
+    SpaceService --> ThreadService : hosts
+    ThreadService --> ZeroHopStorageService : attaches media
+```
+
+### Ràng buộc & Cập nhật DB suy xuất cho Giai đoạn B (`000007`)
+1. **Bổ sung cột `spaces.topic` (`VARCHAR(64) NOT NULL DEFAULT 'DevOps & SRE'`) + Index `idx_spaces_topic`:** Bắt buộc để luồng `/explore` và 5 mục `Topics` trên `LeftSidebar` (`DevOps & SRE`, `Kubernetes Architecture`, `PostgreSQL 16 & Redis 7`, `Cloudflare Zero Trust`, `Debian Linux Homelab`) lọc đúng dữ liệu cộng đồng từ DB.
+2. **Đảm bảo `spaces.member_count` & `spaces.thread_count`:** Trigger khớp 100% số bản ghi `space_memberships` và `threads` qua `reconcile_platform_counters()`.

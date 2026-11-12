@@ -29,6 +29,10 @@ export const TypingInputSchema = z.object({
   isTyping: z.boolean().default(true),
 });
 
+export const MarkReadInputSchema = z.object({
+  messageId: z.string().uuid().optional(),
+});
+
 function getAuthUserId(req: Request): string {
   const userId = req.user?.sub;
   if (!userId) {
@@ -180,16 +184,50 @@ export function createChatRouter(
     },
   );
 
+  // POST /chat/channels/:id/read: Đánh dấu kênh đã đọc đến tin nhắn mới nhất
+  router.post(
+    '/channels/:id/read',
+    guard,
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const userId = getAuthUserId(req);
+        const channelId = req.params.id as string;
+        const body = MarkReadInputSchema.parse(req.body ?? {});
+
+        await services.chatService.markChannelAsRead(channelId, userId, body.messageId);
+        res.status(200).json({ status: 'ok' });
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
   // ============================================================================
   // 2. HÀNG ĐỢI YÊU CẦU TIN NHẮN TỪ NGƯỜI LẠ (STRANGER REQUESTS QUEUE)
   // ============================================================================
 
-  // GET /chat/requests: Danh sách yêu cầu tin nhắn đang chờ duyệt (PENDING)
+  // GET /chat/requests: Danh sách yêu cầu tin nhắn đang chờ duyệt (incoming | sent | all)
   router.get('/requests', guard, async (req: Request, res: Response, next: NextFunction) => {
     try {
       const userId = getAuthUserId(req);
-      const requests = await services.chatService.listPendingRequests(userId);
-      res.status(200).json({ requests });
+      const rawDirection =
+        typeof req.query.direction === 'string' ? req.query.direction : 'incoming';
+      const direction: 'incoming' | 'sent' | 'all' =
+        rawDirection === 'sent' || rawDirection === 'all' ? rawDirection : 'incoming';
+
+      const result = await services.chatService.listRequests(userId, direction);
+
+      if (direction === 'all') {
+        res.status(200).json({
+          requests: result.incoming,
+          incoming: result.incoming,
+          sent: result.sent,
+        });
+      } else if (direction === 'sent') {
+        res.status(200).json({ requests: result.sent });
+      } else {
+        res.status(200).json({ requests: result.incoming });
+      }
     } catch (err) {
       next(err);
     }
@@ -205,6 +243,18 @@ export function createChatRouter(
       const result = await services.chatService.respondChatRequest(requestId, userId, body.status);
 
       res.status(200).json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // DELETE /chat/requests/:id: Thu hồi yêu cầu chat đã gửi
+  router.delete('/requests/:id', guard, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = getAuthUserId(req);
+      const requestId = req.params.id as string;
+      await services.chatService.cancelChatRequest(requestId, userId);
+      res.status(200).json({ status: 'ok' });
     } catch (err) {
       next(err);
     }

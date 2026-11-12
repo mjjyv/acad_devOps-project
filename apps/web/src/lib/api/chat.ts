@@ -1,4 +1,4 @@
-import type { ChatChannel, ChatMessage, ChatRequest } from '@acad/contracts';
+import type { ChatChannel, ChatMessage, ChatRequest, PublicUserProfile } from '@acad/contracts';
 import { getApiClient, STORAGE_KEY_ACCESS_TOKEN } from '@/lib/api/client';
 
 export class ChatApi {
@@ -58,14 +58,72 @@ export class ChatApi {
     return data.message || data;
   }
 
-  public static async listRequests(): Promise<ChatRequest[]> {
+  public static async searchUsers(query: string, limit = 10): Promise<PublicUserProfile[]> {
+    const clean = query.trim();
+    if (!clean) return [];
     const client = getApiClient();
-    const res = await client.request('/api/v1/chat/requests', { method: 'GET' });
+    const res = await client.request(
+      `/api/v1/auth/users/search?q=${encodeURIComponent(clean)}&limit=${limit}`,
+      { method: 'GET' },
+    );
+    if (!res.ok) {
+      return [];
+    }
+    const data = await res.json();
+    return Array.isArray(data.users) ? data.users : [];
+  }
+
+  public static async listRequests(
+    direction: 'incoming' | 'sent' = 'incoming',
+  ): Promise<ChatRequest[]> {
+    const client = getApiClient();
+    const res = await client.request(`/api/v1/chat/requests?direction=${direction}`, {
+      method: 'GET',
+    });
     if (!res.ok) {
       return [];
     }
     const data = await res.json();
     return Array.isArray(data.requests) ? data.requests : [];
+  }
+
+  public static async listAllRequests(): Promise<{
+    incoming: ChatRequest[];
+    sent: ChatRequest[];
+  }> {
+    const client = getApiClient();
+    const res = await client.request('/api/v1/chat/requests?direction=all', {
+      method: 'GET',
+    });
+    if (!res.ok) {
+      return { incoming: [], sent: [] };
+    }
+    const data = await res.json();
+    return {
+      incoming: Array.isArray(data.incoming) ? data.incoming : [],
+      sent: Array.isArray(data.sent) ? data.sent : [],
+    };
+  }
+
+  public static async cancelRequest(requestId: string): Promise<void> {
+    const client = getApiClient();
+    const res = await client.request(`/api/v1/chat/requests/${encodeURIComponent(requestId)}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Không thể thu hồi yêu cầu trò chuyện');
+    }
+  }
+
+  public static async markChannelRead(channelId: string, messageId?: string): Promise<void> {
+    const client = getApiClient();
+    await client
+      .request(`/api/v1/chat/channels/${encodeURIComponent(channelId)}/read`, {
+        method: 'POST',
+        body: JSON.stringify(messageId ? { messageId } : {}),
+      })
+      .catch(() => undefined);
   }
 
   public static async respondRequest(

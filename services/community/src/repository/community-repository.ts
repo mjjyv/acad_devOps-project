@@ -36,6 +36,7 @@ export interface SpaceEntity {
   id: string;
   name: string;
   slug: string;
+  topic: string;
   description: string | null;
   iconUrl: string | null;
   bannerUrl: string | null;
@@ -153,6 +154,7 @@ export interface ICommunityRepository {
   createSpace(data: {
     name: string;
     slug: string;
+    topic?: string;
     description?: string | null;
     iconUrl?: string | null;
     bannerUrl?: string | null;
@@ -162,7 +164,12 @@ export interface ICommunityRepository {
   }): Promise<SpaceEntity>;
   findSpaceBySlug(slug: string): Promise<SpaceEntity | null>;
   findSpaceById(id: string): Promise<SpaceEntity | null>;
-  listSpaces(options?: { limit?: number; offset?: number }): Promise<SpaceEntity[]>;
+  listSpaces(options?: {
+    limit?: number;
+    offset?: number;
+    topic?: string;
+    q?: string;
+  }): Promise<SpaceEntity[]>;
   joinSpace(
     spaceId: string,
     userId: string,
@@ -266,6 +273,7 @@ export class InMemoryCommunityRepository implements ICommunityRepository {
   public async createSpace(data: {
     name: string;
     slug: string;
+    topic?: string;
     description?: string | null;
     iconUrl?: string | null;
     bannerUrl?: string | null;
@@ -286,6 +294,7 @@ export class InMemoryCommunityRepository implements ICommunityRepository {
       id,
       name: data.name,
       slug: slugLower,
+      topic: data.topic ?? 'DevOps & SRE',
       description: data.description ?? null,
       iconUrl: data.iconUrl ?? null,
       bannerUrl: data.bannerUrl ?? null,
@@ -323,10 +332,26 @@ export class InMemoryCommunityRepository implements ICommunityRepository {
     return this.spaces.get(id) || null;
   }
 
-  public async listSpaces(options?: { limit?: number; offset?: number }): Promise<SpaceEntity[]> {
+  public async listSpaces(options?: {
+    limit?: number;
+    offset?: number;
+    topic?: string;
+    q?: string;
+  }): Promise<SpaceEntity[]> {
     const limit = options?.limit ?? 20;
     const offset = options?.offset ?? 0;
+    const topicFilter = options?.topic?.trim();
+    const queryFilter = options?.q?.trim().toLowerCase();
+
     return Array.from(this.spaces.values())
+      .filter((s) => {
+        if (topicFilter && s.topic !== topicFilter) return false;
+        if (queryFilter) {
+          const hay = `${s.name} ${s.slug} ${s.description ?? ''}`.toLowerCase();
+          if (!hay.includes(queryFilter)) return false;
+        }
+        return true;
+      })
       .sort((a, b) => b.memberCount - a.memberCount)
       .slice(offset, offset + limit);
   }

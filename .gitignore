@@ -9,6 +9,8 @@ build/
 .env.local
 .DS_Store
 coverage/
+test-results/
+playwright-report/
 *.tsbuildinfo
 .data/
 archive/**/node_modules/

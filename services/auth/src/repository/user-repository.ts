@@ -31,6 +31,7 @@ export interface IUserRepository {
   findByUsername(username: string): Promise<UserEntity | null>;
   findByEmail(email: string): Promise<UserEntity | null>;
   findByUsernameOrEmail(identifier: string): Promise<UserEntity | null>;
+  searchActiveUsers(query: string, excludeUserId?: string, limit?: number): Promise<UserEntity[]>;
   updateStatus(id: string, status: UserStatus): Promise<void>;
   updateRole(id: string, role: UserRole): Promise<void>;
   checkHealth(): Promise<boolean>;
@@ -121,6 +122,30 @@ export class InMemoryUserRepository implements IUserRepository {
       user.role = role;
       user.updatedAt = new Date().toISOString();
     }
+  }
+
+  public async searchActiveUsers(
+    query: string,
+    excludeUserId?: string,
+    limit = 10,
+  ): Promise<UserEntity[]> {
+    const q = query.trim().toLowerCase();
+    const matched = Array.from(this.users.values())
+      .filter((u) => {
+        if (u.status !== 'ACTIVE') return false;
+        if (excludeUserId && u.id === excludeUserId) return false;
+        if (!q) return true;
+        return u.username.toLowerCase().includes(q);
+      })
+      .sort((a, b) => {
+        if (q) {
+          const aStarts = a.username.toLowerCase().startsWith(q) ? 0 : 1;
+          const bStarts = b.username.toLowerCase().startsWith(q) ? 0 : 1;
+          if (aStarts !== bStarts) return aStarts - bStarts;
+        }
+        return b.karmaScore - a.karmaScore || a.username.localeCompare(b.username);
+      });
+    return matched.slice(0, Math.min(Math.max(limit, 1), 25));
   }
 
   public async checkHealth(): Promise<boolean> {

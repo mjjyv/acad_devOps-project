@@ -322,7 +322,7 @@ export default function ThreadDetailPage() {
                       }}
                     >
                       <span>💬</span>
-                      <span>{comments.length} bình luận</span>
+                      <span>{comments.filter((c) => !c.isDeleted).length} bình luận</span>
                     </div>
 
                     <button

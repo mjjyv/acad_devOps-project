@@ -43,6 +43,8 @@ export function mapThreadFlair(entity: ThreadEntity): SpaceFlair | null {
 export interface ThreadMapOverrides {
   userVote?: number | undefined;
   isSaved?: boolean | undefined;
+  upvotes?: number | undefined;
+  downvotes?: number | undefined;
   spaceName?: string | undefined;
   spaceSlug?: string | undefined;
 }
@@ -51,8 +53,8 @@ export function mapEntityToThreadSummary(
   entity: ThreadEntity,
   overrides: ThreadMapOverrides = {},
 ): ThreadSummary {
-  const upvotes = entity.upvotesCount;
-  const downvotes = entity.downvotesCount;
+  const upvotes = overrides.upvotes ?? entity.upvotesCount;
+  const downvotes = overrides.downvotes ?? entity.downvotesCount;
 
   return {
     id: entity.id,
@@ -97,9 +99,27 @@ export async function resolveViewerThreadState(
   threadId: string,
   viewerId?: string,
   options?: { preSaved?: boolean | undefined },
-): Promise<{ userVote: number; isSaved: boolean }> {
+): Promise<{
+  userVote: number;
+  isSaved: boolean;
+  upvotes?: number | undefined;
+  downvotes?: number | undefined;
+}> {
+  let upvotes: number | undefined;
+  let downvotes: number | undefined;
+
+  if (voteEngine && (await voteEngine.hasCounters(threadId))) {
+    const liveCounters = await voteEngine.getCounters(threadId);
+    upvotes = liveCounters.upvotes;
+    downvotes = liveCounters.downvotes;
+  }
+
   if (!viewerId) {
-    return { userVote: 0, isSaved: options?.preSaved ?? false };
+    return {
+      userVote: 0,
+      isSaved: options?.preSaved ?? false,
+      ...(upvotes !== undefined ? { upvotes, downvotes } : {}),
+    };
   }
 
   let userVote = 0;
@@ -121,7 +141,11 @@ export async function resolveViewerThreadState(
       ? options.preSaved
       : await repo.isThreadSaved(viewerId, threadId);
 
-  return { userVote, isSaved };
+  return {
+    userVote,
+    isSaved,
+    ...(upvotes !== undefined ? { upvotes, downvotes } : {}),
+  };
 }
 
 export async function assertSpaceMembershipIfPrivate(

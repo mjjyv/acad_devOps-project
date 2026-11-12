@@ -1,46 +1,46 @@
-# Ngôn Ngữ Thiết Kế & Design Tokens Brutalist Dark Mode (UI Design Tokens)
+# Hệ Thống Design Tokens — Slate Indigo Matrix (UI Design Tokens v2.1)
 
 > **Mã tài liệu:** `STD-UI-TOKENS`  
-> **Dự án:** Acad DevOps Fullstack Monorepo  
-> **Gói thư viện:** [`packages/ui-tokens`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/packages/ui-tokens)  
-> **Tỷ lệ phối màu chủ đạo:** `#222831` (40%), `#393E46` (25%), `#948979` (15%), `#DFD0B8` (15%)
+> **Dự án:** Acad DevOps Fullstack Monorepo (**SYNAPSE Engine**)  
+> **Nguồn chân lý CSS:** [`apps/web/src/app/globals.css`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/apps/web/src/app/globals.css) & bảng `space_flairs` (`000002_create_community_schema.up.sql`)  
+> **Tỷ lệ phối màu chủ đạo:** `#30364F` (40%) | `#ACBAC4` (35%) | `#E1D9BC` (15%) | `#F0F0DB` (10%)
 
 ---
 
-## 1. BẢNG PHÂN BỔ 4 GAM MÀU CỐT LÕI (COLOR HIERARCHY)
+## 1. BẢNG PHÂN BỔ 4 GAM MÀU CỐT LÕI (SLATE INDIGO MATRIX)
 
-Hệ thống giao diện triệt tiêu hoàn toàn phong cách bo tròn và màu neon chói mắt, áp dụng phong cách **Minimalist Brutalism Dark Mode**:
-
-```
-[████████████████ #222831 (40% Deep Void Charcoal - Nền Canvas)]
-[██████████ #393E46 (25% Industrial Graphite - Bề mặt Thẻ & Container)]
-[██████ #948979 (15% Muted Earthy Taupe - Viền Dứt Khoát & Metadata)]
-[██████ #DFD0B8 (15% Warm Parchment - Text Tiêu Đề & Nút Hành Động Hero)]
+```text
+[████████████████ #30364F (40% Slate Indigo Matrix - Nền Canvas chính)]
+[██████████████   #ACBAC4 (35% Cool Pewter Slate - Viền mờ, metadata, secondary text)]
+[██████           #E1D9BC (15% Warm Sandstone Silk - Brand CTA, điểm nhấn Upvote, Flair text)]
+[████             #F0F0DB (10% Crisp Cream Ivory - Tiêu đề & văn bản độ tương phản cao)]
 ```
 
-| Mã Màu HEX | Tỷ Lệ | Tên Kỹ Thuật | Ứng Dụng Trong Giao Diện |
-| :---: | :---: | :--- | :--- |
-| **`#222831`** | **40%** | **Deep Void Charcoal** | Nền chính của toàn bộ body trang web, backdrop modal. |
-| **`#393E46`** | **25%** | **Industrial Graphite** | Thẻ bài viết (Thread Cards), thanh Navbar, Sidebar, khung Chat. |
-| **`#948979`** | **15%** | **Muted Earthy Taupe** | Viền dứt khoát `border: 1px solid #948979`, đường kẻ cây bình luận, thời gian. |
-| **`#DFD0B8`** | **15%** | **Warm Parchment** | Chữ tiêu đề `h1, h2, h3`, nút bấm CTA chính, bóng đổ phẳng tương phản cao. |
+| Biến CSS (`globals.css`) | Giá Trị Thực Tế | Vai Trò Giao Diện |
+| :--- | :---: | :--- |
+| `--bg-canvas` | `#30364f` | Nền tổng thể toàn trang web |
+| `--bg-surface` | `#262b40` | Thẻ bài viết (`PostCard`), Header, Sidebar cards, Chat dock |
+| `--bg-surface-hover` | `#353c58` | Trạng thái Hover của thẻ, nút sidebar |
+| `--bg-subtle` | `#202436` | Khối trích dẫn, hộp viết bình luận, nền code block |
+| `--bg-input` | `#23283c` | Thanh tìm kiếm, ô nhập liệu |
+| `--text-primary` | `#f0f0db` | Tiêu đề, nội dung bài viết và bình luận chính |
+| `--text-secondary` | `#acbac4` | Metadata, thông tin tác giả, mô tả phụ |
+| `--color-brand` / `--color-upvote` | `#e1d9bc` | Nút hành động chính (`primary`), điểm nhấn Upvote, biểu tượng thương hiệu |
+| `--border-subtle` / `--border-strong` | `rgba(172, 186, 196, 0.22 / 0.45)` | Viền thẻ và phân cách |
 
 ---
 
-## 2. QUY CHUẨN ĐỔ BÓNG PHẲNG DỨT KHOÁT (HARD FLAT SHADOWS)
+## 2. ĐỒNG BỘ VỚI CƠ SỞ DỮ LIỆU (`space_flairs`)
 
-Tuyệt đối không dùng blur shadow mờ nhạt (`box-shadow: 0 4px 6px rgba(...)`). Thay vào đó sử dụng bóng đổ phẳng góc 45°:
-- **Trạng thái tĩnh:** `box-shadow: 3px 3px 0px #948979;`
-- **Trạng thái Hover / Active:**
-  ```css
-  transform: translate(-1px, -1px);
-  box-shadow: 4px 4px 0px #DFD0B8;
-  ```
+Lược đồ PostgreSQL `000002_create_community_schema.up.sql` & `000006_harmonize_schema_triggers.up.sql` áp đặt giá trị mặc định đồng nhất với bảng màu này:
+- `space_flairs.color_hex`: `#E1D9BC`
+- `space_flairs.background_hex`: `#30364F`
 
 ---
 
-## 3. KIỂU CHỮ KỸ THUẬT & PHÍM TẮT (TYPOGRAPHY)
+## 3. KIỂU CHỮ & LAYOUT METRICS
 
-- **Font chữ đọc chính:** `Inter` hoặc hệ thống system sans-serif (`color: #DFD0B8`).
-- **Font chữ kỹ thuật / Số liệu:** `JetBrains Mono` cho nhãn badge, điểm số voting, karma, đường dẫn URL (`color: #DFD0B8` hoặc `#948979`).
-- **Bo góc cực tiểu:** Triệt tiêu hoàn toàn góc bo tròn (`border-radius: 0px` đến tối đa `2px`).
+- **Header height:** `--header-height: 56px`
+- **Sidebar width:** `--sidebar-width: 260px`
+- **Feed max width:** `--feed-max-width: 680px` (tự động giới hạn độ dài dòng đọc tối ưu)
+- **Kiểu chữ kỹ thuật:** Sans-serif hiện đại cho nội dung thảo luận + Monospace cho khối code, con trỏ số liệu và chỉ mục kỹ thuật.

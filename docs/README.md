@@ -1,81 +1,65 @@
-# Cổng Thông Tin Tài Liệu Kỹ Thuật Toàn Diện (Docs v2 Portal)
+# Cổng Thông Tin Tài Liệu Kỹ Thuật (SYNAPSE / Acad DevOps Docs v2.1)
 
-> **Dự án:** Acad DevOps Fullstack Monorepo  
-> **Kiến trúc:** High-throughput Discussion Engine (Mô hình Reddit Lai Bluesky)  
-> **Phiên bản tài liệu:** `v2.0.0` (Chuẩn hóa toàn diện, Backend-First Roadmap & Tích hợp Reddit Spec)  
-> **Môi trường mục tiêu:** Debian GNU/Linux 13 (trixie) x86_64, Node.js 22 LTS, Docker, Render Cloud & Supabase Managed DB  
-> **Trạng thái phát triển:** **Khởi động tái thiết sạch từ đầu (Clean-Slate Zero-Base Rebuild v2.0 - Đã xong Phase B0: 10%, chuẩn bị bước vào Phase B1)**. Toàn bộ mã nguồn và tài liệu cũ đã được sao lưu toàn vẹn tại [`archive/legacy_codebase/`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/archive/legacy_codebase).
-
----
-
-## 🌐 Trực Quan & Hệ Thống Đang Vận Hành Trực Tuyến
-
-| Thành phần | Nền tảng | Địa chỉ URL | Trạng thái kỹ thuật |
-| :--- | :---: | :--- | :---: |
-| **Web Client (Frontend)** | Render Cloud | [https://acad-web-client.onrender.com](https://acad-web-client.onrender.com) | Hoạt động bình thường (200 OK) |
-| **Core API Gateway** | Render Cloud | [https://acad-core-api.onrender.com](https://acad-core-api.onrender.com) | Hoạt động bình thường (200 OK) |
-| **Healthcheck Probe** | Render Cloud | [https://acad-core-api.onrender.com/healthz](https://acad-core-api.onrender.com/healthz) | Hoạt động (Uptime, Auth DB & Community DB) |
-| **Kho Lưu Trữ Git** | GitHub | [git@github.com:mjjyv/acad_devOps-project.git](https://github.com/mjjyv/acad_devOps-project) | Nhánh `main` (Auto Deploy Hook) |
+> **Dự án:** Acad DevOps Fullstack Monorepo (**SYNAPSE Engine**)  
+> **Phiên bản tài liệu:** `v2.1.0` — Chuẩn hóa đồng bộ với Lược đồ DB PostgreSQL `000001`–`000006`, Redis 7 Keyspace thực tế và Workspace Monorepo hiện tại  
+> **Khung chuẩn phân tích & thiết kế mục tiêu:** [`SYSTEM ANALYSIS & DESIGN LIFECYCLE FRAMEWORK.md`](./SYSTEM%20ANALYSIS%20%26%20DESIGN%20LIFECYCLE%20FRAMEWORK.md)  
+> **Hạ tầng vận hành thực tế:** Debian GNU/Linux 13 (x86_64), Node.js 22 LTS, `pnpm@10.15.0`, PostgreSQL 16 & Redis 7 (Podman Rootless), Systemd User Units (`acad-api.service`, `acad-web.service`), Cloudflare Tunnel
 
 ---
 
-## 🗺️ Bản Đồ Cấu Trúc Tài Liệu Chuẩn Hóa v2 (7 Phân Khu Chuyên Sâu)
+## 1. Kiến Trúc Tổng Quan & Thành Phần Workspace Thực Tế
+
+| Nhóm Thành Phần | Thư Mục Thực Tế | Vai Trò & Công Nghệ |
+| :--- | :--- | :--- |
+| **Frontend Web Client** | [`apps/web`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/apps/web) | Next.js `15.5.29` (App Router, Client Components + `/api/*` & `/auth/*` rewrites tới `127.0.0.1:10000`), React 19, Slate Indigo Palette (`#30364F / #ACBAC4 / #E1D9BC / #F0F0DB`) |
+| **Core API Gateway** | [`apps/api`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/apps/api) | Express REST + SSE Gateway (`:10000`), Security Shield headers, CORS, Sliding-Window Rate Limiter, `authGuard` & `adminGuard`, `VoteFlushWorker` |
+| **Auth Service** | [`services/auth`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/services/auth) | Định danh, Node `crypto.scrypt`, JWT HS256 (15m), Refresh Token Rotation + 30s Grace Period + Reuse Attack Detection, `RedisSessionStore` |
+| **Community Service** | [`services/community`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/services/community) | Spaces (`pg_trgm`), Flairs, Threads (`TEXT`/`LINK`/`MEDIA`), Nested Comments (`ltree` Base36), `RedisVoteEngine` + Lua Script, Ranking SQL/Engine |
+| **Realtime Chat Service** | [`services/chat`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/services/chat) | Kênh `DIRECT` & `GROUP`, Chat Threads (`parent_message_id`), Hàng đợi người lạ `chat_requests`, `SseManager` (`RFC 8895`), `PresenceManager` |
+| **Moderation Service** | [`services/moderation`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/services/moderation) | Mod Queue `reports` (Anti-duplicate pending index), Quản trị Role/Status/Space/Thread, `audit_logs` bất biến (DB trigger chặn UPDATE/DELETE) |
+| **Shared Libraries** | [`packages/contracts`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/packages/contracts), [`packages/auth-client`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/packages/auth-client) | OpenAPI YAML + Zod Schemas + DTO Types; `AcadClient` với Mutex Lock chống 401 Thundering Herd |
+| **Database & Migrations** | [`deploy/migrations`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/deploy/migrations), [`deploy/seeds`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/deploy/seeds), [`deploy/redis`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/deploy/redis) | 6 file SQL Migrations (`000001`–`000006`, 14 bảng, 5 Enum, 11 Triggers, 2 Hàm xếp hạng) & Redis Lua `execute_vote.lua` |
+| **Anti-Slop E2E Skill** | [`.agents/skills/real-user-e2e-verification`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/.agents/skills/real-user-e2e-verification/SKILL.md) | Quy trình bắt buộc kiểm thử bằng tài khoản trắng mới, đối soát UI ↔ API ↔ DB, nghiêm cấm dữ liệu giả lập & nghiệm thu HTTP 200 rỗng |
+
+---
+
+## 2. Cấu Trúc Thư Mục Tài Liệu
 
 ```text
 docs/
-├── README.md                                  # Cổng mục lục điều hướng Master v2
-├── guide.md                                   # Cẩm nang vận hành: Quy trình API-first, Self-healing & 8 DoD
-├── docs.md                                    # Bản đặc tả kiến trúc toàn diện Master (1671 dòng)
-├── reddit.md                                  # Bản đặc tả chức năng Reddit chuyên sâu
+├── README.md                                  # Cổng điều hướng tài liệu đã đồng bộ DB & code thực tế
+├── SYSTEM ANALYSIS & DESIGN LIFECYCLE FRAMEWORK.md  # Khung chuẩn 6 Giai đoạn (Mục tiêu tái cấu trúc toàn bộ mô tả & sơ đồ)
 │
-├── 00_overview/                               # TỔNG QUAN SẢN PHẨM & ĐỊNH VỊ
-│   ├── 01_product_vision_and_prd.md           # Tầm nhìn sản phẩm, PRD, OKRs, Chân dung User Personas, KPIs
-│   ├── 02_system_topology.md                  # Kiến trúc Monorepo, Ranh giới RSC/Client, Microservices
-│   └── 03_reddit_functional_specification.md  # Nhận diện chức năng Reddit (reddit.md) & Bản đồ tích hợp
+├── 00_overview/                               # TỔNG QUAN HỆ THỐNG
+│   ├── 01_product_vision_and_prd.md
+│   ├── 02_system_topology.md                  # Đã đồng bộ Monorepo & Homelab Stack thực tế
+│   └── 03_reddit_functional_specification.md
 │
-├── 01_architecture_and_data/                  # THIẾT KẾ KIẾN TRÚC & DỮ LIỆU
-│   ├── 01_database_schema_postgres.md         # DDL PostgreSQL 16 (ltree, HOT 70, GiST, pgcrypto, Flairs, Chat)
-│   ├── 02_redis_keyspace_and_caching.md       # Cấu trúc Keyspace Redis 7, Hash session, Lua set, Presence
-│   ├── 03_data_flows_dag.md                   # Sơ đồ Sequence/DAG 3 luồng: Auth, Lua Voting, Chat Request
-│   └── 04_frontend_state_architecture.md      # Quản lý State 3 tầng (Query, Zustand, nuqs) & Voting/Chat FSM
+├── 01_architecture_and_data/                  # KIẾN TRÚC DỮ LIỆU & LUỒNG XỬ LÝ
+│   ├── 01_database_schema_postgres.md         # Đã đồng bộ 100% DDL 000001–000006 (14 bảng, 11 triggers, 2 hàm ranking)
+│   ├── 02_redis_keyspace_and_caching.md       # Đã đồng bộ keyspace thực (session, target:{id}:*, presence, typing, ratelimit)
+│   ├── 03_data_flows_dag.md
+│   ├── 04_frontend_state_architecture.md
+│   └── 05_frontend_design_system_and_ux_guidelines.md
 │
-├── 02_core_engines/                           # PHÂN TÍCH CHUYÊN SÂU CÁC MODULE CỐT LÕI
-│   ├── 01_auth_identity_subsystem.md          # Argon2id, Token Rotation, 30s Grace Period, Token Reuse Attack
-│   ├── 02_spaces_and_content_engine.md        # Không gian (Spaces), Post Flairs, Zero-hop Media Presigned URL
-│   ├── 03_nested_comments_ltree.md            # Cây bình luận ltree Base36, Capped Depth 8, Thuật toán O(N)
-│   ├── 04_atomic_voting_and_reputation.md     # Redis Lua Script execute_vote.lua, Gravity Decay, HOT update
-│   ├── 05_feed_aggregation_and_discovery.md   # Thuật toán Feed (Hot/New/Top/Best), Home/Popular, Tìm kiếm q
-│   ├── 06_realtime_chat_engine.md             # Reddit Chat: 1-1 Direct, Group Chat, Chat Requests Queue
-│   └── 07_moderation_and_admin_hub.md         # Admin Guard, Quản trị Users (threadsCount), Spaces, Threads
+├── 02_core_engines/                           # ĐẶC TẢ CHI TIẾT 7 PHÂN HỆ
+│   ├── 01_auth_identity_subsystem.md          # Đã cập nhật Node crypto.scrypt + JWT HS256
+│   ├── 02_spaces_and_content_engine.md
+│   ├── 03_nested_comments_ltree.md
+│   ├── 04_atomic_voting_and_reputation.md
+│   ├── 05_feed_aggregation_and_discovery.md
+│   ├── 06_realtime_chat_engine.md
+│   └── 07_moderation_and_admin_hub.md         # Đã cập nhật 5-tab SPA Admin Console & apps/api guards
 │
-├── 03_standards_and_contracts/                # QUY CHUẨN KỸ THUẬT & KHẾ ƯỚC
-│   ├── 01_api_contracts_openapi.md            # Quy chuẩn RESTful OpenAPI 3.1, Zod schema, RFC 7807, Cursor
-│   ├── 02_code_quality_and_testing.md         # TypeScript 5.9 Strict, Biome configuration, Vitest Pyramid
-│   ├── 03_git_workflow_and_ci_gates.md        # Trunk-based git, Semantic commits, 4 cổng GitHub Actions CI
-│   └── 04_minimalist_brutalist_tokens.md      # Bảng 4 màu Brutalist (#222831, #393E46, #948979, #DFD0B8)
+├── 03_standards_and_contracts/                # CHUẨN API, MÃ NGUỒN, GIAO DIỆN & CI
+│   ├── 01_api_contracts_openapi.md
+│   ├── 02_code_quality_and_testing.md
+│   ├── 03_git_workflow_and_ci_gates.md
+│   └── 04_minimalist_brutalist_tokens.md      # Đã cập nhật đúng Design Tokens Slate Indigo Matrix (#30364F)
 │
-├── 04_deployment_and_devops/                  # VẬN HÀNH, HẠ TẦNG & TRIỂN KHAI
-│   ├── 01_debian13_developer_setup.md         # Cấu hình môi trường fnm, Node 22 LTS, pnpm trên Debian 13
-│   ├── 02_docker_containerization.md          # Dockerfile Multi-stage Alpine (< 100MB), docker-compose dev
-│   ├── 03_cloud_infrastructure_render.md      # Render Blueprint render.yaml, Keep-alive worker chống ngủ đông
-│   └── 04_supabase_database_migration.md      # Hướng dẫn kết nối Supabase, chạy migrate-supabase.sh
-│
-├── 05_guides_and_verification/                # CẨM NANG KIỂM THỬ DÀNH CHO KỸ SƯ
-│   ├── 01_backend_testing_curl_guide.md       # Kịch bản cURL kiểm thử toàn bộ API Backend (Auth, Spaces, Vote)
-│   ├── 02_admin_and_search_testing.md         # Kiểm thử giao diện Admin Console, Đổi Role, Khóa user, Ghim bài
-│   └── 03_test_logs_registry.md               # Tổng hợp chỉ mục các biên bản kiểm thử (log_001 -> log_006)
-│
-└── 06_roadmap_and_kpis/                       # LỘ TRÌNH CHIẾN LƯỢC & BẢNG KIỂM TIẾN ĐỘ
-    ├── 01_backend_first_roadmap.md            # Lộ trình chiến lược Backend-First (Phases B1->B5, F1->F4, D1->D2)
-    ├── 02_modules_matrix_checklist.md         # Ma trận 10 phân hệ x 6 tiêu chuẩn kỹ thuật (~82.0%)
-    └── 03_progress_checklist.md               # Bảng theo dõi tiến độ chi tiết toàn bộ các hạng mục SDLC
+├── 04_deployment_and_devops/                  # VẬN HÀNH & HẠ TẦNG HOMELAB / CLOUD
+├── 05_guides_and_verification/                # CẨM NANG KIỂM THỬ & LOGS
+└── 06_roadmap_and_kpis/                       # LỘ TRÌNH, MA TRẬN & TRẠNG THÁI THỰC TẾ
 ```
 
----
-
-## ⚡ Điểm Sáng Kỹ Thuật Nổi Bật
-
-1. **Chiến Lược Phát Triển Backend-First:** Ưu tiên hoàn thiện 100% CSDL, khế ước API OpenAPI 3.1 và logic an ninh (Argon2id, Token Rotation 30s Grace Period, Redis Lua Voting, Materialized Path `ltree`) trước khi tích hợp giao diện Frontend.
-2. **Tích Hợp Chức Năng Reddit Chuyên Sâu:** Ánh xạ toàn diện các nhóm chức năng từ [`docs/reddit.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/reddit.md) gồm: Subreddit $\rightarrow$ Spaces (`/s/[slug]`), Nhãn bài viết (Post Flairs), Bình luận phân cấp vô hạn, Bầu chọn Up/Downvote, Thuật toán Feed Wilson Score ("Best") và Phân hệ Reddit Chat có hàng đợi duyệt tin nhắn lạ (Chat Requests).
-3. **Ảo Hóa DOM Tuyến Tính $\mathcal{O}(N)$:** Gói thư viện `@acad/tree-virtualizer` chuyển đổi cây bình luận đệ quy sang mảng phẳng một chiều, hỗ trợ thu gọn/mở rộng nhánh tức thì mà không bị tràn bộ nhớ trình duyệt.
-4. **Hạ Tầng Điện Toán Đám Mây Hiện Đại:** Docker Multi-stage Node 24 Alpine siêu gọn nhẹ, CI/CD tự động 4 Cổng, Render Cloud Web Services và Supabase Managed PostgreSQL.
+> **Lưu ý về các tài liệu lịch sử/đề xuất thô:** Các tệp ở gốc `docs/` như `docs.md`, `SQL.md`, `update-backend-01.md`, `reddit.md`, `guide.md`, `render-logs.md` là tư liệu tham chiếu/nhật ký từ các đợt trước; các đặc tả chính thức phải tuân theo thư mục `00_` đến `06_` và khung `SYSTEM ANALYSIS & DESIGN LIFECYCLE FRAMEWORK.md`.

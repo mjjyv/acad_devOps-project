@@ -1,41 +1,105 @@
-# Trung Tâm Quản Trị & Kiểm Duyệt Nội Dung (Admin & Moderation Hub)
+# Module M7: Kiểm Duyệt, Chống Spam & Kiểm Toán Bất Biến (Moderation & Admin Hub v2.2)
 
 > **Mã tài liệu:** `CORE-ADMIN-MODERATION`  
-> **Dự án:** Acad DevOps Fullstack Monorepo  
-> **Mã nguồn:** [`apps/api/src/routes/admin-router.ts`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/apps/api/src/routes/admin-router.ts), [`apps/web/src/app/admin`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/apps/web/src/app/admin)
+> **Khung chuẩn:** Giai đoạn 4 & 5 trong [`SYSTEM ANALYSIS & DESIGN LIFECYCLE FRAMEWORK.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/SYSTEM%20ANALYSIS%20%26%20DESIGN%20LIFECYCLE%20FRAMEWORK.md)  
+> **Mã nguồn triển khai:** [`services/moderation`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/services/moderation), [`admin-router.ts`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/apps/api/src/routes/admin-router.ts), [`report-router.ts`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/apps/api/src/routes/report-router.ts), [`apps/web/src/app/admin/page.tsx`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/apps/web/src/app/admin/page.tsx)
 
 ---
 
-## 1. PHÂN QUYỀN VAI TRÒ QUẢN TRỊ (RBAC & ABAC GUARDS)
+## 1. PHẠM VI, ACTORS & QUY TẮC NGHIỆP VỤ (BUSINESS RULES)
 
-Trung tâm Quản trị được bảo vệ bởi bộ lọc an ninh nghiêm ngặt tại [`auth-guard.ts`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/services/auth/src/middleware/auth-guard.ts):
-- Chỉ người dùng có vai trò `role === 'ADMIN'` mới được phép truy cập vào cụm route `/api/v1/admin/*` và giao diện Web `/admin/*`.
-- Các yêu cầu từ người dùng chưa đăng nhập sẽ nhận mã lỗi `401 Unauthorized` và điều hướng về `/login?redirect=/admin`.
-- Người dùng có vai trò `USER` thông thường sẽ bị chặn với mã lỗi `403 Forbidden`.
+- **Actors:** `ACT-02 Member` (gửi báo cáo vi phạm `THREAD`/`COMMENT` qua `ReportModal`), `ACT-04 GLOBAL_MOD` & `ACT-05 ADMIN` (truy cập `/admin` & `/api/v1/admin/*` qua `adminGuard`).
+- **Chống spam Báo cáo:** Partial Unique Index `uq_pending_report_per_user_target` chặn người dùng gửi trùng báo cáo `PENDING` cho cùng một đối tượng (trả HTTP **409 Conflict**).
+- **Shadowban (`status = 'SHADOWBANNED'`):** Bài viết/bình luận của tài khoản bị shadowban vẫn hiển thị với chính họ nhưng ẩn khỏi feed người khác.
+- **Audit Trail Bất Biến (`audit_logs`):** Trigger `trg_audit_logs_immutability` (`BEFORE UPDATE OR DELETE`) chặn tuyệt đối mọi sửa đổi/xóa log kiểm toán ở tầng nhân CSDL.
 
 ---
 
-## 2. BỐ BỤC 4 PHÂN HỆ QUẢN TRỊ BRUTALIST DARK MODE
+## 2. BIỂU ĐỒ HOẠT ĐỘNG (ACTIVITY DIAGRAM — BÁO CÁO & XỬ LÝ MOD QUEUE)
 
-Giao diện Quản trị tại `apps/web/src/app/admin` được thiết kế theo phong cách Brutalist Dark Mode với Sub-Navbar 4 tabs điều hướng mượt mà:
-
+```mermaid
+flowchart TD
+    Start(["User bấm Report trên PostCard hoặc CommentItem"]) --> SubmitReport["POST /api/v1/reports { targetType, targetId, reason }"]
+    SubmitReport --> DupCheck{"Đã có report PENDING của user này cho target?"}
+    DupCheck -- Có --> Return409["Trả HTTP 409 Duplicate Pending Report"]
+    DupCheck -- Không --> InsertReport["INSERT INTO reports (status = PENDING)"]
+    InsertReport --> ModView["Admin/GlobalMod mở /admin -> Tab Báo cáo"]
+    ModView --> ModAction{"Quyết định xử lý?"}
+    ModAction -- Resolve --> ResolveFlow["Cập nhật status=RESOLVED, resolved_by, resolved_at, note"]
+    ModAction -- Dismiss --> DismissFlow["Cập nhật status=DISMISSED, resolved_by, resolved_at, note"]
+    ResolveFlow --> WriteAudit["INSERT INTO audit_logs (Append-only)"]
+    DismissFlow --> WriteAudit
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                      ADMIN.PANEL // SUB-NAVBAR                         │
-├───────────────────┬───────────────────┬────────────────────────────────┤
-│ [CONSOLE TỔNG QUAN]│ [QUẢN LÝ NGƯỜI DÙNG]│ [CỘNG ĐỒNG SPACES] / [BÀI VIẾT]│
-└───────────────────┴───────────────────┴────────────────────────────────┘
+
+---
+
+## 3. BIỂU ĐỒ TUẦN TỰ (SEQUENCE DIAGRAM — KHÓA USER / SHADOWBAN & AUDIT LOG)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Admin as Admin / GlobalMod
+    participant UI as /admin Console
+    participant Gateway as AdminRouter (authGuard + adminGuard)
+    participant ModSvc as ModerationService
+    participant Redis as RedisSessionStore
+    participant DB as PostgreSQL (users, reports, audit_logs)
+
+    Admin->>UI: Chuyển trạng thái user sang SUSPENDED hoặc SHADOWBANNED
+    UI->>Gateway: PATCH /api/v1/admin/users/:id/status { status }
+    Gateway->>Gateway: Kiểm tra JWT role IN ('ADMIN', 'GLOBAL_MOD')
+    Gateway->>ModSvc: updateUserStatus(actorId, targetUserId, status, meta)
+    ModSvc->>DB: UPDATE users SET status = $1
+    alt status == SUSPENDED
+        ModSvc->>Redis: Thu hồi toàn bộ phiên session:{targetUserId}:*
+        ModSvc->>DB: UPDATE user_sessions SET is_revoked = TRUE
+    end
+    ModSvc->>DB: INSERT INTO audit_logs (actor_id, action: USER_STATUS_CHANGED)
+    ModSvc-->>UI: HTTP 200 OK
 ```
 
-1. **Dashboard Tổng Quan (`/admin`):**
-   - Live Metrics: Tổng người dùng (Active / Suspended), Số lượng phiên làm việc đang hoạt động (Active Sessions), Tổng số Không gian (Spaces), Tổng số Bài viết (Threads) và Bình luận.
-   - Bảng thông số kỹ thuật hệ thống (Specs): Node 22 LTS, PostgreSQL 16, Ltree Base36, Gravity Decay (G=1.8).
-2. **Quản Trị Người Dùng (`/admin/users`):**
-   - Hiển thị danh sách người dùng kèm cột **Số Lượng Bài Viết (`threadsCount`)** và điểm danh tiếng Karma.
-   - Thao tác: Đổi vai trò (Role), Khóa / Mở khóa tài khoản (`ACTIVE` / `SUSPENDED`), Cưỡng chế thu hồi phiên làm việc (Revoke Sessions).
-3. **Quản Trị Không Gian Thảo Luận (`/admin/spaces`):**
-   - Danh sách Không gian kèm chính xác **Số lượng Thành viên (`memberCount`)** và **Số lượng Bài viết (`threadCount`)**.
-   - Thao tác: Xem trực tiếp trang Space hoặc Xóa bỏ không gian vi phạm kèm toàn bộ dữ liệu liên kết (`ON DELETE CASCADE`).
-4. **Quản Trị Bài Viết & Nội Dung Vi Phạm (`/admin/threads`):**
-   - Xem danh sách bài viết toàn hệ thống với bộ lọc theo Space và tìm kiếm theo tiêu đề.
-   - Thao tác: **Ghim / Bỏ ghim (`Pin/Unpin`)**, **Khóa / Mở khóa bình luận (`Lock/Unlock`)**, **Xóa bài viết vi phạm**.
+---
+
+## 4. BIỂU ĐỒ TRẠNG THÁI (STATE MACHINE — VÒNG ĐỜI REPORT & USER STATUS)
+
+```mermaid
+stateDiagram-v2
+    state "Vòng đời Report (reports.status)" as Rep {
+        [*] --> PENDING
+        PENDING --> RESOLVED : Mod Resolve (resolved_at != NULL)
+        PENDING --> DISMISSED : Mod Dismiss (resolved_at != NULL)
+    }
+    state "Vòng đời Tài khoản (users.status)" as Usr {
+        [*] --> ACTIVE
+        ACTIVE --> SHADOWBANNED : Cấm ngầm (ẩn khỏi feed công khai)
+        ACTIVE --> SUSPENDED : Khóa tài khoản + thu hồi toàn bộ phiên
+        SHADOWBANNED --> ACTIVE : Khôi phục
+        SUSPENDED --> ACTIVE : Mở khóa
+        ACTIVE --> DELETED : Xóa tài khoản
+    }
+```
+
+---
+
+## 5. BIỂU ĐỒ LỚP MIỀN & RÀNG BUỘC DB
+
+```mermaid
+classDiagram
+    class ModerationService {
+        +getAdminStats()
+        +createReport(reporterId, input)
+        +listReports(filters)
+        +resolveReport(actorId, reportId, input)
+        +updateUserRole(actorId, targetId, role)
+        +updateUserStatus(actorId, targetId, status)
+        +pinThread(actorId, threadId, pinned)
+        +lockThread(actorId, threadId, locked)
+        +listAuditLogs(filters)
+    }
+    class PostgresModerationRepository {
+        +insertAuditLog(entry)
+        +enforceImmutabilityTrigger()
+    }
+
+    ModerationService --> PostgresModerationRepository : persists reports & immutable audit
+```

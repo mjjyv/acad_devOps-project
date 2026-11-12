@@ -8,6 +8,7 @@ import {
 } from '@acad/auth-service';
 import {
   CannotChatWithSelfError,
+  CannotCreateSoloGroupError,
   ChatChannelNotFoundError,
   ChatRequestNotFoundError,
   DuplicateChatRequestError,
@@ -75,7 +76,11 @@ export function errorHandler() {
     }
 
     // 1.1. Bad Request Errors -> 400 Bad Request
-    if (err instanceof CannotChatWithSelfError || err instanceof InvalidReportActionError) {
+    if (
+      err instanceof CannotChatWithSelfError ||
+      err instanceof CannotCreateSoloGroupError ||
+      err instanceof InvalidReportActionError
+    ) {
       const problem: RFC7807Problem = {
         type: 'https://api.acad.vn/errors/bad-request',
         title: 'Bad Request',

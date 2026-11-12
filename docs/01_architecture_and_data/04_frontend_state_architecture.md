@@ -1,57 +1,50 @@
-# Kiến Trúc Giao Diện & Quản Lý Trạng Thái 3 Tầng (Frontend State Architecture)
+# Kiến Trúc Giao Diện & Quản Lý Trạng Thái 3 Tầng (Frontend State Architecture v2.1)
 
 > **Mã tài liệu:** `ARCH-FRONTEND-STATE`  
-> **Dự án:** Acad DevOps Fullstack Monorepo  
-> **Framework:** Next.js 15 (App Router), React 19, Tailwind CSS v4, `@acad/ui-tokens`
+> **Dự án:** Acad DevOps Fullstack Monorepo (**SYNAPSE Engine**)  
+> **Mã nguồn thực tế:** [`apps/web/src/lib/store/ui-context.tsx`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/apps/web/src/lib/store/ui-context.tsx), [`apps/web/src/lib/auth/auth-context.tsx`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/apps/web/src/lib/auth/auth-context.tsx), [`apps/web/src/lib/hooks/use-realtime-chat.ts`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/apps/web/src/lib/hooks/use-realtime-chat.ts)
 
 ---
 
-## 1. MÔ HÌNH PHÂN TẦNG TRẠNG THÁI 3 LỚP (THREE-TIER STATE MANAGEMENT)
+## 1. MÔ HÌNH PHÂN TẦNG TRẠNG THÁI THỰC TẾ (3-LAYER STATE)
 
-Nhằm tối ưu hóa hiệu năng, loại bỏ re-render lan truyền và đảm bảo tính nhất quán dữ liệu, giao diện người dùng phân ranh giới rõ ràng giữa 3 tầng trạng thái:
+| Tầng State | Cơ chế triển khai hiện tại | Dữ liệu & Trách nhiệm |
+| :--- | :--- | :--- |
+| **1. Server & Auth State** | `AcadClient` (`@acad/auth-client`) + `AuthContext` + `localStorage` (`acad_access_token`, `acad_refresh_token`) | Phiên người dùng hiện tại, Mutex Lock chống bão 401 khi xoay vòng Refresh Token, `requireAuth()` mở modal đăng nhập |
+| **2. Global UI State** | `UIProvider` (`UIContext`) + `localStorage` (`acad_recent_posts_v1`) | Đóng/mở `LeftSidebar`, `chatWidgetState` (`minimized` \| `docked` \| `closed`), `viewMode` (`card` \| `compact`), `recentPosts`, Toast |
+| **3. URL Query & Feature State** | `window.location.search` / Next.js Router (`?tab=&sort=&q=`) + Component/Hook State (`useRealtimeChat`, `CommentTree`) | Trạng thái bảng tin (`for_you` \| `following`, `hot` \| `new` \| `top` \| `best`), con trỏ phân trang `nextCursor`, cây bình luận thu gọn, SSE chat & typing |
 
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                      3 TẦNG TRẠNG THÁI GIAO DIỆN                      │
-├─────────────────────┬─────────────────────┬────────────────────────────┤
-│ 1. SERVER STATE     │ 2. CLIENT UI STATE  │ 3. URL QUERY PARAMS STATE  │
-├─────────────────────┼─────────────────────┼────────────────────────────┤
-│ • TanStack Query v5 │ • Zustand Store     │ • nuqs (Type-safe search)  │
-│ • Dữ liệu API Server│ • Mở/Đóng Sidebar   │ • Bộ lọc Feed (hot/new/top)│
-│ • Bảng tin, Bình luận│• Thu gọn nhánh Cây │ • Mốc thời gian (t=day)    │
-│ • Infinite Cursor   │ • Trạng thái Modal  │ • Con trỏ trang (cursor)   │
-│ • Tự động Garbage   │ • Pop-out Chat View │ • Bộ lọc Không gian (space)│
-│   Collection & Cache│ • Chủ đề giao diện  │ • Từ khóa tìm kiếm (q)     │
-└─────────────────────┴─────────────────────┴────────────────────────────┘
-```
+> **Lưu ý đồng bộ (Mục tiêu Giai đoạn C):** `HomePage` cần lắng nghe URL query reactively (qua `useSearchParams` bọc `<Suspense>`) để khi người dùng bấm `Home` / `Popular` trên `LeftSidebar` ngay khi đang ở `/`, trạng thái tab/sort cập nhật tức thì thay vì chỉ đọc 1 lần lúc mount.
 
 ---
 
-## 2. MÁY TRẠNG THÁI HỮU HẠN CỦA THAO TÁC BẦU CHỌN (VOTE ACTION FSM)
+## 2. MÁY TRẠNG THÁI BẦU CHỌN (VOTE ACTION FSM)
 
-Nút Upvote/Downvote áp dụng máy trạng thái hữu hạn với cập nhật lạc quan (Optimistic UI Mutation):
-
-```text
-BẢNG CHUYỂN TRẠNG THÁI [VoteAction FSM]:
----------------------------------------------------------------------------------------------------------------
-Trạng Thái Ban Đầu   | Sự Kiện Bấm Nút | Trạng Thái Kế Tiếp | Thay Đổi Điểm Số | Hiệu Ứng Giao Diện / Tác Vụ Phụ
----------------------------------------------------------------------------------------------------------------
-IDLE_UNVOTED         | CLICK_UP        | OPTIMISTIC_UP      | +1               | Up sáng cam; Gọi API(UP)
-IDLE_UNVOTED         | CLICK_DOWN      | OPTIMISTIC_DOWN    | -1               | Down sáng xanh; Gọi API(DOWN)
-UPVOTED              | CLICK_UP        | OPTIMISTIC_UNVOTE  | -1               | Up tắt; Gọi API(UNVOTE)
-UPVOTED              | CLICK_DOWN      | OPTIMISTIC_DOWN    | -2               | Up tắt, Down sáng; Gọi API(DOWN)
-DOWNVOTED            | CLICK_DOWN      | OPTIMISTIC_UNVOTE  | +1               | Down tắt; Gọi API(UNVOTE)
-DOWNVOTED            | CLICK_UP        | OPTIMISTIC_UP      | +2               | Down tắt, Up sáng; Gọi API(UP)
-OPTIMISTIC_*         | API_SUCCESS     | [TƯƠNG ỨNG]        | 0                | Chốt delta, ghi đè cache server
-OPTIMISTIC_*         | API_ERROR       | SYNC_ERROR_ROLLBACK| Hoàn tác điểm cũ | Bật Toast lỗi, khôi phục trạng thái
----------------------------------------------------------------------------------------------------------------
+```mermaid
+stateDiagram-v2
+    [*] --> IDLE_UNVOTED
+    IDLE_UNVOTED --> UPVOTED : CLICK_UP (+1)
+    IDLE_UNVOTED --> DOWNVOTED : CLICK_DOWN (-1)
+    UPVOTED --> IDLE_UNVOTED : CLICK_UP (Unvote -1)
+    UPVOTED --> DOWNVOTED : CLICK_DOWN (Switch -2)
+    DOWNVOTED --> IDLE_UNVOTED : CLICK_DOWN (Unvote +1)
+    DOWNVOTED --> UPVOTED : CLICK_UP (Switch +2)
 ```
+
+- Khi API trả lỗi (mạng/401/403), UI hoàn tác (`rollback`) đúng `userVote` và `netScore` trước đó kèm thông báo lỗi.
 
 ---
 
-## 3. MÁY TRẠNG THÁI ĐIỀU HƯỚNG REDDIT CHAT WIDGET
+## 3. MÁY TRẠNG THÁI WIDGET CHAT (`ChatWidgetState`)
 
-Giao diện chat tích hợp hỗ trợ 3 chế độ hiển thị linh hoạt:
-- **`MINIMIZED` (Thu nhỏ):** Chỉ hiển thị một thanh ngang ở góc dưới bên phải màn hình kèm số lượng tin nhắn chưa đọc (`unreadCount`).
-- **`DOCK_EXPANDED` (Neo mở rộng):** Khung chat kích thước $380\text{px} \times 520\text{px}$ nổi trên bề mặt trang, cho phép vừa đọc bài viết vừa nhắn tin.
-- **`POPOUT_WINDOW` (Cửa sổ độc lập):** Nhấp vào biểu tượng Pop-out `↗` để chuyển toàn bộ giao diện chat sang một tab trình duyệt riêng biệt (`/chat`).
+```mermaid
+stateDiagram-v2
+    [*] --> MINIMIZED
+    MINIMIZED --> DOCKED : Click "Synapse Chat" / Header icon
+    DOCKED --> MINIMIZED : Click "_" hoặc chuyển sang /chat
+    DOCKED --> CLOSED : Click "Close"
+    CLOSED --> DOCKED : Click Chat icon trên Header
+```
+
+- **Quy tắc chuyển Tab bắt buộc:** Khi chuyển giữa `Direct`, `Groups`, `Requests`, phải lọc/reset `selectedChannelId` khớp đúng loại kênh của tab đó để tránh hiển thị nhầm tin nhắn Group trong tab `Direct` khi user chưa có kênh 1-1 nào.
+- **SSE & Reconnect:** Kết nối `EventSource` tại `/api/v1/chat/events?token=...` luôn lấy token mới nhất khi mở lại kết nối sau khi Refresh Token xoay vòng.

@@ -48,6 +48,7 @@ export const SpaceSchema = z.object({
     .max(64)
     .regex(/^[a-z0-9_-]+$/, 'Slug chỉ gồm chữ thường, số, dấu gạch ngang và gạch dưới'),
   name: z.string().min(2).max(128),
+  topic: z.string().min(2).max(64).default('DevOps & SRE'),
   description: z.string().max(1000).nullable().optional(),
   rules: z.array(SpaceRuleItemSchema).default([]),
   bannerUrl: z.string().url().nullable().optional(),
@@ -71,6 +72,7 @@ export const CreateSpaceInputSchema = z.object({
     .max(64)
     .regex(/^[a-z0-9_-]+$/),
   name: z.string().min(2).max(128),
+  topic: z.string().min(2).max(64).default('DevOps & SRE').optional(),
   description: z.string().max(1000).optional(),
   rules: z.array(SpaceRuleItemSchema).optional(),
   isPrivate: z.boolean().default(false),
@@ -79,6 +81,7 @@ export type CreateSpaceInput = z.infer<typeof CreateSpaceInputSchema>;
 
 export const UpdateSpaceInputSchema = z.object({
   name: z.string().min(2).max(128).optional(),
+  topic: z.string().min(2).max(64).optional(),
   description: z.string().max(1000).optional(),
   rules: z.array(SpaceRuleItemSchema).optional(),
   bannerUrl: z.string().url().nullable().optional(),

@@ -2,12 +2,11 @@
 -- ACAD DEVOPS PLATFORM (SYNAPSE ENGINE) - SEED DỮ LIỆU PHÂN HỆ 1 (AUTH & SESSIONS)
 -- File: deploy/seeds/001_auth_seed.sql
 -- Mật khẩu mẫu toàn bộ tài khoản kiểm thử: Password123!
+-- Lưu ý: karma_score khởi tạo = 0 để 100% tính thật qua trigger từ thread_votes & comment_votes
 -- ==============================================================================
 
 BEGIN;
 
--- 1. SEED TÀI KHOẢN NGƯỜI DÙNG (Đầy đủ các vai trò & trạng thái RBAC/Shadowban)
--- Dọn xung đột email/username cũ nếu có UUID khác
 DELETE FROM users
 WHERE id NOT IN (
     'a0000000-0000-0000-0000-000000000001',
@@ -36,7 +35,7 @@ VALUES
     '$scrypt$N=16384,r=8,p=1$b255175bbd6ad58ead522b940ced70ac$e91917e2bb6e3deab4ea3583f6a9425d4d0a1e8dcde2132f8ef5b422186b5e61489309cbe105e52cf5a1015d98db308e016454c642e5309b32f63e18b5bea426',
     'ADMIN',
     'ACTIVE',
-    9999,
+    0,
     0,
     'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
     'Lead Systems Architect & Core Admin. Giám sát độ tin cậy và bảo mật cụm dịch vụ phân tán.',
@@ -50,7 +49,7 @@ VALUES
     '$scrypt$N=16384,r=8,p=1$b255175bbd6ad58ead522b940ced70ac$e91917e2bb6e3deab4ea3583f6a9425d4d0a1e8dcde2132f8ef5b422186b5e61489309cbe105e52cf5a1015d98db308e016454c642e5309b32f63e18b5bea426',
     'GLOBAL_MOD',
     'ACTIVE',
-    3420,
+    0,
     0,
     'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
     'Global Moderator & DevSecOps Lead. Điều phối Mod Queue và xử lý vi phạm nội dung hệ thống.',
@@ -64,7 +63,7 @@ VALUES
     '$scrypt$N=16384,r=8,p=1$b255175bbd6ad58ead522b940ced70ac$e91917e2bb6e3deab4ea3583f6a9425d4d0a1e8dcde2132f8ef5b422186b5e61489309cbe105e52cf5a1015d98db308e016454c642e5309b32f63e18b5bea426',
     'SPACE_MOD',
     'ACTIVE',
-    1850,
+    0,
     0,
     'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
     'Principal Infrastructure Architect. Chuyên sâu về Kubernetes internals, High Availability, eBPF & Zero Trust.',
@@ -78,7 +77,7 @@ VALUES
     '$scrypt$N=16384,r=8,p=1$b255175bbd6ad58ead522b940ced70ac$e91917e2bb6e3deab4ea3583f6a9425d4d0a1e8dcde2132f8ef5b422186b5e61489309cbe105e52cf5a1015d98db308e016454c642e5309b32f63e18b5bea426',
     'USER',
     'ACTIVE',
-    420,
+    0,
     0,
     'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150',
     'Senior DevOps Engineer. Thiết kế CI/CD pipeline, GitOps ArgoCD và hạ tầng tự host.',
@@ -92,7 +91,7 @@ VALUES
     '$scrypt$N=16384,r=8,p=1$b255175bbd6ad58ead522b940ced70ac$e91917e2bb6e3deab4ea3583f6a9425d4d0a1e8dcde2132f8ef5b422186b5e61489309cbe105e52cf5a1015d98db308e016454c642e5309b32f63e18b5bea426',
     'USER',
     'SHADOWBANNED',
-    -50,
+    0,
     0,
     NULL,
     'Tài khoản thử nghiệm cơ chế cấm ngầm (Shadowban Engine).',
@@ -106,7 +105,7 @@ VALUES
     '$scrypt$N=16384,r=8,p=1$b255175bbd6ad58ead522b940ced70ac$e91917e2bb6e3deab4ea3583f6a9425d4d0a1e8dcde2132f8ef5b422186b5e61489309cbe105e52cf5a1015d98db308e016454c642e5309b32f63e18b5bea426',
     'USER',
     'SUSPENDED',
-    -200,
+    0,
     0,
     NULL,
     'Tài khoản bị đình chỉ hoạt động do vi phạm quy chuẩn cộng đồng.',
@@ -120,7 +119,7 @@ VALUES
     '$scrypt$N=16384,r=8,p=1$b255175bbd6ad58ead522b940ced70ac$e91917e2bb6e3deab4ea3583f6a9425d4d0a1e8dcde2132f8ef5b422186b5e61489309cbe105e52cf5a1015d98db308e016454c642e5309b32f63e18b5bea426',
     'USER',
     'ACTIVE',
-    640,
+    0,
     0,
     'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150',
     'Site Reliability Engineer & Postgres DBA. Quan sát hệ thống phân tán và Chaos Engineering.',
@@ -134,7 +133,7 @@ VALUES
     '$scrypt$N=16384,r=8,p=1$b255175bbd6ad58ead522b940ced70ac$e91917e2bb6e3deab4ea3583f6a9425d4d0a1e8dcde2132f8ef5b422186b5e61489309cbe105e52cf5a1015d98db308e016454c642e5309b32f63e18b5bea426',
     'USER',
     'ACTIVE',
-    780,
+    0,
     0,
     'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150',
     'Platform Engineer chuyên eBPF, Cilium và Kernel tuning.',
@@ -148,7 +147,7 @@ VALUES
     '$scrypt$N=16384,r=8,p=1$b255175bbd6ad58ead522b940ced70ac$e91917e2bb6e3deab4ea3583f6a9425d4d0a1e8dcde2132f8ef5b422186b5e61489309cbe105e52cf5a1015d98db308e016454c642e5309b32f63e18b5bea426',
     'USER',
     'ACTIVE',
-    310,
+    0,
     0,
     'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150',
     'Chuyên gia tư vấn An toàn thông tin & Tuân thủ Nghị định 13/2023.',
@@ -161,13 +160,10 @@ SET username = EXCLUDED.username,
     password_hash = EXCLUDED.password_hash,
     role = EXCLUDED.role,
     status = EXCLUDED.status,
-    karma_score = EXCLUDED.karma_score,
     bio = EXCLUDED.bio,
     avatar_url = EXCLUDED.avatar_url,
     updated_at = NOW();
 
--- 2. SEED PHIÊN LÀM VIỆC (USER_SESSIONS) VỚI UUID HỢP LỆ (f1000000-...)
--- Token thô Phiên 1: "raw_refresh_token_admin_secret_64bytes_sample_hash_001"
 INSERT INTO user_sessions (
     id, user_id, refresh_token_hash, previous_token_hash, grace_period_expires_at,
     device_fingerprint, ip_address, user_agent, is_revoked, expires_at, created_at, updated_at

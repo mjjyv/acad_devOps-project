@@ -63,6 +63,8 @@ export const ChatRequestSchema = z.object({
   senderUsername: z.string(),
   senderAvatarUrl: z.string().url().nullable().optional(),
   receiverId: z.string().uuid(),
+  receiverUsername: z.string().optional(),
+  receiverAvatarUrl: z.string().url().nullable().optional(),
   initialMessage: z.string(),
   status: ChatRequestStatusSchema,
   createdAt: z.string().datetime(),

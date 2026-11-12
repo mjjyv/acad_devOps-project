@@ -1,113 +1,92 @@
-# Phân Tích Chức Năng Reddit & Kế Hoạch Tích Hợp Cốt Lõi (Reddit Functional Specification)
+# Giai Đoạn 4.1: Mô Hình Hóa Ca Sử Dụng & Bản Đồ Tính Năng (Use Case Spec v2.2)
 
 > **Mã tài liệu:** `SPEC-REDDIT-INTEGRATION`  
-> **Tài liệu tham chiếu gốc:** [`docs/reddit.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/reddit.md)  
-> **Mục tiêu:** Nhận diện toàn bộ 4 nhóm chức năng nền tảng và 3 nhóm chức năng nhắn tin tức thời của Reddit; xác lập bản đồ ánh xạ (Feature Mapping) sang kiến trúc Acad DevOps Fullstack Monorepo; hoạch định kế hoạch tích hợp theo phương châm **Backend-First**.
+> **Dự án:** Acad DevOps Fullstack Monorepo (**SYNAPSE Engine**)  
+> **Khung chuẩn:** Giai đoạn 4 (Mục 1: Use Case Modeling) trong [`SYSTEM ANALYSIS & DESIGN LIFECYCLE FRAMEWORK.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/SYSTEM%20ANALYSIS%20%26%20DESIGN%20LIFECYCLE%20FRAMEWORK.md)
 
 ---
 
-## 1. BẢN ĐỒ NHẬN DIỆN CHỨC NĂNG TỪ `docs/reddit.md`
-
-Tài liệu `docs/reddit.md` phân tích toàn bộ kiến trúc sản phẩm Reddit theo nguyên tắc MECE thành 2 phân khu lớn: **Nền tảng Diễn đàn Reddit** (4 nhóm chức năng) và **Hệ thống Nhắn tin Reddit Chats** (3 nhóm chức năng).
+## 1. BIỂU ĐỒ USE CASE TỔNG THỂ (OVERALL USE CASE DIAGRAM)
 
 ```mermaid
-graph TD
-    subgraph RedditPlatform ["Nền Tảng Diễn Đàn Reddit (4 Nhóm MECE)"]
-        G1["1. Cấu Trúc Tổ Chức Cộng Đồng & Nội Dung<br/>(Subreddits, Posts, Flairs, Nested Comments)"]
-        G2["2. Tương Tác, Xếp Hạng & Đánh Giá<br/>(Up/Downvote, Karma, Feeds Sorting: Hot/Best/New/Top)"]
-        G3["3. Điều Hướng & Khám Phá<br/>(Feeds: Home/Popular/News, Custom Feeds, Scoped Search)"]
-        G4["4. Nền Tảng Tài Khoản & Mở Rộng<br/>(Profile u/[username], Karma, Achievements, Drafts)"]
+flowchart LR
+    subgraph Actors ["Tác nhân Hệ thống"]
+        Guest["ACT-01: Guest"]
+        Member["ACT-02: Fresh/Active Member"]
+        Mod["ACT-03/04: Space & Global Mod"]
+        Admin["ACT-05: System Admin"]
+        Agents["AGT-01..04: Workers & DB Triggers"]
     end
 
-    subgraph RedditChats ["Hệ Thống Nhắn Tin Reddit Chats (3 Nhóm)"]
-        C1["1. Khởi Tạo & Phạm Vi Hội Thoại<br/>(Direct 1-1 Chat, Group Chat, Profile Triggers)"]
-        C2["2. Tổ Chức & Điều Hướng Chat<br/>(Chat Threads, Hộp thư, Pop-out / Floating View)"]
-        C3["3. Kiểm Duyệt & Quyền Riêng Tư<br/>(Chat Requests: Accept/Ignore/Block, Chia sẻ Post/Subreddit)"]
+    subgraph SubAuth ["1. Identity & Discovery"]
+        UC01["UC-01: Đăng ký / Đăng nhập / Refresh 30s Grace"]
+        UC02["UC-02: Quản lý phiên đa thiết bị (/settings/sessions)"]
+        UC03["UC-03: Tìm kiếm user theo username & Xem /u/username"]
     end
+
+    subgraph SubComm ["2. Spaces, Content & Voting"]
+        UC04["UC-04: Duyệt Home / Popular / Explore & Lọc Topic"]
+        UC05["UC-05: Tham gia Space, Đăng bài (TEXT/LINK/MEDIA)"]
+        UC06["UC-06: Bình luận ltree Depth 8 & Soft-Delete"]
+        UC07["UC-07: Vote Nguyên tử Lua + Đồng bộ Karma"]
+    end
+
+    subgraph SubChat ["3. Realtime Chat & Moderation"]
+        UC08["UC-08: Create Chat theo Username (DM & Group)"]
+        UC09["UC-09: Duyệt Incoming/Sent Chat Requests & SSE Threads"]
+        UC10["UC-10: Báo cáo vi phạm & Xử lý Mod Queue / Audit Log"]
+    end
+
+    Guest --> UC03
+    Guest --> UC04
+    Member --> UC01
+    Member --> UC02
+    Member --> UC03
+    Member --> UC04
+    Member --> UC05
+    Member --> UC06
+    Member --> UC07
+    Member --> UC08
+    Member --> UC09
+    Member --> UC10
+    Mod --> UC05
+    Mod --> UC10
+    Admin --> UC10
+    Agents --> UC07
+    Agents --> UC09
 ```
 
 ---
 
-## 2. MA TRẬN ÁNH XẠ CHỨC NĂNG SANG ACAD DEVOPS PLATFORM
+## 2. ĐẶC TẢ CHI TIẾT CÁC CA SỬ DỤNG THEN CHỐT (KEY USE CASE SPECS)
 
-Bảng dưới đây xác định rõ: chức năng tương đương trong hệ thống Acad DevOps, trạng thái triển khai thực tế, và kế hoạch hoàn thiện:
+### UC-SPEC-01: Khởi Tạo Khám Phá Cộng Đồng Với Tài Khoản Mới (`Home` vs `Popular` vs `Explore`)
 
-| Nhóm chức năng Reddit (`docs/reddit.md`) | Chức năng tương ứng tại Acad DevOps Monorepo | Trạng thái hiện tại | Kế hoạch tích hợp cốt lõi (Backend-First) |
-| :--- | :--- | :---: | :--- |
-| **Subreddit (`r/[tên_cộng_đồng]`)** | **Không gian (`/s/[slug]`)**: rules, admin/moderator, highlights, membership | **Đã hoàn thành 85%** | Bổ sung Post Flairs theo Space, ghim thông báo (Highlights), API quản lý Wiki/FAQ. |
-| **Định dạng Bài đăng (Posts)** | **Threads (`/threads/[slug]`)**: Text, Link, Media presigned upload | **Đã hoàn thành 70%** | Tích hợp Post Flairs (*DevOps*, *SecOps*, *SystemArch*, *Incident*); API Presigned URL Cloudflare R2 / S3. |
-| **Bình luận phân nhánh (Nested Comments)** | **Comments `ltree` Base36 4 ký tự**: Phân cấp vô hạn, GiST index, Capped Depth 8 | **Đã hoàn thành 85%** | Đã có thuật toán $\mathcal{O}(N)$ `@acad/tree-virtualizer`; hoàn thiện gắn vào UI chi tiết bài viết. |
-| **Upvote / Downvote & Karma** | **Redis Lua Atomic Voting**: `execute_vote.lua`, HOT update PostgreSQL, Karma score | **Đã hoàn thành 75%** | Bổ sung Worker 5s flush dồn từ Redis về DB, công thức tính Karma tác giả đa chiều. |
-| **Sắp xếp Feed (Hot/Best/New/Top)** | **Gravity Decay Ranking**: $HotScore = \frac{NetScore}{(AgeHours + 2.0)^{1.8}}$, New, Top | **Đã hoàn thành 80%** | Bổ sung thuật toán sắp xếp `best` (Wilson score interval) và bộ lọc Top theo mốc thời gian (day/week/month/year). |
-| **Điều hướng Feeds (Home / Popular)** | **Feed Aggregator API**: Timeline cá nhân và Bảng tin toàn sàn | **Đã hoàn thành 60%** | Xây dựng API `/api/v1/feed/home` (các Spaces đã Join) và `/api/v1/feed/popular` (toàn cầu). |
-| **Tìm kiếm (Global & In-Space Search)** | **Fulltext Search Engine**: Tham số `q`, lọc ILIKE, pg_trgm GIN index | **Đã hoàn thành 70%** | Bổ sung tham số `spaceId` vào search query để hỗ trợ tìm kiếm có giới hạn phạm vi (In-Space Search). |
-| **Hồ sơ Cá nhân (`u/[username]`)** | **User Profile Engine**: Xem bài viết, bình luận, điểm Karma, quản lý phiên | **Đã hoàn thành 75%** | Bổ sung tab bản nháp (Drafts) và trang `/u/[username]` công khai hiển thị thành tựu/karma. |
-| **Reddit Chats (1-1 Direct & Group Chat)** | **Realtime Chat Subsystem**: WebSocket/SSE gateway, kênh chat 1-1 và group | **Kế hoạch Phase B4** | Triển khai Backend Message Store, Chat Requests queue (Accept/Ignore/Block), Read receipts. |
+| Thuộc tính | Nội dung đặc tả |
+| :--- | :--- |
+| **Mã & Tên Use Case** | `UC-SPEC-01`: Tài khoản mới khám phá cộng đồng và chuyển đổi bảng tin |
+| **Tác nhân chính** | `ACT-02` (Fresh Member mới đăng ký, chưa tham gia Space nào) |
+| **Điều kiện tiên quyết** | Đã đăng nhập thành công (`isAuthenticated = true`), `space_memberships` = 0 bản ghi |
+| **Luồng sự kiện chính** | 1. Người dùng truy cập `Home` (`/?tab=following`).<br>2. Hệ thống gọi `GET /api/v1/feed/home?strict=true` trả về danh sách rỗng + hiển thị CTA dẫn sang `/explore`.<br>3. Người dùng bấm `Explore` (`/explore`) hoặc chọn 1 `Topic` ở thanh bên.<br>4. Hệ thống lọc danh sách `spaces` theo `topic` từ DB; người dùng bấm `Join` trên `s/devops-arch`.<br>5. Trigger DB tăng `member_count` (+1); quay lại `Home`, bảng tin hiển thị ngay bài viết của `s/devops-arch`.<br>6. Bấm `Popular` (`/?tab=for_you&sort=hot`), hệ thống hiển thị toàn bộ bài viết công khai xếp theo `hot_score`. |
+| **Luồng ngoại lệ** | *E1 (Space riêng tư `is_private = TRUE`):* Trả HTTP 403 nếu chưa là thành viên.<br>*E2 (Chưa đăng nhập bấm Home/Following):* Hiển thị thẻ mời đăng nhập + nút chuyển qua `Popular`. |
+| **Hậu điều kiện** | `Home` và `Popular` trả tập bài viết phân biệt rõ ràng; `spaces.member_count` khớp 100% số dòng `space_memberships`. |
 
----
+### UC-SPEC-02: Khởi Tạo Trò Chuyện Theo Username Với Tài Khoản Trắng (`Create Chat -> Search`)
 
-## 3. CHIẾN LƯỢC TÍCH HỢP CỐT LÕI (CORE INTEGRATION STRATEGY)
+| Thuộc tính | Nội dung đặc tả |
+| :--- | :--- |
+| **Mã & Tên Use Case** | `UC-SPEC-02`: Người dùng mới A tìm người dùng B theo username và nhắn tin thời gian thực |
+| **Tác nhân chính** | `ACT-02` (`fresh_a` và `fresh_b`, chưa từng có kênh chat chung) |
+| **Điều kiện tiên quyết** | Cả hai tài khoản `ACTIVE`; `fresh_a` mở Chat (`Direct (0)`, `Groups (0)`, `Requests (0)`) |
+| **Luồng sự kiện chính** | 1. `fresh_a` bấm **+ New Chat** (hoặc **Create Chat**) trong `FloatingChatWidget` / `/chat`.<br>2. Nhập từ khóa tên `fresh_b` vào ô *"Search for people by username to chat with them"* -> Client gọi `GET /api/v1/auth/users/search?q=fresh_b`.<br>3. Chọn `u/fresh_b`, nhập tin nhắn đầu tiên -> `POST /api/v1/chat/channels/direct`.<br>4. Backend tạo `chat_requests` (`PENDING`), phát SSE `chat_request:new` tới `fresh_b`; bên phía `fresh_a` hiển thị mục **Đã gửi (Pending)**.<br>5. `fresh_b` mở tab **Requests**, bấm **Accept** -> `PATCH /api/v1/chat/requests/:id { status: "ACCEPTED" }`.<br>6. Backend tạo `chat_channels` (`DIRECT`), thêm 2 thành viên vào `chat_members`, chèn tin nhắn đầu tiên và phát SSE `channel:created` cho cả 2.<br>7. Hai bên nhắn tin qua lại và trả lời nhánh con (`parentMessageId`) tức thì qua SSE `message:new`. |
+| **Luồng ngoại lệ** | *E1 (Đã có kênh DIRECT giữa A và B):* Không tạo Request trùng; gửi thẳng tin nhắn và trả `isRequest: false`.<br>*E2 (B bấm Block):* Request chuyển `BLOCKED`, mọi lần gửi lại của A bị chặn HTTP `403`.<br>*E3 (Tạo Group chỉ có 1 mình):* Validation từ chối HTTP `400`, buộc có ít nhất 1 thành viên khác creator. |
+| **Hậu điều kiện** | Toàn bộ kênh, thành viên, tin nhắn và con trỏ đọc `last_read_message_id` được lưu bền trên PostgreSQL & đồng bộ SSE. |
 
-Để đảm bảo hệ thống đạt độ ổn định cao nhất, quá trình tích hợp áp dụng quy tắc **Backend-First (Hạ Tầng Backend Đi Trước $\rightarrow$ Giao Diện Frontend Theo Sau)**:
+### UC-SPEC-03: Bầu Chọn Nguyên Tử & Đối Soát Karma Không Dữ Liệu Ảo
 
-```
-[BƯỚC 1: BACKEND DATA & CONTRACTS]
-  ├── Mở rộng PostgreSQL DDL (Bổ sung bảng Flairs, Chat Channels, Messages, Chat Requests)
-  ├── Viết Zod Schemas & OpenAPI 3.1 contracts trong packages/contracts
-  └── Viết Unit & Integration Tests trong services/ và apps/api
-
-[BƯỚC 2: BACKEND LOGIC & ENGINES]
-  ├── Cài đặt Service Layer xử lý nghiệp vụ Flairs, Custom Feeds, và Chat Requests
-  ├── Tích hợp Redis Pub/Sub và WebSocket / SSE Gateway phục vụ Realtime
-  └── Hoàn thiện bộ kiểm thử tự động với Vitest (Đạt 100% test pass)
-
-[BƯỚC 3: FRONTEND CLIENT INTEGRATION]
-  ├── Nâng cấp Web Client Next.js 15 kết nối API qua Client SDK (@acad/auth-client)
-  ├── Thiết kế giao diện Minimalist Brutalism Dark Mode cho các tính năng mới
-  └── Tích hợp DOM ảo hóa @acad/tree-virtualizer và Floating Chat Widget
-```
-
----
-
-## 4. ĐẶC TẢ CHI TIẾT 3 TÍNH NĂNG ĐỘT PHÁ CẦN TÍCH HỢP TỪ REDDIT
-
-### 4.1. Hệ Thống Nhãn Bài Viết (Post Flairs) Trong Từng Không Gian
-- **Mục đích:** Giúp phân loại nội dung chính xác trong các không gian kỹ thuật lớn.
-- **Danh mục Flairs chuẩn:**
-  - `[DevOps]` / `[CI/CD]` / `[Kubernetes]` / `[Docker]`
-  - `[SecOps]` / `[Zero-Trust]` / `[Vulnerability]`
-  - `[Architecture]` / `[Database]` / `[High-Throughput]`
-  - `[Incident Report]` (Báo cáo sự cố hệ thống thực tế)
-  - `[Discussion]` / `[Question]` (Hỏi đáp chuyên môn)
-- **Lược đồ dữ liệu:**
-  ```sql
-  CREATE TABLE IF NOT EXISTS space_flairs (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      space_id UUID NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
-      name VARCHAR(50) NOT NULL,
-      slug VARCHAR(50) NOT NULL,
-      color_hex VARCHAR(7) NOT NULL DEFAULT '#DFD0B8',
-      background_hex VARCHAR(7) NOT NULL DEFAULT '#393E46',
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-  );
-  ALTER TABLE threads ADD COLUMN IF NOT EXISTS flair_id UUID REFERENCES space_flairs(id);
-  ```
-
-### 4.2. Bộ Lọc Feed Mở Rộng (Wilson Score "Best" & Top Theo Thời Gian)
-- **Thuật toán "Best" (Wilson Score Confidence Interval):**
-  Xếp hạng bài viết dựa trên xác suất bình chọn tích cực với độ tin cậy $95\%$:
-  $$\hat{p} = \frac{Upvotes}{TotalVotes}, \quad Score = \frac{\hat{p} + \frac{z^2}{2n} - z \sqrt{\frac{\hat{p}(1-\hat{p})}{n} + \frac{z^2}{4n^2}}}{1 + \frac{z^2}{n}}$$
-  Giúp các bài viết ít vote nhưng có tỷ lệ upvote 100% không bị áp đảo bởi các bài viết có lượng vote lớn nhưng gây nhiều tranh cãi.
-- **Khoảng thời gian xếp hạng Top:** Hỗ trợ query `t=day | week | month | year | all`.
-
-### 4.3. Phân Hệ Reddit Chats: Nhắn Tin Tức Thời & Kiểm Duyệt Tin Nhắn Lạ
-- **Kiến trúc Nhắn tin Bảo mật:**
-  - Không gửi tin nhắn thẳng vào hộp thư nếu hai người chưa từng tương tác.
-  - Người lạ gửi tin nhắn $\rightarrow$ Hệ thống tạo bản ghi trong bảng `chat_requests` với trạng thái `PENDING`.
-  - Người nhận có 3 lựa chọn:
-    1. **Accept:** Chuyển cuộc hội thoại thành kênh chính thức (Active Channel), kích hoạt thông báo đầy đủ.
-    2. **Ignore:** Đánh dấu bỏ qua, không hiển thị huy hiệu thông báo chưa đọc.
-    3. **Block / Report:** Khóa tài khoản gửi, thêm vào danh sách chặn của cá nhân và gửi báo cáo về Mod Queue.
-- **Hỗ trợ Chat Threads & Pop-out:**
-  - Hỗ trợ tạo luồng thảo luận con (Thread) bên trong một tin nhắn của Group Chat.
-  - Giao diện hỗ trợ mở rộng thành cửa sổ pop-out độc lập hoặc thu nhỏ xuống thanh taskbar góc dưới bên phải màn hình.
+| Thuộc tính | Nội dung đặc tả |
+| :--- | :--- |
+| **Mã & Tên Use Case** | `UC-SPEC-03`: Vote Up/Down/Unvote đồng bộ tức thì và đối soát DB |
+| **Tác nhân chính** | `ACT-02` (Member), `AGT-01` (`VoteFlushWorker`), `AGT-02` (Karma Trigger) |
+| **Luồng sự kiện chính** | 1. Member bấm Upvote -> UI cập nhật lạc quan +1; API gọi Redis `execute_vote.lua` (+1 & đánh dấu `dirty:votes`) và ghi bền bảng `thread_votes`.<br>2. Trigger `trg_maintain_thread_karma` tự động cộng +1 vào `users.karma_score` của tác giả.<br>3. Bấm lại Upvote -> FSM chuyển về `0` (Unvote, xóa khỏi `thread_votes`, trừ karma -1).<br>4. Mỗi 5 giây `VoteFlushWorker` xả `dirty:votes` vào `thread_counters` (`hot_score`, `wilson_score`). |
+| **Hậu điều kiện** | Ở trạng thái ổn định sau flush: `thread_counters.upvotes == COUNT(thread_votes WHERE direction=1)`, không tồn tại số liệu bơm khống vượt quá tổng số user thật. |

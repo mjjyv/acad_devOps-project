@@ -1,46 +1,99 @@
-# Động Cơ Bảng Tin & Khám Phá Nội Dung (Feed Aggregation & Discovery)
+# Module M5: Bảng Tin Đa Thuật Toán, Điều Hướng & Tìm Kiếm (Feeds & Discovery v2.2)
 
 > **Mã tài liệu:** `CORE-FEED-DISCOVERY`  
-> **Dự án:** Acad DevOps Fullstack Monorepo  
-> **Tham chiếu Reddit:** Nhóm 2 & 3 trong [`docs/reddit.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/reddit.md)
+> **Khung chuẩn:** Giai đoạn 4 & 5 trong [`SYSTEM ANALYSIS & DESIGN LIFECYCLE FRAMEWORK.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/SYSTEM%20ANALYSIS%20%26%20DESIGN%20LIFECYCLE%20FRAMEWORK.md)  
+> **Mã nguồn triển khai:** [`feed-service.ts`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/services/community/src/services/feed-service.ts), [`apps/web/src/app/page.tsx`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/apps/web/src/app/page.tsx), [`apps/web/src/components/layout/left-sidebar.tsx`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/apps/web/src/components/layout/left-sidebar.tsx)
 
 ---
 
-## 1. CÁC THUẬT TOÁN SẮP XẾP BẢNG TIN (FEED SORTING ENGINES)
+## 1. PHÂN BIỆT RÀNH MẠCH `HOME` vs `POPULAR` vs `EXPLORE`
 
-Hệ thống hỗ trợ 4 chế độ sắp xếp bảng tin linh hoạt:
-1. **`HOT` (Thịnh Hành - Gravity Decay):** Sắp xếp theo điểm số $HotScore = \frac{NetScore}{(AgeHours + 2.0)^{1.8}}$, cân bằng giữa lượng tương tác lớn và tính thời điểm mới xuất bản.
-2. **`NEW` (Mới Nhất):** Sắp xếp theo thứ tự thời gian giảm dần (`created_at DESC`), phục vụ việc theo dõi bài viết vừa đăng tải theo thời gian thực.
-3. **`TOP` (Hàng Đầu):** Sắp xếp theo tổng điểm $NetScore$ cao nhất trong một khoảng thời gian được chỉ định (`t=day`, `t=week`, `t=month`, `t=year`, `t=all`).
-4. **`BEST` (Tối Ưu - Wilson Score Interval):**
-   Phân tích khoảng tin cậy của tỷ lệ upvote/downvote theo công thức Wilson Score Confidence Interval với độ tin cậy 95% ($z = 1.96$):
-
-   $$\hat{p} = \frac{Upvotes}{TotalVotes}, \quad Score = \frac{\hat{p} + \frac{z^2}{2n} - z \sqrt{\frac{\hat{p}(1-\hat{p})}{n} + \frac{z^2}{4n^2}}}{1 + \frac{z^2}{n}}$$
-
-   *Trong đó:*
-   - $n = Upvotes + Downvotes$: Tổng lượt tương tác đánh giá.
-   - $\hat{p}$: Tỷ lệ ủng hộ quan sát được.
-   - $z = 1.96$: Phân vị chuẩn tương ứng với độ tin cậy 95% ($\alpha = 0.05$).
-   - *Tác dụng cốt lõi:* Bảo vệ các bài viết kỹ thuật chuyên sâu có tỷ lệ đồng thuận cao (ví dụ: 10 upvotes, 0 downvotes $\rightarrow$ $\hat{p} = 1.0$) không bị chìm trước các bài viết có số lượng vote đông nhưng tỷ lệ tranh cãi cao (ví dụ: 500 upvotes, 480 downvotes $\rightarrow$ $\hat{p} \approx 0.51$). Thuật toán ước lượng cận dưới của tỷ lệ đồng thuận thực sự.
+- **Home (`/?tab=following`):** Bảng tin cá nhân hóa chỉ tổng hợp bài viết từ các Space người dùng đã Join (`space_memberships`). Nếu tài khoản mới chưa tham gia Space nào $\rightarrow$ hiển thị trạng thái rỗng kèm CTA dẫn tới `/explore`.
+- **Popular (`/?tab=for_you&sort=hot`):** Bảng tin thịnh hành toàn sàn (tất cả Space công khai `is_private = FALSE`), sắp xếp mặc định theo `hot_score` (`Hot` / `New` / `Top` / `Best`).
+- **Explore (`/explore` & `Topics`):** Trang danh bạ toàn bộ cộng đồng, lọc trực tiếp theo cột `spaces.topic` và tìm kiếm `pg_trgm`, cho phép Join/Leave ngay tại chỗ.
+- **Recent Posts (`RightRail`):** Lưu lịch sử bài vừa mở ở trình duyệt và bấm vào phải điều hướng tới `/threads/[id]`.
 
 ---
 
-## 2. PHÂN TẦNG NGUỒN CẤP TIN (FEED CLASSIFICATION)
+## 2. BIỂU ĐỒ HOẠT ĐỘNG (ACTIVITY DIAGRAM — CHUYỂN ĐỔI BẢNG TIN & TÌM KIẾM)
 
-- **Home Feed (`/api/v1/feed/home`):**
-  - Tập hợp bài viết từ các không gian mà người dùng đã bấm **Join** (`space_memberships`).
-  - Hỗ trợ 2 tab con: **For You** (được gợi ý theo thuật toán tương tác) và **Following** (chỉ hiển thị đúng các Space đã tham gia).
-- **Popular Feed (`/api/v1/feed/popular`):**
-  - Tổng hợp các bài viết có tương tác cao nhất trên toàn bộ các không gian công khai toàn sàn mà không phụ thuộc vào danh sách theo dõi của người dùng.
-- **Custom Feeds (Gom Nhóm Tùy Chọn):**
-  - Cho phép người dùng tự tạo danh mục gom nhóm (ví dụ: nhóm các Spaces "DevOps + Cloud + SRE" thành 1 feed riêng).
+```mermaid
+flowchart TD
+    Start(["User chọn mục trên LeftSidebar"]) --> Choice{"Chọn mục nào?"}
+    Choice -- Home --> CheckLogin{"Đã đăng nhập?"}
+    CheckLogin -- Chưa --> ShowGuestPrompt["Hiển thị lời mời Login + nút sang Popular"]
+    CheckLogin -- Rồi --> HomeAPI["GET /api/v1/feed/home?strict=true"]
+    HomeAPI --> HasSpaces{"Đã tham gia >= 1 Space?"}
+    HasSpaces -- Chưa --> EmptyCTA["Hiển thị CTA Chưa tham gia Space -> mở /explore"]
+    HasSpaces -- Có --> RenderFeed["Render Feed + Infinite Scroll Keyset Cursor"]
+    Choice -- Popular --> PopAPI["GET /api/v1/feed/popular?sort=hot|new|top|best"]
+    PopAPI --> RenderFeed
+    Choice -- Explore hoặc Topic --> OpenExplore["Điều hướng /explore?topic=... -> GET /api/v1/spaces"]
+```
 
 ---
 
-## 3. CÔNG CỤ TÌM KIẾM TOÀN DIỆN & GIỚI HẠN PHẠM VI (SEARCH ENGINE)
+## 3. BIỂU ĐỒ TUẦN TỰ (SEQUENCE DIAGRAM — KEYSET CURSOR & IN-SPACE SEARCH)
 
-Triển khai tại [`apps/api/src/routes/community-router.ts`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/apps/api/src/routes/community-router.ts):
-- **Tham số tìm kiếm `q`:** Hỗ trợ tìm kiếm từ khóa không phân biệt hoa thường.
-- **Tối ưu hóa GIN Trigram:** Trên PostgreSQL sử dụng `title gin_trgm_ops` cho phép tìm kiếm mờ (fuzzy search) với tốc độ $O(\log N)$.
-- **In-Space Scoped Search:** Truyền tham số `spaceSlug` hoặc `spaceId` vào endpoint tìm kiếm để giới hạn kết quả chỉ nằm trong không gian đang duyệt.
-- **Phím tắt giao diện:** Bấm phím tắt `/` trên bàn phím tại bất kỳ trang nào để kích hoạt tức thì thanh tìm kiếm trên Navbar.
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Web Client
+    participant UI as HomePage / SpacePage
+    participant API as FeedService / ThreadService
+    participant DB as PostgreSQL (thread_counters, threads)
+
+    User->>UI: Cuộn xuống cuối danh sách (IntersectionObserver)
+    UI->>API: GET /api/v1/feed/popular?sort=hot&cursor=Base64(...)&limit=20
+    API->>DB: Query Composite Index (hot_score, created_at, thread_id) < decodedCursor
+    DB-->>API: Trang bài viết tiếp theo (20 items) + nextCursor mới
+    API-->>UI: JSON { items, pagination: { nextCursor, hasMore } }
+
+    User->>UI: Tìm kiếm trong /s/[slug] hoặc gõ '/' trên Header
+    UI->>API: GET /api/v1/spaces/:slug/search?q=Podman
+    API->>DB: GIN Trigram Index (idx_threads_title_trgm)
+    DB-->>API: Danh sách Threads khớp từ khóa
+```
+
+---
+
+## 4. BIỂU ĐỒ TRẠNG THÁI (STATE MACHINE — TRẠNG THÁI TẢI BẢNG TIN)
+
+```mermaid
+stateDiagram-v2
+    [*] --> LOADING_INITIAL : Đổi tab / sort / spaceSlug
+    LOADING_INITIAL --> EMPTY_NO_MEMBERSHIP : Home strict=true & chưa Join Space nào
+    LOADING_INITIAL --> READY_HAS_MORE : Có items & hasMore=true
+    LOADING_INITIAL --> READY_END : Có items & hasMore=false
+    LOADING_INITIAL --> ERROR_RETRY : Mạng / API lỗi
+    READY_HAS_MORE --> LOADING_MORE : Scroll chạm sentinelRef
+    LOADING_MORE --> READY_HAS_MORE : Nối thêm items & cập nhật nextCursor
+    LOADING_MORE --> READY_END : Hết dữ liệu (hasMore=false)
+    EMPTY_NO_MEMBERSHIP --> LOADING_INITIAL : User vừa Join Space từ /explore
+```
+
+---
+
+## 5. BIỂU ĐỒ LỚP MIỀN & CẬP NHẬT DB SUY XUẤT
+
+```mermaid
+classDiagram
+    class FeedService {
+        +getHomeFeed(userId, options)
+        +getPopularFeed(viewerId, options)
+        +decodeCursor(cursor)
+        +encodeCursor(sortScore, createdAt, id)
+    }
+    class ThreadCounterIndexes {
+        +idx_thread_counters_hot_feed
+        +idx_thread_counters_best_feed
+        +idx_thread_counters_top_feed
+        +idx_thread_counters_new_feed
+    }
+
+    FeedService --> ThreadCounterIndexes : scans via Keyset O(log N)
+```
+
+### Ràng buộc & Cập nhật DB suy xuất cho Giai đoạn B (`000007`)
+1. **Dùng Composite Indexes (`hot_score`, `wilson_score`, `net_score`, `created_at`):** Chỉ có giá trị thật khi `thread_counters` phản ánh đúng `thread_votes` (xóa bỏ seed ảo `562`).
+2. **Hỗ trợ lọc Space theo `topic` cho `/explore`:** Kết nối bảng `spaces.topic` mới vào endpoint `GET /api/v1/spaces?topic=...`.

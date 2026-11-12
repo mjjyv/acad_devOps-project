@@ -16,11 +16,13 @@
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm -r --if-present run test",
     "test:integration": "pnpm --filter @acad/api-gateway run test:integration",
+    "test:e2e": "playwright test",
     "build": "pnpm -r --if-present run build",
     "build:libs": "pnpm -r --if-present run build"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.5",
+    "@playwright/test": "^1.65.0",
     "@types/node": "^22.13.4",
     "typescript": "^5.8.2",
     "vitest": "^3.0.5"

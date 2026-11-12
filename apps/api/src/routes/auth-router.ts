@@ -165,6 +165,18 @@ export function createAuthRouter(
     }
   });
 
+  // GET /auth/users/search?q=... (Tìm kiếm user ACTIVE theo username cho Chat)
+  router.get('/users/search', guard, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const q = typeof req.query.q === 'string' ? req.query.q : '';
+      const limit = req.query.limit ? Number.parseInt(String(req.query.limit), 10) : 10;
+      const users = await authService.searchActiveUsers(q, req.user?.sub, limit);
+      res.status(200).json({ users });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   // GET /auth/users/:username (Public Profile without PII email)
   router.get('/users/:username', async (req: Request, res: Response, next: NextFunction) => {
     try {

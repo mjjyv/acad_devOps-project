@@ -1,6 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { FloatingChatWidget } from '@/components/chat/floating-chat-widget';
 import { FeedHeader } from '@/components/feed/feed-header';
 import { PostCard, type PostItem } from '@/components/feed/post-card';
@@ -16,7 +18,9 @@ import { mapThreadSummaryToPostItem } from '@/lib/utils/thread-mapper';
 const VALID_SORTS = new Set<FeedSort>(['hot', 'new', 'top', 'best']);
 const VALID_TABS = new Set<FeedTab>(['for_you', 'following']);
 
-export default function HomePage() {
+function HomeFeedContent() {
+  const searchParams = useSearchParams();
+  const currentSearch = searchParams.toString();
   const { activeFeedTab, feedSort, searchQuery, setActiveFeedTab, setFeedSort, setSearchQuery } =
     useUI();
   const { isAuthenticated, openAuthModal } = useAuth();
@@ -31,28 +35,25 @@ export default function HomePage() {
 
   const loadingMoreRef = useRef(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const lastSyncedUrlRef = useRef<string | null>(null);
 
-  // Hydrate initial URL query params (?tab=following&sort=new&q=...)
+  // Reactively hydrate URL query params (?tab=following&sort=new&q=...) on load & navigation
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const qs = new URLSearchParams(window.location.search);
+    if (lastSyncedUrlRef.current === currentSearch) return;
+    lastSyncedUrlRef.current = currentSearch;
+
+    const qs = new URLSearchParams(currentSearch);
     const tabParam = qs.get('tab') as FeedTab | null;
     const sortParam = qs.get('sort') as FeedSort | null;
     const qParam = qs.get('q');
 
-    if (tabParam && VALID_TABS.has(tabParam)) {
-      setActiveFeedTab(tabParam);
-    }
-    if (sortParam && VALID_SORTS.has(sortParam)) {
-      setFeedSort(sortParam);
-    }
-    if (qParam !== null) {
-      setSearchQuery(qParam);
-    }
+    setActiveFeedTab(tabParam && VALID_TABS.has(tabParam) ? tabParam : 'for_you');
+    setFeedSort(sortParam && VALID_SORTS.has(sortParam) ? sortParam : 'hot');
+    setSearchQuery(qParam ?? '');
     setUrlHydrated(true);
-  }, [setActiveFeedTab, setFeedSort, setSearchQuery]);
+  }, [currentSearch, setActiveFeedTab, setFeedSort, setSearchQuery]);
 
-  // Synchronize URL query state cleanly
+  // Synchronize UI state changes cleanly back to URL query state
   useEffect(() => {
     if (!urlHydrated || typeof window === 'undefined') return;
     const qs = new URLSearchParams();
@@ -60,8 +61,11 @@ export default function HomePage() {
     if (feedSort !== 'hot') qs.set('sort', feedSort);
     if (searchQuery.trim()) qs.set('q', searchQuery.trim());
     const nextSearch = qs.toString();
-    const nextUrl = nextSearch ? `/?${nextSearch}` : '/';
-    window.history.replaceState(null, '', nextUrl);
+    if (lastSyncedUrlRef.current !== nextSearch) {
+      lastSyncedUrlRef.current = nextSearch;
+      const nextUrl = nextSearch ? `/?${nextSearch}` : '/';
+      window.history.replaceState(null, '', nextUrl);
+    }
   }, [urlHydrated, activeFeedTab, feedSort, searchQuery]);
 
   const loadFeed = useCallback(
@@ -221,13 +225,25 @@ export default function HomePage() {
                   : 'Chưa có bài viết phù hợp với bộ lọc hiện tại.'}
               </p>
               {activeFeedTab === 'following' && (
-                <button
-                  type="button"
-                  className="reddit-pill-btn primary"
-                  onClick={() => setActiveFeedTab('for_you')}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    flexWrap: 'wrap',
+                  }}
                 >
-                  Khám phá Popular Feed
-                </button>
+                  <Link href="/explore" className="reddit-pill-btn primary">
+                    Khám phá cộng đồng (Explore)
+                  </Link>
+                  <button
+                    type="button"
+                    className="reddit-pill-btn"
+                    onClick={() => setActiveFeedTab('for_you')}
+                  >
+                    Xem Popular Feed
+                  </button>
+                </div>
               )}
             </div>
           ) : (
@@ -261,5 +277,19 @@ export default function HomePage() {
       <BottomNav />
       <FloatingChatWidget />
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense
+      fallback={
+        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+          Đang tải bảng tin...
+        </div>
+      }
+    >
+      <HomeFeedContent />
+    </Suspense>
   );
 }

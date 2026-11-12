@@ -149,6 +149,10 @@ export function authRateLimiter(redis?: Redis) {
       tierName: 'auth',
       windowMs: 60 * 1000,
       max: 10,
+      // Chỉ siết chặt brute-force trên các endpoint xác thực/cấp token;
+      // các endpoint đọc hồ sơ/tìm kiếm (/me, /users/search) dùng globalRateLimiter.
+      skip: (req: Request) =>
+        req.method !== 'POST' || !['/login', '/register', '/refresh'].includes(req.path),
       message: 'Bạn đã thử đăng nhập/đăng ký quá nhiều lần. Vui lòng chờ 1 phút.',
     },
     redis,

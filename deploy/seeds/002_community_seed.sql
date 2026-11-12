@@ -125,16 +125,17 @@ OR LOWER(slug) IN ('devops-arch', 'vozforums', 'kubernetes', 'system-design', 's
 -- Đồng bộ lại threads_count về số bài thật còn lại của user (ngoài tập seed) trước khi insert
 UPDATE users u SET threads_count = (SELECT COUNT(*) FROM threads t WHERE t.author_id = u.id);
 
--- 1. SEED SPACES (5 Public Spaces + 1 Private Space)
+-- 1. SEED SPACES (5 Public Spaces + 1 Private Space kèm Topic phân loại thật)
 -- Khởi tạo member_count = 0, thread_count = 0 để Trigger tự động tính chuẩn xác 100%
 INSERT INTO spaces (
-    id, name, slug, description, icon_url, banner_url, rules, is_private, creator_id, member_count, thread_count, created_at, updated_at
+    id, name, slug, topic, description, icon_url, banner_url, rules, is_private, creator_id, member_count, thread_count, created_at, updated_at
 )
 VALUES
   (
     'b0000000-0000-0000-0000-000000000001',
     'DevOps Architecture',
     'devops-arch',
+    'DevOps & SRE',
     'Không gian chuyên sâu về thiết kế hệ thống phân tán, hạ tầng High Availability, SRE và kiến trúc Cloud Native.',
     'https://images.unsplash.com/photo-1618401471353-b98aedd04e11?w=128',
     'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=1200',
@@ -152,6 +153,7 @@ VALUES
     'b0000000-0000-0000-0000-000000000002',
     'Voz Technology & Engineering',
     'vozforums',
+    'Debian Linux Homelab',
     'Cộng đồng công nghệ, thảo luận nghề nghiệp IT, chuyện lập trình, phỏng vấn Big Tech và góc nhìn kiến trúc tự do.',
     'https://images.unsplash.com/photo-1518770660439-4636190af475?w=128',
     'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=1200',
@@ -169,6 +171,7 @@ VALUES
     'b0000000-0000-0000-0000-000000000003',
     'Kubernetes & Cloud Native',
     'kubernetes',
+    'Kubernetes Architecture',
     'Chuyên sâu về Kubernetes internals, Istio service mesh, Cilium eBPF, Podman rootless và điều phối container đa vùng.',
     'https://images.unsplash.com/photo-1667372393119-3d4c48d07fc9?w=128',
     'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=1200',
@@ -186,6 +189,7 @@ VALUES
     'b0000000-0000-0000-0000-000000000004',
     'Distributed Systems Design',
     'system-design',
+    'PostgreSQL 16 & Redis 7',
     'Mổ xẻ System Design Big Tech: Kafka event-driven, Database Sharding, Raft Consensus, Cache Stampede mitigation.',
     'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=128',
     'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1200',
@@ -203,6 +207,7 @@ VALUES
     'b0000000-0000-0000-0000-000000000005',
     'Zero Trust & DevSecOps',
     'security-shield',
+    'Cloudflare Zero Trust',
     'An toàn thông tin doanh nghiệp, DevSecOps, phòng chống DDoS, OWASP Top 10 và tuân thủ dữ liệu Nghị định 13.',
     'https://images.unsplash.com/photo-1563986768609-322da13575f3?w=128',
     'https://images.unsplash.com/photo-1510511459019-5dda7724fd87?w=1200',
@@ -220,6 +225,7 @@ VALUES
     'b0000000-0000-0000-0000-000000000006',
     'Incident Room & Post-Mortem',
     'incident-vault',
+    'DevOps & SRE',
     'Không gian nội bộ phân tích sự cố production thực tế và báo cáo hậu kiểm không đổ lỗi (Blameless Post-Mortem).',
     'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=128',
     'https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?w=1200',
@@ -405,6 +411,7 @@ Khi người dùng Upvote/Downvote liên tục, cập nhật trực tiếp lên 
   );
 
 -- 5. SEED NESTED COMMENTS (CÂY BÌNH LUẬN LTREE BASE36 CẤP 1 -> CẤP 8 + CAPPED DEPTH 9 + SOFT DELETE)
+-- Bộ đếm upvotes_count / downvotes_count khởi tạo = 0 để 100% đồng bộ thật từ comment_votes ở 003
 INSERT INTO comments (
     id, thread_id, author_id, parent_id, path, depth, content, reply_to_user_id, upvotes_count, downvotes_count, is_deleted, created_at, updated_at
 )
@@ -416,7 +423,7 @@ VALUES
     'a0000000-0000-0000-0000-000000000004',
     NULL, '0000'::ltree, 1,
     'Kiến trúc chạy Podman rootless kết hợp Cloudflare Tunnel rất hay! Cho mình hỏi khi backup dữ liệu PostgreSQL thì cơ chế stream backup nén vào R2 bạn cấu hình thế nào để không làm gián đoạn I/O?',
-    NULL, 18, 0, FALSE, NOW() - INTERVAL '4 days', NOW() - INTERVAL '4 days'
+    NULL, 0, 0, FALSE, NOW() - INTERVAL '4 days', NOW() - INTERVAL '4 days'
   ),
   -- [CẤP 2 - 2 chunks] Path: 0000.0000
   (
@@ -425,7 +432,7 @@ VALUES
     'a0000000-0000-0000-0000-000000000003',
     'e0000000-0000-0000-0000-000000000001', '0000.0000'::ltree, 2,
     'Mình chạy một cron job lúc 02:00 AM gọi `pg_dump` nén qua `gzip` rồi stream thẳng lên Cloudflare R2 bucket. Nhờ MVCC của Postgres nên quá trình dump không khóa bảng đọc/ghi.',
-    'a0000000-0000-0000-0000-000000000004', 14, 0, FALSE, NOW() - INTERVAL '3 days 20 hours', NOW() - INTERVAL '3 days 20 hours'
+    'a0000000-0000-0000-0000-000000000004', 0, 0, FALSE, NOW() - INTERVAL '3 days 20 hours', NOW() - INTERVAL '3 days 20 hours'
   ),
   -- [CẤP 3 - 3 chunks]
   (
@@ -434,7 +441,7 @@ VALUES
     'a0000000-0000-0000-0000-000000000002',
     'e0000000-0000-0000-0000-000000000002', '0000.0000.0000'::ltree, 3,
     'Bổ sung thêm: Nếu CSDL lớn hơn 50GB thì nên chuyển sang `pgBackRest` hoặc `WAL-G` để backup vi sai theo block.',
-    'a0000000-0000-0000-0000-000000000003', 9, 0, FALSE, NOW() - INTERVAL '3 days 15 hours', NOW() - INTERVAL '3 days 15 hours'
+    'a0000000-0000-0000-0000-000000000003', 0, 0, FALSE, NOW() - INTERVAL '3 days 15 hours', NOW() - INTERVAL '3 days 15 hours'
   ),
   -- [CẤP 4 - 4 chunks]
   (
@@ -443,7 +450,7 @@ VALUES
     'a0000000-0000-0000-0000-000000000004',
     'e0000000-0000-0000-0000-000000000003', '0000.0000.0000.0000'::ltree, 4,
     'Chuẩn bác, WAL archiving liên tục lên object storage kết hợp Point-in-Time Recovery (PITR) giúp khôi phục đúng giây trước sự cố.',
-    'a0000000-0000-0000-0000-000000000002', 5, 0, FALSE, NOW() - INTERVAL '3 days 10 hours', NOW() - INTERVAL '3 days 10 hours'
+    'a0000000-0000-0000-0000-000000000002', 0, 0, FALSE, NOW() - INTERVAL '3 days 10 hours', NOW() - INTERVAL '3 days 10 hours'
   ),
   -- [CẤP 5 - 5 chunks]
   (
@@ -452,7 +459,7 @@ VALUES
     'a0000000-0000-0000-0000-000000000003',
     'e0000000-0000-0000-0000-000000000004', '0000.0000.0000.0000.0000'::ltree, 5,
     'Hiện tại Homelab DB ~2GB nên giải pháp stream dump vẫn phản hồi dưới 15 giây.',
-    'a0000000-0000-0000-0000-000000000004', 4, 0, FALSE, NOW() - INTERVAL '2 days 18 hours', NOW() - INTERVAL '2 days 18 hours'
+    'a0000000-0000-0000-0000-000000000004', 0, 0, FALSE, NOW() - INTERVAL '2 days 18 hours', NOW() - INTERVAL '2 days 18 hours'
   ),
   -- [CẤP 6 - 6 chunks]
   (
@@ -461,7 +468,7 @@ VALUES
     'a0000000-0000-0000-0000-000000000004',
     'e0000000-0000-0000-0000-000000000005', '0000.0000.0000.0000.0000.0000'::ltree, 6,
     'Cloudflare R2 miễn phí egress bandwidth nên đồng bộ bản sao rất tiết kiệm.',
-    'a0000000-0000-0000-0000-000000000003', 6, 0, FALSE, NOW() - INTERVAL '2 days 12 hours', NOW() - INTERVAL '2 days 12 hours'
+    'a0000000-0000-0000-0000-000000000003', 0, 0, FALSE, NOW() - INTERVAL '2 days 12 hours', NOW() - INTERVAL '2 days 12 hours'
   ),
   -- [CẤP 7 - 7 chunks]
   (
@@ -470,7 +477,7 @@ VALUES
     'a0000000-0000-0000-0000-000000000001',
     'e0000000-0000-0000-0000-000000000006', '0000.0000.0000.0000.0000.0000.0000'::ltree, 7,
     'Lưu ý token truy cập R2 cần xoay vòng định kỳ 90 ngày để đáp ứng chuẩn Zero Trust.',
-    'a0000000-0000-0000-0000-000000000004', 8, 0, FALSE, NOW() - INTERVAL '2 days', NOW() - INTERVAL '2 days'
+    'a0000000-0000-0000-0000-000000000004', 0, 0, FALSE, NOW() - INTERVAL '2 days', NOW() - INTERVAL '2 days'
   ),
   -- [CẤP 8 - ĐỦ 8 CHUNKS - NGƯỠNG TỐI ĐA]
   (
@@ -479,7 +486,7 @@ VALUES
     'a0000000-0000-0000-0000-000000000004',
     'e0000000-0000-0000-0000-000000000007', '0000.0000.0000.0000.0000.0000.0000.0000'::ltree, 8,
     'Cảm ơn anh đã nhắc nhở, em đã cấu hình Vault Agent tự động rotate API secret.',
-    'a0000000-0000-0000-0000-000000000001', 3, 0, FALSE, NOW() - INTERVAL '1 day 18 hours', NOW() - INTERVAL '1 day 18 hours'
+    'a0000000-0000-0000-0000-000000000001', 0, 0, FALSE, NOW() - INTERVAL '1 day 18 hours', NOW() - INTERVAL '1 day 18 hours'
   ),
   -- [CẤP 9 FLAT REPLY - GIỮ NGUYÊN PATH 8 CHUNKS & DEPTH = 8 KÈM @MENTION]
   (
@@ -488,7 +495,7 @@ VALUES
     'a0000000-0000-0000-0000-000000000003',
     'e0000000-0000-0000-0000-000000000008', '0000.0000.0000.0000.0000.0000.0000.0000'::ltree, 8,
     '@devops_coder Rất chuẩn! Bình luận này đạt ngưỡng Capped Depth 8 nên hệ thống tự động giữ phẳng kèm @mention để không vỡ khung hình di động.',
-    'a0000000-0000-0000-0000-000000000004', 7, 0, FALSE, NOW() - INTERVAL '1 day 12 hours', NOW() - INTERVAL '1 day 12 hours'
+    'a0000000-0000-0000-0000-000000000004', 0, 0, FALSE, NOW() - INTERVAL '1 day 12 hours', NOW() - INTERVAL '1 day 12 hours'
   ),
 
   -- [NHÁNH SOFT-DELETED ĐỂ TEST BẢO TOÀN CÂY CON] Path: 0000.0001 & 0000.0001.0000
@@ -498,7 +505,7 @@ VALUES
     'a0000000-0000-0000-0000-000000000005',
     'e0000000-0000-0000-0000-000000000001', '0000.0001'::ltree, 2,
     '[Bình luận đã bị xóa bởi tác giả]',
-    'a0000000-0000-0000-0000-000000000004', 0, 2, TRUE, NOW() - INTERVAL '3 days', NOW() - INTERVAL '2 days 20 hours'
+    'a0000000-0000-0000-0000-000000000004', 0, 0, TRUE, NOW() - INTERVAL '3 days', NOW() - INTERVAL '2 days 20 hours'
   ),
   (
     'e0000000-0000-0000-0000-000000000010',
@@ -506,7 +513,7 @@ VALUES
     'a0000000-0000-0000-0000-000000000002',
     'e0000000-0000-0000-0000-000000000009', '0000.0001.0000'::ltree, 3,
     'Phản hồi này vẫn được bảo toàn nguyên vẹn nhờ mô hình ltree materialized path: nút cha bị soft-delete không làm gãy cây con.',
-    'a0000000-0000-0000-0000-000000000005', 11, 0, FALSE, NOW() - INTERVAL '2 days 19 hours', NOW() - INTERVAL '2 days 19 hours'
+    'a0000000-0000-0000-0000-000000000005', 0, 0, FALSE, NOW() - INTERVAL '2 days 19 hours', NOW() - INTERVAL '2 days 19 hours'
   ),
 
   -- [CẤP 1 - NÚT GỐC 2 CHO THREAD 1] Path: 0001
@@ -516,7 +523,7 @@ VALUES
     'a0000000-0000-0000-0000-000000000001',
     NULL, '0001'::ltree, 1,
     'Đã kiểm chứng bài viết. Cụm Systemd user unit vận hành ổn định liên tục trên Linux kernel của Debian 12/13.',
-    NULL, 25, 0, FALSE, NOW() - INTERVAL '4 days 2 hours', NOW() - INTERVAL '4 days 2 hours'
+    NULL, 0, 0, FALSE, NOW() - INTERVAL '4 days 2 hours', NOW() - INTERVAL '4 days 2 hours'
   ),
 
   -- Comments cho Thread 2 (Phỏng vấn SRE)
@@ -526,7 +533,7 @@ VALUES
     'a0000000-0000-0000-0000-000000000007',
     NULL, '0000'::ltree, 1,
     'Vòng phỏng vấn Linux Kernel có bị hỏi sâu về Cgroups v2 memory.max và OOMKilled không bác?',
-    NULL, 45, 0, FALSE, NOW() - INTERVAL '3 days 12 hours', NOW() - INTERVAL '3 days 12 hours'
+    NULL, 0, 0, FALSE, NOW() - INTERVAL '3 days 12 hours', NOW() - INTERVAL '3 days 12 hours'
   ),
   (
     'e0000000-0000-0000-0000-000000000014',
@@ -534,7 +541,7 @@ VALUES
     'a0000000-0000-0000-0000-000000000004',
     'e0000000-0000-0000-0000-000000000013', '0000.0000'::ltree, 2,
     'Có hỏi rất kỹ! Case kinh điển: đọc `/sys/fs/cgroup/memory.events` xem trường `oom_kill` và sysctl `net.core.somaxconn`.',
-    'a0000000-0000-0000-0000-000000000007', 38, 0, FALSE, NOW() - INTERVAL '3 days 8 hours', NOW() - INTERVAL '3 days 8 hours'
+    'a0000000-0000-0000-0000-000000000007', 0, 0, FALSE, NOW() - INTERVAL '3 days 8 hours', NOW() - INTERVAL '3 days 8 hours'
   ),
   (
     'e0000000-0000-0000-0000-000000000015',
@@ -542,7 +549,73 @@ VALUES
     'a0000000-0000-0000-0000-000000000003',
     NULL, '0001'::ltree, 1,
     'Roadmap rất chất lượng. Phần Behavioral & Incident Postmortem các công ty Big Tech đánh giá cực cao tư duy Blameless RCA.',
-    NULL, 52, 0, FALSE, NOW() - INTERVAL '3 days', NOW() - INTERVAL '3 days'
+    NULL, 0, 0, FALSE, NOW() - INTERVAL '3 days', NOW() - INTERVAL '3 days'
+  ),
+
+  -- Comments thật cho Threads #3 -> #8 (mọi bình luận đều gắn tài khoản user thật)
+  (
+    'e0000000-0000-0000-0000-000000000016',
+    'd0000000-0000-0000-0000-000000000003',
+    'a0000000-0000-0000-0000-000000000007',
+    NULL, '0000'::ltree, 1,
+    'Khi gắn GiST trên ltree, mình đo được truy vấn `<@` trên 100k comments chỉ tốn chưa tới 1ms, nhanh hơn CTE rất nhiều.',
+    NULL, 0, 0, FALSE, NOW() - INTERVAL '2 days 12 hours', NOW() - INTERVAL '2 days 12 hours'
+  ),
+  (
+    'e0000000-0000-0000-0000-000000000017',
+    'd0000000-0000-0000-0000-000000000003',
+    'a0000000-0000-0000-0000-000000000008',
+    'e0000000-0000-0000-0000-000000000016', '0000.0000'::ltree, 2,
+    'Đúng rồi bác, điểm cần chú ý duy nhất là đánh composite index `(thread_id, path)` để ORDER BY không phải sort lại trên RAM.',
+    'a0000000-0000-0000-0000-000000000007', 0, 0, FALSE, NOW() - INTERVAL '2 days 6 hours', NOW() - INTERVAL '2 days 6 hours'
+  ),
+  (
+    'e0000000-0000-0000-0000-000000000018',
+    'd0000000-0000-0000-0000-000000000004',
+    'a0000000-0000-0000-0000-000000000003',
+    NULL, '0000'::ltree, 1,
+    'fillfactor=70 chỉ thực sự phát huy tác dụng HOT update khi không đánh B-Tree index trực tiếp lên cột upvotes/downvotes — nên index `thread_counters` đặt riêng là thiết kế rất chuẩn.',
+    NULL, 0, 0, FALSE, NOW() - INTERVAL '2 days', NOW() - INTERVAL '2 days'
+  ),
+  (
+    'e0000000-0000-0000-0000-000000000019',
+    'd0000000-0000-0000-0000-000000000005',
+    'a0000000-0000-0000-0000-000000000008',
+    NULL, '0000'::ltree, 1,
+    'Lưu ý khi bật Cilium kube-proxy replacement trên Debian 13 nhớ nâng kernel >= 6.1 để có đầy đủ BPF sockmap.',
+    NULL, 0, 0, FALSE, NOW() - INTERVAL '1 day 18 hours', NOW() - INTERVAL '1 day 18 hours'
+  ),
+  (
+    'e0000000-0000-0000-0000-000000000020',
+    'd0000000-0000-0000-0000-000000000006',
+    'a0000000-0000-0000-0000-000000000004',
+    NULL, '0000'::ltree, 1,
+    'Đã xác nhận Lua script xử lý switch từ +1 sang -1 trả về delta -2 chính xác trong 1 lần gọi atomic, không bị trượt số khi bấm nhanh.',
+    NULL, 0, 0, FALSE, NOW() - INTERVAL '18 hours', NOW() - INTERVAL '18 hours'
+  ),
+  (
+    'e0000000-0000-0000-0000-000000000021',
+    'd0000000-0000-0000-0000-000000000007',
+    'a0000000-0000-0000-0000-000000000002',
+    NULL, '0000'::ltree, 1,
+    'Về phía vận hành: IP nên hash kèm salt xoay theo ngày hoặc mask `/24` trước khi đẩy vào audit log dài hạn.',
+    NULL, 0, 0, FALSE, NOW() - INTERVAL '4 hours', NOW() - INTERVAL '4 hours'
+  ),
+  (
+    'e0000000-0000-0000-0000-000000000022',
+    'd0000000-0000-0000-0000-000000000007',
+    'a0000000-0000-0000-0000-000000000009',
+    'e0000000-0000-0000-0000-000000000021', '0000.0000'::ltree, 2,
+    'Rất chính xác ạ, kết hợp chính sách TTL tối đa 30 ngày cho bảng phiên và log truy cập nhạy cảm là đáp ứng tốt yêu cầu kiểm toán.',
+    'a0000000-0000-0000-0000-000000000002', 0, 0, FALSE, NOW() - INTERVAL '3 hours', NOW() - INTERVAL '3 hours'
+  ),
+  (
+    'e0000000-0000-0000-0000-000000000023',
+    'd0000000-0000-0000-0000-000000000008',
+    'a0000000-0000-0000-0000-000000000003',
+    NULL, '0000'::ltree, 1,
+    'Đã kiểm tra `SseManager` sau bản vá: socket zombie được thu hồi ngay khi tab trình duyệt đóng kết nối.',
+    NULL, 0, 0, FALSE, NOW() - INTERVAL '8 hours', NOW() - INTERVAL '8 hours'
   );
 
 COMMIT;

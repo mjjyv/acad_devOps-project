@@ -92,13 +92,22 @@ export function createCommunityRouter(
   // 1. SPACES ENDPOINTS (/spaces)
   // ===========================================================================
 
-  // GET /spaces - Danh sách không gian thảo luận
+  // GET /spaces - Danh sách không gian thảo luận (hỗ trợ lọc ?topic=&q=)
   router.get('/spaces', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : 20;
       const offset = req.query.offset ? parseInt(String(req.query.offset), 10) : 0;
+      const topic =
+        typeof req.query.topic === 'string' && req.query.topic.trim()
+          ? req.query.topic.trim()
+          : undefined;
+      const q =
+        typeof req.query.q === 'string' && req.query.q.trim() ? req.query.q.trim() : undefined;
       const userId = getOptionalUserId(req, jwtSecret);
-      const spaces = await services.spaceService.listSpaces({ limit, offset }, userId);
+      const spaces = await services.spaceService.listSpaces(
+        { limit, offset, ...(topic ? { topic } : {}), ...(q ? { q } : {}) },
+        userId,
+      );
       res.status(200).json({ spaces });
     } catch (err) {
       next(err);

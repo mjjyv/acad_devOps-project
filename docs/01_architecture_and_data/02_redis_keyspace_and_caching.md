@@ -1,48 +1,37 @@
-# Cấu Trúc Bộ Nhớ Đệm & Keyspace Redis 7 (Redis Topology)
+# Cấu Trúc Bộ Nhớ Đệm & Keyspace Redis 7 (Redis Topology v2.1)
 
 > **Mã tài liệu:** `DATA-REDIS-KEYSPACE`  
-> **Dự án:** Acad DevOps Fullstack Monorepo  
-> **Phiên bản:** Redis 7.0+ (Tương thích Upstash Serverless & Redis Cluster)
+> **Dự án:** Acad DevOps Fullstack Monorepo (**SYNAPSE Engine**)  
+> **Phiên bản:** Redis 7.4 (Podman Rootless local + Tương thích Redis Cluster / Upstash)  
+> **Mã nguồn triển khai:** [`deploy/redis/execute_vote.lua`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/deploy/redis/execute_vote.lua), [`RedisSessionStore`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/services/auth/src/session/redis-session-store.ts), [`LuaVoteEngine`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/services/community/src/voting/lua-vote-engine.ts), [`PresenceManager`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/services/chat/src/realtime/presence-manager.ts), [`RateLimiter`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/apps/api/src/middleware/rate-limiter.ts)
 
 ---
 
-## 1. PHÂN BỔ BẢN ĐỒ KEYSPACE REDIS (KEYSPACE ARCHITECTURE)
+## 1. BẢN ĐỒ KEYSPACE REDIS THỰC TẾ
 
-Hệ thống quản lý dữ liệu tạm, phiên đăng nhập, khóa nguyên tử và hàng đợi dựa trên phân vùng tiền tố tiêu chuẩn:
-
-```
-┌───────────────────────────────────┬────────────┬─────────────┬──────────────────────────────────────────┐
-│ Cấu Trúc Key Redis                │ Kiểu Dữ Liệu│ TTL         │ Mục Đích Nghiệp Vụ                      │
-├───────────────────────────────────┼────────────┼─────────────┼──────────────────────────────────────────┤
-│ session:{user_id}:{session_id}    │ HASH       │ 7 ngày      │ Lưu trữ dữ liệu phiên, hash token hiện tại│
-│ session_lookup:{token_hash}       │ STRING     │ 7 ngày      │ Tra cứu nhanh O(1) từ token -> session   │
-│ vote:{target_id}:voters           │ HASH       │ 30 ngày     │ Lưu trữ trạng thái vote của user (+1/-1) │
-│ vote:{target_id}:counters         │ HASH       │ 30 ngày     │ Bộ đếm nguyên tử upvotes, downvotes, net │
-│ dirty:votes                       │ SET        │ Không hết hạn│ Danh sách các target_id cần flush về DB  │
-│ rate_limit:login:{ip}             │ ZSET       │ 15 phút     │ Sliding-window rate limit chống brute    │
-│ chat:online_users                 │ SET        │ 5 phút      │ Theo dõi trạng thái trực tuyến (Presence) │
-│ chat:channel:{channel_id}:typing  │ HASH       │ 5 giây      │ Trạng thái "đang soạn tin nhắn..."       │
-│ feed:hot:cache                    │ ZSET       │ 60 giây     │ Danh sách các thread_id xếp theo hotScore│
-└───────────────────────────────────┴────────────┴─────────────┴──────────────────────────────────────────┘
-```
+| Cấu Trúc Key Redis | Kiểu | TTL | Nguồn Ghi / Đọc Thực Tế | Mục Đích Nghiệp Vụ |
+| :--- | :---: | :---: | :--- | :--- |
+| `session:{userId}:{sessionId}` | `HASH` | 7 ngày (`604800s`) | `RedisSessionStore` | Lưu phiên đăng nhập (`currentTokenHash`, `previousTokenHash`, `gracePeriodExpiresAt`, `deviceFingerprint`, `ipAddress`, `userAgent`, `isRevoked`) |
+| `session_lookup:{tokenHash}` | `STRING` | 7d / 35s | `RedisSessionStore` | Ánh xạ O(1) từ SHA-256 refresh token $\rightarrow$ `{userId}:{sessionId}` (35s cho `previousTokenHash`) |
+| `target:{targetId}:voters` | `HASH` | 30 ngày | `execute_vote.lua` / `LuaVoteEngine` | Ánh xạ `userId` $\rightarrow$ `direction` (`1` hoặc `-1`) để chạy FSM Unvote/Switch/New nguyên tử |
+| `target:{targetId}:counters` | `HASH` | 30 ngày | `execute_vote.lua` / `LuaVoteEngine` | Bộ đếm tốc độ cao: `upvotes`, `downvotes`, `net_score` |
+| `dirty:votes` | `SET` | Bền vững (tới khi flush) | `execute_vote.lua` + `VoteFlushWorker` | Tập `targetId` có thay đổi vote cần xả về `thread_counters` PostgreSQL mỗi 5 giây |
+| `ratelimit:{tierName}:{clientKey}` | `STRING` | Theo `windowMs` | `RateLimiter` (`apps/api`) | Bộ đếm `INCR` + `EXPIRE` phân tầng (`auth`, `interaction`, `general`) theo `user:{id}` hoặc `ip:{addr}` (tự lùi In-Memory khi Redis mất kết nối) |
+| `presence:online:{userId}` | `STRING` | 15 giây | `PresenceManager` (`services/chat`) | Cờ trực tuyến (`'1'`), được làm mới từ SSE connect & heartbeat 12s của UI |
+| `typing:{channelId}:{userId}` | `STRING` | 5 giây | `PresenceManager` (`services/chat`) | Lưu `username` đang soạn tin trong kênh chat cụ thể |
 
 ---
 
-## 2. CHI TIẾT CÁC CẤU TRÚC TRỌNG YẾU
+## 2. ĐẶC TẢ CHI TIẾT CÁC LUỒNG REDIS CỐT LÕI
 
-### 2.1. Cụm Quản Lý Phiên Làm Việc (Session Management)
-- **`session:{user_id}:{session_id}` (Hash):**
-  - `current_token_hash`: Băm SHA-256 của refresh token hợp lệ hiện tại.
-  - `previous_token_hash`: Băm của token vừa bị thu hồi trong vòng 30s Grace Period.
-  - `grace_period_expires_at`: Mốc timestamp hết hạn ân hạn (epoch ms).
-  - `device_fingerprint`: Mã định danh phần cứng của trình duyệt.
-  - `ip_address`: Địa chỉ IP kết nối gần nhất.
+### 2.1. Quản Lý Phiên & Grace Period 30s (`RedisSessionStore`)
+- Mỗi khi đăng nhập thành công, pipeline Redis tạo 2 key: `session:{userId}:{sessionId}` (Hash) và `session_lookup:{currentTokenHash}` (String, TTL 7 ngày).
+- Khi xoay vòng Token (Refresh), `previousTokenHash` được gán khóa lookup tạm TTL 35 giây (`grace_period_expires_at` = +30 giây) để các request song song trong cùng thời điểm chuyển giao không bị văng 401.
+- Nếu phát hiện `previousTokenHash` bị gửi lại sau khi quá 30s $\rightarrow$ hệ thống coi là Token Reuse Attack, thu hồi toàn bộ chuỗi `session:{userId}:*` trên Redis và `is_revoked = TRUE` trên PostgreSQL.
 
-### 2.2. Động Cơ Biểu Quyết Nguyên Tử (Atomic Lua Voting)
-- **`vote:{target_id}:voters` (Hash):** Ánh xạ `user_id` $\rightarrow$ `direction` (`1` cho upvote, `-1` cho downvote).
-- **`vote:{target_id}:counters` (Hash):** Chứa 3 trường `upvotes`, `downvotes`, `net_score`.
-- **`dirty:votes` (Set):** Bất cứ khi nào có thay đổi vote từ [`execute_vote.lua`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/deploy/redis/execute_vote.lua), `target_id` sẽ được thêm vào Set này. Worker chạy mỗi 5s sẽ đọc Set này và thực thi ghi dồn (bulk upsert) vào bảng `thread_counters` của PostgreSQL.
+### 2.2. Biểu Quyết Nguyên Tử O(1) (`execute_vote.lua`)
+- Toàn bộ thao tác đọc `HGET target:{targetId}:voters`, quyết định trạng thái (`Unvote` / `New Vote` / `Reverse Direction +2/-2`), cập nhật `HINCRBY target:{targetId}:counters` và đánh dấu `SADD dirty:votes` diễn ra trong một lần thực thi Lua Script đơn luồng trên Redis.
+- `VoteFlushWorker` chạy nền định kỳ 5 giây đọc tập `dirty:votes` và đồng bộ ngược vào `thread_counters` (bảng cấu hình `fillfactor=70` tối ưu Heap-Only Tuples).
 
-### 2.3. Trạng Thái Trực Tuyến & Chat Tức Thời (Reddit Chats Presence)
-- **`chat:online_users` (Set):** Lưu danh sách `user_id` đang mở kết nối WebSocket/SSE. Được làm mới mỗi 60s qua lệnh Ping/Pong Heartbeat.
-- **`chat:channel:{channel_id}:typing` (Hash):** Lưu danh sách người dùng đang gõ phím kèm timestamp, tự động xóa sau 5 giây nếu không nhận được typing event mới.
+### 2.3. Presence, Typing & Rate Limit Graceful Degradation
+- Cả `PresenceManager` và `RateLimiter` đều thiết kế cơ chế **In-Memory Fallback**: nếu kết nối Redis tạm ngắt, API Gateway vẫn hoạt động kiểm soát rate-limit và typing mà không gây sập toàn bộ dịch vụ.

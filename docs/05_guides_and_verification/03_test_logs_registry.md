@@ -1,12 +1,45 @@
-# Tổng Hợp Biên Bản Nghiệm Thu & Nhật Ký Kiểm Thử (Test Logs Registry)
+# Tổng Hợp Biên Bản Nghiệm Thu, Thực Nghiệm & Quản Trị Rủi Ro (Phase 6 Verification Registry)
 
 > **Mã tài liệu:** `GUIDE-TEST-LOGS`  
-> **Dự án:** Acad DevOps Fullstack Monorepo  
-> **Thư mục lưu trữ lịch sử:** [`archive/legacy_docs_v1/logs/`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/archive/legacy_docs_v1/logs)
+> **Dự án:** Acad DevOps Fullstack Monorepo (**SYNAPSE Engine**)  
+> **Khung chuẩn:** Giai đoạn 6 trong [`SYSTEM ANALYSIS & DESIGN LIFECYCLE FRAMEWORK.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/docs/SYSTEM%20ANALYSIS%20%26%20DESIGN%20LIFECYCLE%20FRAMEWORK.md)  
+> **Skill nghiệm thu bắt buộc:** [`.agents/skills/real-user-e2e-verification/SKILL.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/.agents/skills/real-user-e2e-verification/SKILL.md)
 
 ---
 
-## 1. MỤC LỤC CÁC BIÊN BẢN NGHIỆM THU ĐÃ THỰC THI
+## 0. KẾ HOẠCH THỰC NGHIỆM, CHỈ SỐ ĐÁNH GIÁ & RỦI RO (FRAMEWORK GIAI ĐOẠN 6)
+
+### 0.1. Kiến trúc Môi trường Kiểm thử (Testbed Topology)
+- **Unit & Integration Testbed:** Vitest 3.2.7 chạy trực tiếp trên PostgreSQL 16 + Redis 7 thật (local Podman Rootless & GitHub Actions Service Containers).
+- **Browser Real-User E2E Testbed (Mục tiêu Giai đoạn D):** Playwright Chromium Headless thực thi luồng người dùng trắng mới (`fresh_a`, `fresh_b`) trên `http://127.0.0.1:3000`.
+- **Security & Smoke Probes:** `scripts/verify-security-curl.sh`, `scripts/manage-homelab.sh qa`.
+
+### 0.2. Khung Chỉ Số Đánh Giá Định Lượng (Evaluation Metrics & Benchmarks)
+
+| Mã chỉ số | Tên chỉ số | Công thức / Phương pháp đo | Ngưỡng mục tiêu | Trạng thái đo gần nhất |
+| :--- | :--- | :--- | :--- | :--- |
+| **MTR-01** | **Tỷ lệ nhất quán bộ đếm DB (`Zero Fake Data`)** | `thread_counters == COUNT(thread_votes)` & `<= COUNT(users)` | **100% khớp** | ✅ Đạt `0` sai lệch (`users=16`, `vote_mismatches=0`, `inflated=0`, `comment_mismatches=0`, `space_*_mismatches=0`, `8/8` threads `PG=REDIS`) |
+| **MTR-02** | **Độ phủ kiểm thử kỹ thuật (`Vitest + Real DB`)** | Unit + Postgres/Redis Integration pass rate | **100% Pass** | ✅ `175` unit/endpoint tests (`18` files) + `4` Real Postgres 16/Redis 7 integration tests Pass |
+| **MTR-03** | **Tỷ lệ vượt qua luồng Tài khoản trắng E2E** | Playwright 2-user fresh journey (`Home/Popular/Explore` + `Create Chat DM`) | **100% Pass** | ✅ Pass 100% trên Chromium Headless (`tests/e2e/real-user-e2e.spec.ts`) |
+| **MTR-04** | **An ninh & Rò rỉ PII** | Security Headers + Auth Rate Limit 429 + Public Profile 0 PII bytes | **0 Bytes PII lộ** | ✅ `verify-security-curl.sh` Pass + `/auth/users/search` & `/users/:username` không trả `email`/`passwordHash` |
+
+### 0.3. Mốc Kiểm Soát Chất Lượng (Quality Gates)
+- **QG-1 (Design & SAD Docs - Giai đoạn A):** Hoàn thiện đủ 6 giai đoạn tài liệu + 37 sơ đồ Mermaid cho cả 7 phân hệ $\rightarrow$ **✅ Đã hoàn tất**.
+- **QG-2 (Database Real Integrity - Giai đoạn B):** Migration `000007` + Seeds sạch 100% không số ảo, đối soát `reconcile_platform_counters()` lệch 0 $\rightarrow$ **✅ Đã hoàn tất**.
+- **QG-3 (UX & API Sync - Giai đoạn C):** Tách `Home`/`Popular`/`/explore`, hoàn thiện **Create Chat (Search by username)** + Incoming/Sent Requests $\rightarrow$ **✅ Đã hoàn tất**.
+- **QG-4 (Real-User E2E Gate - Giai đoạn D):** Playwright browser thật pass 100% kịch bản 2 tài khoản trắng mới (`fresh_a`, `fresh_b`) $\rightarrow$ **✅ Đã hoàn tất**.
+
+### 0.4. Ma Trận Quản Trị Rủi Ro Kỹ Thuật (Technical Risk Management)
+
+| Mã rủi ro | Nhận diện nguy cơ | Mức độ | Kịch bản tác động | Giảm thiểu (Mitigation) | Dự phòng (Contingency) |
+| :--- | :--- | :---: | :--- | :--- | :--- |
+| **RSK-01** | Nghiệm thu ảo (`HTTP 200` SSR rỗng / test trên seed `admin_pro`) | Cao | Báo xong nhưng user mới mở UI không dùng được | Kích hoạt bắt buộc Skill `real-user-e2e-verification` & Playwright 2 tài khoản trắng | Khóa mọi PR/Commit UI nếu thiếu kịch bản E2E user mới |
+| **RSK-02** | Lệch bộ đếm Redis (`target:{id}:*`) vs Postgres (`thread_counters`) & soft-delete `comments` | Cao | Số vote/comment ở feed lệch khi mở chi tiết | Cập nhật Trigger `AFTER UPDATE OF is_deleted` + hàm `reconcile_platform_counters()` | Chạy worker/reconcile đồng bộ lại từ bảng gốc `thread_votes`/`comments` |
+| **RSK-03** | Ngắt kết nối SSE hoặc Token hết hạn 15m khi Chat lâu | Trung bình | Browser `EventSource` retry với JWT cũ bị `401` | Reconnect lấy JWT mới từ `localStorage` + `PresenceManager` In-Memory fallback | Hiển thị trạng thái SSE rõ & tự hồi phục kết nối |
+
+---
+
+## 1. MỤC LỤC CÁC BIÊN BẢN NGHIỆM THU LỊCH SỬ ĐÃ THỰC THI
 
 Dự án áp dụng quy định bắt buộc tại [`AGENT.md`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/AGENT.md): *Mọi lần phát hành hoặc hoàn tất tính năng đều phải chạy kiểm thử tự động và lập biên bản lưu vết.*
 
@@ -24,6 +57,7 @@ Dự án áp dụng quy định bắt buộc tại [`AGENT.md`](file:///home/deb
 | **`LOG-B3`** | 2026-11-06 | **Nghiệm thu Phase B3 (Bầu Chọn Nguyên Tử, Danh Tiếng & Bảng Tin Thông Minh)**: DDL PostgreSQL 16 migration `000003_create_voting_and_feed_schema` (bảng `thread_counters` với `fillfactor = 70` tối ưu HOT updates, bảng `thread_votes`, `comment_votes`, `user_saved_threads`), Kịch bản Redis Lua nguyên tử `execute_vote.lua` $\mathcal{O}(1)$ xử lý vote, hủy vote, đảo chiều $\pm 2$ và quản lý tập hợp `dirty:votes`, Tiến trình định kỳ `VoteFlushWorker` xả dữ liệu dồn về CSDL và cập nhật điểm Karma, Động cơ xếp hạng Hacker News `GravityDecayEngine` ($G=1.8$) & `WilsonScoreEngine` ($z=1.96$), Phân tầng nguồn cấp tin `/feed/home` (theo subscriptions) & `/feed/popular` (toàn cầu), Phân trang con trỏ `CursorManager` Base64URL tổng hợp, 100/100 Vitest tests pass (100%), Biome lint pass (114ms), Typecheck pass, 16/16 Live cURL probes pass, RFC 7807 problem details 0 errors 500 | **100% Passed (100/100 Tests Xanh, 16/16 cURL Xanh)** |
 | **`LOG-B4`** | 2026-11-06 | **Nghiệm thu Phase B4 (Phân Hệ Nhắn Tin Thời Gian Thực & Hàng Đợi Duyệt Chat Reddit)**: DDL PostgreSQL 16 migration `000004_create_chat_schema` (bảng `chat_channels`, `chat_members`, `chat_messages`, `chat_requests`), Dịch vụ `@acad/chat-service` (ChatService, InMemoryChatRepository, PostgresChatRepository, PresenceManager TTL 15s trực tuyến & TTL 5s typing, SseManager chuẩn RFC 8895 kèm nhịp tim `: ping\\n\\n` 15s và hỗ trợ multi-tab), Hàng đợi duyệt tin nhắn người lạ (Stranger Requests Queue PENDING -> ACCEPTED / IGNORED / BLOCKED), Chặn quấy rối cấm liên lạc vĩnh viễn (HTTP 403 Forbidden), Chat Threads đa tầng qua `parent_message_id`, Phân trang con trỏ Keyset Cursor Base64URL, API Gateway routes (`/chat/channels`, `/chat/channels/direct`, `/chat/channels/group`, `/chat/channels/:id/messages`, `/chat/requests`, `/chat/requests/:id`, `/chat/events`, `/chat/channels/:id/typing`, `/chat/presence/heartbeat`), 120/120 Vitest tests pass (100%), Biome lint 0 errors, Typecheck 0 errors, 16/16 Live cURL probes pass, RFC 7807 problem details 0 errors 500 | **100% Passed (120/120 Tests Xanh, 16/16 cURL Xanh)** |
 | **`LOG-B5`** | 2026-11-06 | **Nghiệm thu Phase B5 (Phân Hệ Kiểm Duyệt, Hàng Đợi Báo Cáo & Quản Trị Hệ Thống - Reddit Moderation & Admin Hub)**: DDL PostgreSQL 16 migration `000005_create_moderation_and_admin_schema` (bảng `reports`, `audit_logs`, enums `mod_report_status`, `mod_report_target_type`), Dịch vụ `@acad/moderation-service` (ModerationService, InMemoryModerationRepository, PostgresModerationRepository, Hàng đợi Mod Queue PENDING -> RESOLVED / DISMISSED, Cơ chế Shadowban ẩn bài viết âm thầm, Cưỡng chế thu hồi phiên khi đổi quyền/khóa tài khoản qua `sessionStore.revokeAllUserSessions`, Ghi vết kiểm toán bất biến Audit Logs `AuditLogEntity`, Tổng hợp chỉ số hệ thống AdminStats, Ghi đè ghim/khóa/xóa bài viết và xóa không gian), API Gateway middleware `adminGuard` (phân quyền ADMIN / GLOBAL_MOD, 403 Forbidden), routes `/admin` & `/reports`, 162/162 Vitest tests pass (100%), Biome lint 0 errors, Typecheck 0 errors, 18/18 Live cURL probes pass | **100% Passed (162/162 Tests Xanh, 18/18 cURL Xanh, Hoàn Tất Stream B)** |
+| **`LOG-E2E-001`** | 2026-11-12 | **Nghiệm thu Toàn Diện Giai Đoạn B+C+D (DB `000007` + Real UX + Playwright Chromium Two-Fresh-User E2E)**: Migration `000007`, xóa 100% số ảo, đồng bộ `8/8` bài viết Postgres ↔ Redis; Biome check (`153` files, `0` lỗi), `typecheck`, Next.js build (`11/11` pages), `175/175` unit/API tests (`18` files) + `4/4` Real Postgres 16/Redis 7 integration tests; Playwright Chromium Headless [`real-user-e2e.spec.ts`](file:///home/debv/Documents/100_academy/acad_it_devOps/acad_devOps_project/tests/e2e/real-user-e2e.spec.ts) (`fresh_a` & `fresh_b`): đã phát hiện và sửa triệt để 4 lỗi thực tế (`authRateLimiter` áp nhầm `GET /auth/me`, `initSession` xóa token khi `429`, độ trễ 5s counter khi reload `/threads/:id`, và state `messages` cũ sót khi chuyển sang tab rỗng); kiểm toán SQL `0` sai lệch | **100% Passed (175 Unit + 4 Real DB + 1 Two-User Chromium E2E Pass)** |
 
 ---
 

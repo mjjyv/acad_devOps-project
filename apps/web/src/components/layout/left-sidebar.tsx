@@ -2,17 +2,18 @@
 
 import type { Space } from '@acad/contracts';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { CommunityApi } from '../../lib/api/community';
+import { CommunityApi, SPACE_TOPICS } from '../../lib/api/community';
 import { useAuth } from '../../lib/auth/auth-context';
 import { useUI } from '../../lib/store/ui-context';
 import { CreateSpaceModal } from '../spaces/create-space-modal';
 import { ExploreIcon, HomeIcon, PlusIcon, PopularIcon, ShieldIcon } from '../ui/icons';
 
 export function LeftSidebar() {
+  const pathname = usePathname();
   const router = useRouter();
-  const { sidebarOpen, setActiveFeedTab, showToast } = useUI();
+  const { sidebarOpen, activeFeedTab, setActiveFeedTab, setFeedSort } = useUI();
   const { isAuthenticated, requireAuth, user } = useAuth();
   const [topicsExpanded, setTopicsExpanded] = useState(true);
   const [communitiesExpanded, setCommunitiesExpanded] = useState(true);
@@ -71,69 +72,89 @@ export function LeftSidebar() {
     >
       {/* 1. Main Navigation Feeds */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-        <Link
-          href="/"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            padding: '10px 14px',
-            borderRadius: 'var(--radius-md)',
-            backgroundColor: 'var(--bg-surface-hover)',
-            color: 'var(--text-primary)',
-            textDecoration: 'none',
-            fontWeight: 600,
-            fontSize: '14px',
-          }}
-        >
-          <HomeIcon size={20} style={{ color: 'var(--color-brand)' }} />
-          <span>Home</span>
-        </Link>
+        {(() => {
+          const isHomeActive = pathname === '/' && activeFeedTab === 'following';
+          const isPopularActive = pathname === '/' && activeFeedTab === 'for_you';
+          const isExploreActive = pathname.startsWith('/explore');
 
-        <Link
-          href="/?sort=hot"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            padding: '10px 14px',
-            borderRadius: 'var(--radius-md)',
-            backgroundColor: 'transparent',
-            color: 'var(--text-secondary)',
-            textDecoration: 'none',
-            fontWeight: 500,
-            fontSize: '14px',
-            transition: 'all 0.15s ease',
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
-          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-        >
-          <PopularIcon size={20} />
-          <span>Popular</span>
-        </Link>
+          return (
+            <>
+              <Link
+                href="/?tab=following"
+                onClick={() => setActiveFeedTab('following')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '10px 14px',
+                  borderRadius: 'var(--radius-md)',
+                  backgroundColor: isHomeActive ? 'var(--bg-surface-hover)' : 'transparent',
+                  color: isHomeActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  textDecoration: 'none',
+                  fontWeight: isHomeActive ? 600 : 500,
+                  fontSize: '14px',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <HomeIcon
+                  size={20}
+                  style={{ color: isHomeActive ? 'var(--color-brand)' : undefined }}
+                />
+                <span>Home</span>
+              </Link>
 
-        <Link
-          href="/"
-          onClick={() => setActiveFeedTab('for_you')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            padding: '10px 14px',
-            borderRadius: 'var(--radius-md)',
-            backgroundColor: 'transparent',
-            color: 'var(--text-secondary)',
-            textDecoration: 'none',
-            fontWeight: 500,
-            fontSize: '14px',
-            transition: 'all 0.15s ease',
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
-          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-        >
-          <ExploreIcon size={20} />
-          <span>Explore</span>
-        </Link>
+              <Link
+                href="/?sort=hot"
+                onClick={() => {
+                  setActiveFeedTab('for_you');
+                  setFeedSort('hot');
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '10px 14px',
+                  borderRadius: 'var(--radius-md)',
+                  backgroundColor: isPopularActive ? 'var(--bg-surface-hover)' : 'transparent',
+                  color: isPopularActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  textDecoration: 'none',
+                  fontWeight: isPopularActive ? 600 : 500,
+                  fontSize: '14px',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <PopularIcon
+                  size={20}
+                  style={{ color: isPopularActive ? 'var(--color-brand)' : undefined }}
+                />
+                <span>Popular</span>
+              </Link>
+
+              <Link
+                href="/explore"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '10px 14px',
+                  borderRadius: 'var(--radius-md)',
+                  backgroundColor: isExploreActive ? 'var(--bg-surface-hover)' : 'transparent',
+                  color: isExploreActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  textDecoration: 'none',
+                  fontWeight: isExploreActive ? 600 : 500,
+                  fontSize: '14px',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <ExploreIcon
+                  size={20}
+                  style={{ color: isExploreActive ? 'var(--color-brand)' : undefined }}
+                />
+                <span>Explore</span>
+              </Link>
+            </>
+          );
+        })()}
       </div>
 
       {/* 2. Quick Action: Create Post & Start a Community */}
@@ -231,31 +252,22 @@ export function LeftSidebar() {
 
         {topicsExpanded && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '4px' }}>
-            {[
-              'DevOps & SRE',
-              'Kubernetes Architecture',
-              'PostgreSQL 16 & Redis 7',
-              'Cloudflare Zero Trust',
-              'Debian Linux Homelab',
-            ].map((topic) => (
-              <div
+            {SPACE_TOPICS.map((topic) => (
+              <Link
                 key={topic}
-                onClick={() => showToast(`Lọc theo chủ đề: ${topic}`)}
+                href={`/explore?topic=${encodeURIComponent(topic)}`}
                 style={{
+                  display: 'block',
                   padding: '8px 14px',
                   borderRadius: 'var(--radius-md)',
                   color: 'var(--text-secondary)',
                   fontSize: '13px',
-                  cursor: 'pointer',
+                  textDecoration: 'none',
                   transition: 'all 0.15s ease',
                 }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')
-                }
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
               >
                 {topic}
-              </div>
+              </Link>
             ))}
           </div>
         )}
