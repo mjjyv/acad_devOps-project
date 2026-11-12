@@ -1,5 +1,5 @@
 # ==============================================================================
-# MULTI-STAGE DOCKERFILE - PRODUCTION API GATEWAY & BACKEND ENGINE
+# MULTI-STAGE DOCKERFILE - PRODUCTION API GATEWAY & BACKEND ENGINE (v3.0.0)
 # Node.js 22 Alpine, non-root user, multi-stage
 # ==============================================================================
 
@@ -8,7 +8,7 @@ FROM node:22-alpine AS builder
 RUN corepack enable && corepack prepare pnpm@10.15.0 --activate
 WORKDIR /app
 
-# Copy root workspace configurations
+# Copy root workspace configurations & backend package manifests
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json tsconfig.json ./
 COPY packages/contracts/package.json ./packages/contracts/
 COPY packages/auth-client/package.json ./packages/auth-client/
@@ -17,18 +17,18 @@ COPY services/chat/package.json ./services/chat/
 COPY services/community/package.json ./services/community/
 COPY services/moderation/package.json ./services/moderation/
 COPY apps/api/package.json ./apps/api/
-COPY apps/web/package.json ./apps/web/
 
-# Install dependencies
+# Install dependencies strictly from frozen lockfile
 RUN pnpm install --frozen-lockfile
 
-# Copy source code
+# Copy source code & Redis Lua scripts
 COPY packages/ ./packages/
 COPY services/ ./services/
 COPY apps/api/ ./apps/api/
+COPY deploy/redis/ ./deploy/redis/
 
-# Build backend packages and api gateway
-RUN pnpm --filter @acad/api-gateway... run build
+# Build backend packages and API Gateway cleanly (guaranteed fresh emit)
+RUN pnpm --filter @acad/api-gateway... run build && test -f /app/apps/api/dist/server.js
 
 # Stage 2: Production Minimal Runner
 FROM node:22-alpine AS runner
@@ -41,13 +41,14 @@ ENV PORT=10000
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 appuser
 
-# Copy workspace layout, dependencies and built outputs
+# Copy workspace layout, dependencies, Lua scripts and built outputs
 COPY --from=builder --chown=appuser:nodejs /app/package.json ./
 COPY --from=builder --chown=appuser:nodejs /app/pnpm-workspace.yaml ./
 COPY --from=builder --chown=appuser:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=appuser:nodejs /app/packages ./packages
 COPY --from=builder --chown=appuser:nodejs /app/services ./services
 COPY --from=builder --chown=appuser:nodejs /app/apps/api ./apps/api
+COPY --from=builder --chown=appuser:nodejs /app/deploy/redis ./deploy/redis
 
 USER appuser
 EXPOSE 10000

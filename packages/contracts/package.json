@@ -1,0 +1,28 @@
+{
+  "name": "@acad/contracts",
+  "version": "3.0.0",
+  "description": "Enterprise OpenAPI 3.1 & Zod Contracts Single Source of Truth",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.4",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.5"
+  }
+}

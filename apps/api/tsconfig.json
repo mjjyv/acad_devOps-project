@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist"
+  },
+  "references": [
+    { "path": "../../packages/contracts" },
+    { "path": "../../services/auth" },
+    { "path": "../../services/community" },
+    { "path": "../../services/chat" },
+    { "path": "../../services/moderation" }
+  ],
+  "include": ["src/**/*"],
+  "exclude": ["tests/**/*", "dist"]
+}

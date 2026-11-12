@@ -1,0 +1,31 @@
+{
+  "name": "@acad/auth-service",
+  "version": "3.0.0",
+  "description": "High-Security Identity, Scrypt Crypto, Dual-Token Rotation & pg_trgm User Search Service",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@acad/contracts": "workspace:*",
+    "ioredis": "^5.4.2",
+    "pg": "^8.13.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.4",
+    "@types/pg": "^8.11.11",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.5"
+  }
+}

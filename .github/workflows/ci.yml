@@ -183,6 +183,8 @@ jobs:
           for s in deploy/seeds/001_auth_seed.sql deploy/seeds/002_community_seed.sql deploy/seeds/003_voting_feed_seed.sql deploy/seeds/004_chat_mod_seed.sql; do
             psql -h 127.0.0.1 -U postgres -d acad_dev -v ON_ERROR_STOP=1 -f "$s"
           done
+          DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/acad_dev?sslmode=disable" REDIS_CLI="redis-cli -h 127.0.0.1" bash deploy/seeds/001_auth_redis_seed.sh
+          DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/acad_dev?sslmode=disable" REDIS_CLI="redis-cli -h 127.0.0.1" bash deploy/seeds/003_voting_redis_seed.sh
 
       - name: Run Integration Tests against PostgreSQL & Redis
         env:

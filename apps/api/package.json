@@ -1,0 +1,38 @@
+{
+  "name": "@acad/api-gateway",
+  "version": "3.0.0",
+  "description": "Production API Gateway Facade for Acad DevOps Platform v3",
+  "type": "module",
+  "main": "./dist/server.js",
+  "types": "./dist/server.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit",
+    "start": "node ./dist/server.js",
+    "dev": "node --watch ./src/server.ts",
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
+  },
+  "dependencies": {
+    "@acad/auth-service": "workspace:*",
+    "@acad/chat-service": "workspace:*",
+    "@acad/community-service": "workspace:*",
+    "@acad/contracts": "workspace:*",
+    "@acad/moderation-service": "workspace:*",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "ioredis": "^5.5.0",
+    "pg": "^8.13.3",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.13.4",
+    "@types/pg": "^8.11.11",
+    "@types/supertest": "^6.0.2",
+    "supertest": "^7.0.0",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.5"
+  }
+}

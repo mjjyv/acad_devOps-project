@@ -1,0 +1,159 @@
+name: CD & Production Deploy Pipeline
+
+on:
+  workflow_run:
+    workflows: ["CI Pipeline (Quality & Automation Gates)"]
+    types: [completed]
+    branches: [main]
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Deploy target scope"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - api-image
+          - db-migrate
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push-image:
+    name: "CD 1: Build & Push API Image to GHCR"
+    if: >-
+      (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') &&
+      (github.event.inputs.target != 'db-migrate')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata (tags & labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/acad-core-api
+          tags: |
+            type=sha,prefix=sha-
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+
+      - name: Build and push API Gateway image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/docker/Dockerfile.api.prod
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  db-migrate:
+    name: "CD 2: Idempotent PostgreSQL Migrations"
+    needs: [build-and-push-image]
+    if: >-
+      always() &&
+      (needs.build-and-push-image.result == 'success' || needs.build-and-push-image.result == 'skipped') &&
+      vars.ENABLE_CD_MIGRATIONS == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Apply idempotent SQL migrations
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "PRODUCTION_DATABASE_URL secret is not configured; skipping migration."
+            exit 0
+          fi
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "
+            CREATE TABLE IF NOT EXISTS schema_migrations (
+              version TEXT PRIMARY KEY,
+              applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+          "
+          for mig in deploy/migrations/*.up.sql; do
+            ver="$(basename "$mig")"
+            applied="$(psql "$DATABASE_URL" -tAc "SELECT 1 FROM schema_migrations WHERE version = '$ver' LIMIT 1" || true)"
+            if [ "$applied" != "1" ]; then
+              echo "Applying $ver..."
+              psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$mig"
+              psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO schema_migrations (version) VALUES ('$ver') ON CONFLICT DO NOTHING;"
+            fi
+          done
+
+  deploy-remote:
+    name: "CD 3: Rollout to Render / Homelab & Verify /healthz"
+    needs: [build-and-push-image, db-migrate]
+    if: >-
+      always() &&
+      needs.build-and-push-image.result == 'success' &&
+      (needs.db-migrate.result == 'success' || needs.db-migrate.result == 'skipped') &&
+      github.event.inputs.target != 'api-image' &&
+      github.event.inputs.target != 'db-migrate'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render Deploy Hook (if configured)
+        env:
+          RENDER_HOOK: ${{ secrets.RENDER_API_DEPLOY_HOOK }}
+          PUBLIC_API_URL: ${{ vars.PUBLIC_API_URL }}
+        run: |
+          if [ -z "$RENDER_HOOK" ]; then
+            echo "RENDER_API_DEPLOY_HOOK not set; skipping Render rollout."
+            exit 0
+          fi
+          curl -fsSL -X POST "$RENDER_HOOK"
+          if [ -n "$PUBLIC_API_URL" ]; then
+            for i in $(seq 1 20); do
+              if curl -sf "${PUBLIC_API_URL%/}/healthz" | grep -q '"status":"ok"'; then
+                echo "Remote API /healthz verified OK!"
+                exit 0
+              fi
+              sleep 10
+            done
+            echo "Timed out waiting for ${PUBLIC_API_URL%/}/healthz"
+            exit 1
+          fi
+
+      - name: Deploy Self-Hosted Homelab / VPS via SSH (if configured)
+        env:
+          SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          if [ -z "$SSH_HOST" ] || [ -z "$SSH_USER" ] || [ -z "$SSH_KEY" ]; then
+            echo "SSH deployment secrets not set; skipping self-hosted SSH rollout."
+            exit 0
+          fi
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "${SSH_USER}@${SSH_HOST}" '
+            set -e
+            cd ~/acad_devOps_project
+            git pull --ff-only origin main
+            export PATH="$HOME/.local/bin:$PATH"
+            pnpm install --frozen-lockfile
+            pnpm run build
+            ./scripts/manage-homelab.sh deploy
+          '

@@ -109,19 +109,46 @@ run_seeds() {
   echo "✅ Đã nạp đồng bộ dữ liệu mẫu PostgreSQL 16 + Redis 7."
 }
 
+has_web_app() {
+  [ -f "$PROJECT_DIR/apps/web/package.json" ] && [ -d "$PROJECT_DIR/apps/web/.next" -o -d "$PROJECT_DIR/apps/web/src" ]
+}
+
+start_systemd_services() {
+  if has_web_app; then
+    echo "--- Khởi chạy Backend API (:10000) & Next.js Web (:3000) qua Systemd ---"
+    systemctl --user enable --now acad-api.service acad-web.service
+    sleep 2
+    systemctl --user status acad-api.service acad-web.service --no-pager
+  else
+    echo "--- Khởi chạy Backend API (:10000) qua Systemd (apps/web chưa dựng Stream F) ---"
+    systemctl --user enable --now acad-api.service
+    sleep 2
+    systemctl --user status acad-api.service --no-pager
+  fi
+}
+
+restart_systemd_services() {
+  if has_web_app; then
+    systemctl --user restart acad-api.service acad-web.service
+    sleep 2
+    systemctl --user status acad-api.service acad-web.service --no-pager
+  else
+    systemctl --user restart acad-api.service
+    sleep 2
+    systemctl --user status acad-api.service --no-pager
+  fi
+}
+
 case "$ACTION" in
   start)
     start_containers
     wait_for_datastores
     run_migrations
-    echo "--- Khởi chạy Backend API (:10000) & Next.js Web (:3000) qua Systemd ---"
-    systemctl --user enable --now acad-api.service acad-web.service
-    sleep 2
-    systemctl --user status acad-api.service acad-web.service --no-pager
+    start_systemd_services
     ;;
   stop)
     echo "--- Dừng toàn bộ dịch vụ Acad Self-Hosted ---"
-    systemctl --user stop acad-api.service acad-web.service
+    systemctl --user stop acad-api.service acad-web.service 2>/dev/null || true
     podman stop acad-postgres acad-redis 2>/dev/null || true
     echo "Đã dừng hoàn toàn các dịch vụ."
     ;;
@@ -130,9 +157,25 @@ case "$ACTION" in
     wait_for_datastores
     run_migrations
     echo "--- Khởi động lại dịch vụ Acad Homelab ---"
-    systemctl --user restart acad-api.service acad-web.service
-    sleep 2
-    systemctl --user status acad-api.service acad-web.service --no-pager
+    restart_systemd_services
+    ;;
+  deploy)
+    export PATH="/home/debv/.local/bin:$PATH"
+    cd "$PROJECT_DIR"
+    start_containers
+    wait_for_datastores
+    run_migrations
+    pnpm install --frozen-lockfile
+    pnpm run lint
+    pnpm run typecheck
+    pnpm run build
+    pnpm run test
+    DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/acad_dev?sslmode=disable" \
+    REDIS_URL="redis://127.0.0.1:6379" \
+    pnpm run test:integration
+    restart_systemd_services
+    curl -fsS -m 5 http://127.0.0.1:10000/healthz | grep -q '"status":"ok"'
+    echo "✅ Homelab CD/Deploy hoàn tất và /healthz đã xanh!"
     ;;
   migrate)
     start_containers
@@ -228,7 +271,7 @@ case "$ACTION" in
     fi
     ;;
   *)
-    echo "Cách dùng: $0 {start|stop|restart|migrate|seed|qa|status|logs-api|logs-web|test|verify-domain <domain>}"
+    echo "Cách dùng: $0 {start|stop|restart|deploy|migrate|seed|qa|status|logs-api|logs-web|test|verify-domain <domain>}"
     exit 1
     ;;
 esac

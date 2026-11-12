@@ -3,11 +3,15 @@
 **/node_modules
 **/.next
 **/dist
+**/*.tsbuildinfo
 **/build
 **/.env
+**/.env.production
 **/.env*.local
+**/.data
 **/coverage
 **/*.log
 **/.DS_Store
+archive/
 deploy/docker/init-db.sql
 docs/
